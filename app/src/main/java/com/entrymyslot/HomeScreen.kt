@@ -32,6 +32,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import kotlin.time.Duration.Companion.milliseconds
 
 // --- Theme Colors ---
 val SurfaceGrey = Color(0xFF1E2126)
@@ -146,7 +147,7 @@ fun AutoSwipeBannerCarousel() {
     // Auto-swipe logic (Every 5 seconds)
     LaunchedEffect(Unit) {
         while (true) {
-            delay(5000)
+            delay(5000.milliseconds)
             val nextPage = (pagerState.currentPage + 1) % pageCount
             pagerState.animateScrollToPage(nextPage)
         }
