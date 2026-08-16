@@ -5,9 +5,7 @@ plugins {
 
 android {
     namespace = "com.entrymyslot"
-    compileSdk {
-        version = release(37)
-    }
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.entrymyslot"
@@ -51,4 +49,8 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
+
+    implementation("androidx.compose.material3:material3")
+    // For Material icons (like back arrow)
+    implementation("androidx.compose.material:material-icons-extended")
 }
