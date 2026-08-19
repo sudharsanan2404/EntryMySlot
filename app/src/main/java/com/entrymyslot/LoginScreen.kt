@@ -40,14 +40,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
-
-// --- Ultra Clean Premium Theme Colors ---
-val SolidDarkGrey = Color(0xFF121418) // Clean, deep grey background
-val BorderGrey = Color(0xFF333842) // Subtle border for unfocused states
-val PrimaryOrangeStart = Color(0xFFFF8A00)
-val PrimaryOrangeEnd = Color(0xFFFF5200)
-val TextWhite = Color(0xFFF3F4F6)
-val TextMuted = Color(0xFFA0AEC0)
+import com.entrymyslot.ui.theme.*
 
 enum class AuthState { INPUT_SCREEN, OTP_SCREEN }
 

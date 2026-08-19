@@ -33,10 +33,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import kotlin.time.Duration.Companion.milliseconds
-
-// --- Theme Colors ---
-val SurfaceGrey = Color(0xFF1E2126)
-val PrimaryOrange = Color(0xFFFF8A00)
+import com.entrymyslot.ui.theme.*
 
 @Composable
 fun HomeScreen() {
