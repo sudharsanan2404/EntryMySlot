@@ -3,6 +3,7 @@ package com.entrymyslot.app.core.network
 import android.content.Context
 import com.entrymyslot.app.core.storage.AuthTokenStore
 import com.entrymyslot.app.data.auth.AuthApi
+import com.entrymyslot.app.data.home.HomeApi
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
@@ -13,7 +14,7 @@ import retrofit2.Retrofit
 object RetrofitClient {
 
     private const val BASE_URL =
-        "http://172.27.208.1:4000/api/v1/"
+        "http://192.168.1.36:4000/api/v1/"
 
     private lateinit var authTokenStore: AuthTokenStore
 
@@ -53,4 +54,7 @@ object RetrofitClient {
 
     val authApi: AuthApi
         get() = retrofit.create(AuthApi::class.java)
+
+    val homeApi: HomeApi
+        get() = retrofit.create(HomeApi::class.java)
 }

@@ -82,7 +82,8 @@ data class PopularEvent(
     val title: String,
     val date: String,
     val location: String,
-    val price: String
+    val price: String,
+    val imageUrl: String? = null
 )
 
 private val categories = listOf(
@@ -324,6 +325,9 @@ fun HomeScreen(
     onMovieBookClick: (PopularEvent) -> Unit = {}
 ) {
 
+    val homeViewModel = remember { HomeViewModel() }
+    val homeState by homeViewModel.uiState.collectAsState()
+
     var selectedBottomItem by remember {
         mutableStateOf("Home")
     }
@@ -363,6 +367,12 @@ fun HomeScreen(
                 },
                 onAuthClick = onAuthClick,
                 onSportClick = onSportClick,
+                featuredEvents = homeState.events.map { it.toPopularEvent() }.ifEmpty { popularEvents },
+                featuredMovies = homeState.movies.map { it.toPopularEvent() }.ifEmpty { latestMovies },
+                nearbySports = homeState.sports.map { it.toPopularEvent() }.ifEmpty { sportsNearYou },
+                isLoading = homeState.isLoading,
+                loadError = homeState.error,
+                onRetry = homeViewModel::refresh,
                 modifier = Modifier.weight(1f)
             )
 
@@ -437,6 +447,12 @@ private fun HomeContent(
     onEventClick: (PopularEvent) -> Unit,
     onAuthClick: () -> Unit,
     onSportClick: (PopularEvent) -> Unit,
+    featuredEvents: List<PopularEvent>,
+    featuredMovies: List<PopularEvent>,
+    nearbySports: List<PopularEvent>,
+    isLoading: Boolean,
+    loadError: String?,
+    onRetry: () -> Unit,
     modifier: Modifier = Modifier
 ) {
 
@@ -457,6 +473,10 @@ private fun HomeContent(
             Spacer(
                 modifier = Modifier.height(12.dp)
             )
+        }
+
+        if (isLoading || loadError != null) {
+            item { HomeLoadStatus(isLoading, loadError, onRetry) }
         }
 
         // ----------------------------------------------------
@@ -542,7 +562,7 @@ private fun HomeContent(
 
         item {
             EventRow(
-                events = popularEvents,
+                events = featuredEvents,
                 favoriteEvents = favoriteEvents,
                 onFavoriteClick = onFavoriteClick,
                 onEventClick = onEventClick
@@ -569,7 +589,7 @@ private fun HomeContent(
                 )
 
                 EventRow(
-                    events = latestMovies,
+                    events = featuredMovies,
                     favoriteEvents = favoriteEvents,
                     onFavoriteClick = onFavoriteClick,
                     onEventClick = onEventClick
@@ -597,7 +617,7 @@ private fun HomeContent(
                 )
 
                 EventRow(
-                    events = sportsNearYou,
+                    events = nearbySports,
                     favoriteEvents = favoriteEvents,
                     onFavoriteClick = onFavoriteClick,
                     onEventClick = onSportClick
@@ -713,6 +733,23 @@ private fun SearchBar() {
                 tint = Color(0xFF42474E),
                 modifier = Modifier.size(22.dp)
             )
+        }
+    }
+}
+
+@Composable
+private fun HomeLoadStatus(isLoading: Boolean, error: String?, onRetry: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (isLoading) {
+            CircularProgressIndicator(modifier = Modifier.size(16.dp), color = EntryOrange, strokeWidth = 2.dp)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Refreshing nearby picks…", color = EntryWhite.copy(alpha = 0.8f), fontSize = 12.sp)
+        } else if (error != null) {
+            Text("Showing saved picks", color = EntryGray, fontSize = 12.sp, modifier = Modifier.weight(1f))
+            Text("Retry", color = EntryWhite, fontSize = 12.sp, modifier = Modifier.clickable(onClick = onRetry))
         }
     }
 }
@@ -1031,11 +1068,14 @@ private fun PopularEventCard(
                     .background(Color(0xFF1E3A8A).copy(alpha = 0.2f)),
                 contentAlignment = Alignment.Center
             ) {
-
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-
+                if (event.imageUrl != null) {
+                    coil3.compose.AsyncImage(
+                        model = event.imageUrl,
+                        contentDescription = event.title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
                     Text(
                         text = "IMAGE",
                         color = EntryGray.copy(alpha = 0.5f),
@@ -1126,6 +1166,15 @@ private fun PopularEventCard(
         }
     }
 }
+
+private fun com.entrymyslot.app.data.model.HomeContent.toPopularEvent() = PopularEvent(
+    id = id,
+    title = title,
+    date = date,
+    location = location,
+    price = price,
+    imageUrl = imageUrl
+)
 
 
 // ------------------------------------------------------------
