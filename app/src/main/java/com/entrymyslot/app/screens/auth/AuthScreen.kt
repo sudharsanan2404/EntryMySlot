@@ -1,5 +1,16 @@
 package com.entrymyslot.app.screens.auth
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.keyframes
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -15,6 +26,9 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -28,10 +42,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
-import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
@@ -51,6 +65,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -67,26 +82,75 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.viewmodel.compose.viewModel
-import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
 import com.entrymyslot.app.EntryMySlotApp
 
 import com.entrymyslot.app.R
-import kotlin.math.log
+import kotlin.math.roundToInt
 
 private val EntryBlue = Color(0xFF123BBD)
 private val EntryOrange = Color(0xFFFF6500)
 private val LabelGrey = Color(0xFF7D8597)
 private val InactiveTabGrey = Color(0xFFF1F4F9)
 private val BorderColor = Color(0xFFE2E8F0)
+private val FieldErrorColor = Color(0xFFBA1A1A)
+
+private data class AuthFormErrors(
+    val fullName: String? = null,
+    val email: String? = null,
+    val password: String? = null,
+    val confirmPassword: String? = null,
+    val otp: String? = null
+)
+
+private fun validateLogin(email: String, password: String) = AuthFormErrors(
+    email = email.validateEmail(),
+    password = password.validatePassword()
+)
+
+private fun validateRegistration(
+    fullName: String,
+    email: String,
+    password: String,
+    confirmPassword: String
+) = AuthFormErrors(
+    fullName = when {
+        fullName.isBlank() -> "Full name is required"
+        fullName.trim().length < 2 -> "Enter at least 2 characters"
+        else -> null
+    },
+    email = email.validateEmail(),
+    password = password.validatePassword(),
+    confirmPassword = when {
+        confirmPassword.isBlank() -> "Please confirm your password"
+        password != confirmPassword -> "Passwords do not match"
+        else -> null
+    }
+)
+
+private fun String.validateEmail(): String? = when {
+    isBlank() -> "Email address is required"
+    !matches(Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) -> "Enter a valid email address"
+    else -> null
+}
+
+private fun String.validatePassword(): String? = when {
+    isBlank() -> "Password is required"
+    length < 8 -> "Password must be at least 8 characters"
+    !contains(Regex("[A-Z]")) -> "Must contain at least one uppercase letter"
+    !contains(Regex("[a-z]")) -> "Must contain at least one lowercase letter"
+    !contains(Regex("[0-9]")) -> "Must contain at least one number"
+    !contains(Regex("[!@#\$%^&*(),.?\":{}|<>]")) -> "Must contain at least one special character"
+    else -> null
+}
 
 @Composable
 fun AuthScreen(
-    onBackClick: () -> Unit = {},
     onAuthSuccess: () -> Unit = {}
 ) {
 
@@ -97,12 +161,12 @@ fun AuthScreen(
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var fullName by remember { mutableStateOf("") }
-    var phoneNumber by remember { mutableStateOf("") }
 
     var passwordVisible by remember { mutableStateOf(false) }
     var confirmPasswordVisible by remember { mutableStateOf(false) }
     
     var otpValue by remember { mutableStateOf("") }
+    var fieldErrors by remember { mutableStateOf(AuthFormErrors()) }
     val focusManager = LocalFocusManager.current
 
     val context = LocalContext.current
@@ -124,21 +188,7 @@ fun AuthScreen(
 
     val uiState by viewModel.uiState.collectAsState()
 
-    LaunchedEffect(
-        uiState.errorMessage,
-        uiState.successMessage,
-        uiState.isLoggedIn
-    ) {
-        uiState.errorMessage?.let {
-            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
-            viewModel.clearMessages()
-        }
-
-        uiState.successMessage?.let {
-            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
-            viewModel.clearMessages()
-        }
-
+    LaunchedEffect(uiState.isLoggedIn) {
         if (uiState.isLoggedIn) {
             onAuthSuccess()
         }
@@ -148,6 +198,7 @@ fun AuthScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.White)
+            .navigationBarsPadding()
     ) {
 
         Column(
@@ -165,33 +216,31 @@ fun AuthScreen(
                     .statusBarsPadding()
                     .height(58.dp)
             ) {
-                // Back Button
-                Row(
-                    modifier = Modifier
-                        .align(Alignment.CenterStart)
-                        .padding(start = 16.dp)
-                        .clickable { 
-                            if (uiState.isOtpMode) {
+                // Back Button (Only visible in OTP mode)
+                if (uiState.isOtpMode) {
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .padding(start = 16.dp)
+                            .clickable { 
                                 viewModel.clearOtpMode()
-                            } else {
-                                onBackClick()
-                            }
-                        },
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowBack,
-                        contentDescription = "Back",
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "Back",
-                        color = Color.White,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                            },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Back",
+                            color = Color.White,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
 
                 // Logo
@@ -217,6 +266,7 @@ fun AuthScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .verticalScroll(rememberScrollState())
+                        .imePadding()
                         .padding(top = 30.dp, bottom = 20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -281,10 +331,18 @@ fun AuthScreen(
                                     OtpInputField(
                                         otpText = otpValue,
                                         onOtpTextChange = { 
-                                            otpValue = it 
-                                            if (it.length == 6) focusManager.clearFocus()
-                                        }
+                                            otpValue = it
+                                            fieldErrors = fieldErrors.copy(otp = null)
+                                            viewModel.clearMessages()
+                                            if (it.length == 6) {
+                                                focusManager.clearFocus()
+                                                viewModel.verifyOtp(email = email, otp = it)
+                                            }
+                                        },
+                                        isError = fieldErrors.otp != null || uiState.errorMessage != null
                                     )
+
+                                    FieldError(fieldErrors.otp ?: uiState.errorMessage)
                                     
                                     Spacer(modifier = Modifier.height(24.dp))
                                     
@@ -313,12 +371,11 @@ fun AuthScreen(
                                     
                                     Button(
                                         onClick = {
-                                            viewModel.verifyOtp(
-                                                email = email,
-                                                otp = otpValue
-                                            )
+                                            val otpError = if (otpValue.length != 6) "Enter the 6-digit OTP" else null
+                                            fieldErrors = fieldErrors.copy(otp = otpError)
+                                            if (otpError == null) viewModel.verifyOtp(email = email, otp = otpValue)
                                         },
-                                        enabled = !uiState.isLoading && otpValue.length == 6,
+                                        enabled = !uiState.isLoading,
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .height(48.dp),
@@ -353,7 +410,15 @@ fun AuthScreen(
                                         isFirst = true,
                                         modifier = Modifier.weight(1f)
                                     ) {
-                                        isLogin = true
+                                        if (!isLogin) {
+                                            isLogin = true
+                                            email = ""
+                                            password = ""
+                                            confirmPassword = ""
+                                            fullName = ""
+                                            fieldErrors = AuthFormErrors()
+                                            viewModel.clearMessages()
+                                        }
                                     }
 
                                     AuthTab(
@@ -363,7 +428,15 @@ fun AuthScreen(
                                         isFirst = false,
                                         modifier = Modifier.weight(1f)
                                     ) {
-                                        isLogin = false
+                                        if (isLogin) {
+                                            isLogin = false
+                                            email = ""
+                                            password = ""
+                                            confirmPassword = ""
+                                            fullName = ""
+                                            fieldErrors = AuthFormErrors()
+                                            viewModel.clearMessages()
+                                        }
                                     }
                                 }
 
@@ -382,10 +455,15 @@ fun AuthScreen(
                                         Spacer(modifier = Modifier.height(6.dp))
                                         AuthTextField(
                                             value = email,
-                                            onValueChange = { email = it },
+                                            onValueChange = {
+                                                email = it
+                                                fieldErrors = fieldErrors.copy(email = null)
+                                                viewModel.clearMessages()
+                                            },
                                             placeholder = "you@example.com",
                                             leadingIcon = Icons.Default.Email,
-                                            keyboardType = KeyboardType.Email
+                                            keyboardType = KeyboardType.Email,
+                                            error = fieldErrors.email
                                         )
 
                                         Spacer(modifier = Modifier.height(14.dp))
@@ -394,13 +472,20 @@ fun AuthScreen(
                                         Spacer(modifier = Modifier.height(6.dp))
                                         AuthTextField(
                                             value = password,
-                                            onValueChange = { password = it },
+                                            onValueChange = {
+                                                password = it
+                                                fieldErrors = fieldErrors.copy(password = null)
+                                                viewModel.clearMessages()
+                                            },
                                             placeholder = "Enter your password",
                                             leadingIcon = Icons.Default.Lock,
                                             isPassword = true,
                                             passwordVisible = passwordVisible,
-                                            onPasswordVisibilityChange = { passwordVisible = !passwordVisible }
+                                            onPasswordVisibilityChange = { passwordVisible = !passwordVisible },
+                                            error = fieldErrors.password
                                         )
+
+                                        FieldError(uiState.errorMessage)
 
                                     } else {
                                         // -------------------------------------------------
@@ -411,9 +496,14 @@ fun AuthScreen(
                                         Spacer(modifier = Modifier.height(6.dp))
                                         AuthTextField(
                                             value = fullName,
-                                            onValueChange = { fullName = it },
-                                            placeholder = "name",
-                                            leadingIcon = Icons.Default.Person
+                                            onValueChange = {
+                                                fullName = it
+                                                fieldErrors = fieldErrors.copy(fullName = null)
+                                                viewModel.clearMessages()
+                                            },
+                                            placeholder = "Name",
+                                            leadingIcon = Icons.Default.Person,
+                                            error = fieldErrors.fullName
                                         )
 
                                         Spacer(modifier = Modifier.height(14.dp))
@@ -422,23 +512,15 @@ fun AuthScreen(
                                         Spacer(modifier = Modifier.height(6.dp))
                                         AuthTextField(
                                             value = email,
-                                            onValueChange = { email = it },
+                                            onValueChange = {
+                                                email = it
+                                                fieldErrors = fieldErrors.copy(email = null)
+                                                viewModel.clearMessages()
+                                            },
                                             placeholder = "you@example.com",
                                             leadingIcon = Icons.Default.Email,
-                                            keyboardType = KeyboardType.Email
-                                        )
-
-                                        Spacer(modifier = Modifier.height(14.dp))
-
-                                        AuthLabel("PHONE NUMBER")
-                                        Spacer(modifier = Modifier.height(6.dp))
-                                        AuthTextField(
-                                            value = phoneNumber,
-                                            onValueChange = { phoneNumber = it },
-                                            placeholder = "Enter 10-digit number",
-                                            leadingIcon = Icons.Default.Phone,
-                                            keyboardType = KeyboardType.Phone,
-                                            phonePrefix = "+91"
+                                            keyboardType = KeyboardType.Email,
+                                            error = fieldErrors.email
                                         )
 
                                         Spacer(modifier = Modifier.height(14.dp))
@@ -447,12 +529,17 @@ fun AuthScreen(
                                         Spacer(modifier = Modifier.height(6.dp))
                                         AuthTextField(
                                             value = password,
-                                            onValueChange = { password = it },
+                                            onValueChange = {
+                                                password = it
+                                                fieldErrors = fieldErrors.copy(password = null, confirmPassword = null)
+                                                viewModel.clearMessages()
+                                            },
                                             placeholder = "Create a password",
                                             leadingIcon = Icons.Default.Lock,
                                             isPassword = true,
                                             passwordVisible = passwordVisible,
-                                            onPasswordVisibilityChange = { passwordVisible = !passwordVisible }
+                                            onPasswordVisibilityChange = { passwordVisible = !passwordVisible },
+                                            error = fieldErrors.password
                                         )
 
                                         Spacer(modifier = Modifier.height(14.dp))
@@ -461,13 +548,20 @@ fun AuthScreen(
                                         Spacer(modifier = Modifier.height(6.dp))
                                         AuthTextField(
                                             value = confirmPassword,
-                                            onValueChange = { confirmPassword = it },
+                                            onValueChange = {
+                                                confirmPassword = it
+                                                fieldErrors = fieldErrors.copy(confirmPassword = null)
+                                                viewModel.clearMessages()
+                                            },
                                             placeholder = "Confirm your password",
                                             leadingIcon = Icons.Default.Lock,
                                             isPassword = true,
                                             passwordVisible = confirmPasswordVisible,
-                                            onPasswordVisibilityChange = { confirmPasswordVisible = !confirmPasswordVisible }
+                                            onPasswordVisibilityChange = { confirmPasswordVisible = !confirmPasswordVisible },
+                                            error = fieldErrors.confirmPassword
                                         )
+
+                                        FieldError(uiState.errorMessage)
                                     }
 
                                     Spacer(modifier = Modifier.height(20.dp))
@@ -479,17 +573,13 @@ fun AuthScreen(
                                     Button(
                                         onClick = {
                                             if (isLogin) {
-                                                viewModel.login(
-                                                    email = email,
-                                                    password = password
-                                                )
+                                                fieldErrors = validateLogin(email, password)
+                                                if (fieldErrors == AuthFormErrors()) viewModel.login(email = email, password = password)
                                             } else {
-                                                viewModel.register(
-                                                    email = email,
-                                                    fullName = fullName,
-                                                    password = password,
-                                                    confirmPassword = confirmPassword
-                                                )
+                                                fieldErrors = validateRegistration(fullName, email, password, confirmPassword)
+                                                if (fieldErrors == AuthFormErrors()) {
+                                                    viewModel.register(email = email, fullName = fullName, password = password, confirmPassword = confirmPassword)
+                                                }
                                             }
                                         },
                                         enabled = !uiState.isLoading,
@@ -591,9 +681,31 @@ fun AuthScreen(
 @Composable
 private fun OtpInputField(
     otpText: String,
-    onOtpTextChange: (String) -> Unit
+    onOtpTextChange: (String) -> Unit,
+    isError: Boolean
 ) {
     val focusRequester = remember { FocusRequester() }
+    val shakeOffset = remember { Animatable(0f) }
+
+    LaunchedEffect(isError) {
+        if (isError) {
+            shakeOffset.animateTo(
+                targetValue = 0f,
+                animationSpec = keyframes {
+                    durationMillis = 400
+                    (-10f) at 50
+                    10f at 100
+                    (-10f) at 150
+                    10f at 200
+                    (-10f) at 250
+                    10f at 300
+                    (-5f) at 350
+                }
+            )
+        } else {
+            shakeOffset.snapTo(0f)
+        }
+    }
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
@@ -608,8 +720,10 @@ private fun OtpInputField(
         },
         modifier = Modifier
             .fillMaxWidth()
+            .offset { IntOffset(shakeOffset.value.roundToInt(), 0) }
             .focusRequester(focusRequester),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        cursorBrush = SolidColor(EntryOrange),
         decorationBox = {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -620,25 +734,47 @@ private fun OtpInputField(
                         index >= otpText.length -> ""
                         else -> otpText[index].toString()
                     }
-                    val isFocused = index == otpText.length || (index == 5 && otpText.length == 6)
+                    val isFocused = index == otpText.length
                     
                     Box(
                         modifier = Modifier
                             .size(45.dp)
                             .border(
                                 width = 1.dp,
-                                color = if (isFocused) EntryOrange else BorderColor,
+                                color = if (isError) FieldErrorColor else if (isFocused) EntryOrange else BorderColor,
                                 shape = RoundedCornerShape(10.dp)
                             ),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = char,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black,
-                            textAlign = TextAlign.Center
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = char,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Black,
+                                textAlign = TextAlign.Center
+                            )
+                            if (isFocused) {
+                                // Blinking Cursor
+                                val cursorAlpha = remember { Animatable(1f) }
+                                LaunchedEffect(Unit) {
+                                    cursorAlpha.animateTo(
+                                        targetValue = 0f,
+                                        animationSpec = infiniteRepeatable(
+                                            animation = tween(600),
+                                            repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
+                                        )
+                                    )
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .width(2.dp)
+                                        .height(20.dp)
+                                        .alpha(cursorAlpha.value)
+                                        .background(EntryOrange)
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -701,6 +837,36 @@ private fun AuthLabel(text: String) {
 }
 
 @Composable
+private fun FieldError(message: String?) {
+    AnimatedVisibility(
+        visible = message != null,
+        enter = fadeIn() + expandVertically(),
+        exit = fadeOut() + shrinkVertically()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Error,
+                contentDescription = null,
+                tint = FieldErrorColor,
+                modifier = Modifier.size(14.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = message ?: "",
+                color = FieldErrorColor,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+@Composable
 private fun AuthTextField(
     value: String,
     onValueChange: (String) -> Unit,
@@ -710,11 +876,13 @@ private fun AuthTextField(
     isPassword: Boolean = false,
     passwordVisible: Boolean = false,
     onPasswordVisibilityChange: () -> Unit = {},
-    phonePrefix: String? = null
+    phonePrefix: String? = null,
+    error: String? = null
 ) {
     if (phonePrefix != null) {
         // Custom field for Phone Number to get the prefix flush to the left
-        val isFocused = remember { mutableStateOf(false) }
+        val interactionSource = remember { MutableInteractionSource() }
+        val isFocused by interactionSource.collectIsFocusedAsState()
         
         Column {
             Row(
@@ -723,7 +891,7 @@ private fun AuthTextField(
                     .height(48.dp) // Fixed height to match others
                     .border(
                         width = 1.dp,
-                        color = if (isFocused.value) EntryOrange else BorderColor,
+                        color = if (error != null) FieldErrorColor else if (isFocused) EntryOrange else BorderColor,
                         shape = RoundedCornerShape(10.dp)
                     ),
                 verticalAlignment = Alignment.CenterVertically
@@ -762,6 +930,7 @@ private fun AuthTextField(
                     modifier = Modifier
                         .weight(1f)
                         .padding(horizontal = 12.dp),
+                    interactionSource = interactionSource,
                     textStyle = TextStyle(
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
@@ -783,51 +952,57 @@ private fun AuthTextField(
                     }
                 )
             }
+            FieldError(error)
         }
     } else {
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp), // Controlled height
-            singleLine = true,
-            textStyle = TextStyle(fontWeight = FontWeight.Bold, fontSize = 14.sp),
-            placeholder = {
-                Text(
-                    text = placeholder,
-                    color = Color.LightGray,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            leadingIcon = {
-                Icon(
-                    imageVector = leadingIcon,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                    tint = LabelGrey
-                )
-            },
-            trailingIcon = if (isPassword && value.isNotEmpty()) {
-                {
-                    IconButton(onClick = onPasswordVisibilityChange) {
-                        Icon(
-                            imageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            contentDescription = null,
-                            tint = LabelGrey
-                        )
+        Column {
+            OutlinedTextField(
+                value = value,
+                onValueChange = onValueChange,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp), // Controlled height
+                singleLine = true,
+                isError = error != null,
+                textStyle = TextStyle(fontWeight = FontWeight.Bold, fontSize = 14.sp),
+                placeholder = {
+                    Text(
+                        text = placeholder,
+                        color = Color.LightGray,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = leadingIcon,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = LabelGrey
+                    )
+                },
+                trailingIcon = if (isPassword && value.isNotEmpty()) {
+                    {
+                        IconButton(onClick = onPasswordVisibilityChange) {
+                            Icon(
+                                imageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = null,
+                                tint = LabelGrey
+                            )
+                        }
                     }
-                }
-            } else null,
-            visualTransformation = if (isPassword && !passwordVisible) PasswordVisualTransformation() else VisualTransformation.None,
-            shape = RoundedCornerShape(10.dp),
-            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = EntryOrange,
-                unfocusedBorderColor = BorderColor,
-                cursorColor = EntryOrange
+                } else null,
+                visualTransformation = if (isPassword && !passwordVisible) PasswordVisualTransformation() else VisualTransformation.None,
+                shape = RoundedCornerShape(10.dp),
+                keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = EntryOrange,
+                    unfocusedBorderColor = BorderColor,
+                    errorBorderColor = FieldErrorColor,
+                    cursorColor = EntryOrange
+                )
             )
-        )
+            FieldError(error)
+        }
     }
 }
