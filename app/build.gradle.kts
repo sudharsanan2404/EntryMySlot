@@ -53,6 +53,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.play.services.location)
 
     // Networking
     implementation(libs.retrofit)
@@ -83,4 +84,5 @@ dependencies {
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.5.0")
 
     implementation("com.google.accompanist:accompanist-systemuicontroller:0.36.0")
+    implementation("com.google.android.gms:play-services-location:21.3.0")
 }

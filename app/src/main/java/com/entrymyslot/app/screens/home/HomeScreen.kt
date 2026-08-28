@@ -1,6 +1,7 @@
 package com.entrymyslot.app.screens.home
 
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -47,6 +48,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.entrymyslot.app.R
 import com.entrymyslot.app.screens.movies.MovieOverviewContent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 
 // ------------------------------------------------------------
 // COLORS
@@ -453,6 +471,10 @@ private fun HomeContent(
     modifier: Modifier = Modifier
 ) {
 
+    var showLocationPicker by remember { mutableStateOf(false) }
+    var selectedCity by remember { mutableStateOf("Chennai") }
+    var isLocationLoading by remember { mutableStateOf(false) }
+
     androidx.compose.foundation.lazy.LazyColumn(
         modifier = modifier.fillMaxWidth(),
         contentPadding = PaddingValues(
@@ -471,21 +493,68 @@ private fun HomeContent(
                 modifier = Modifier.height(12.dp)
             )
         }
-
-        if (isLoading || loadError != null) {
-            item { HomeLoadStatus(isLoading, loadError, onRetry) }
-        }
+//
+//        if (isLoading || loadError != null) {
+//            item { HomeLoadStatus(isLoading, loadError, onRetry) }
+//        }
 
         // ----------------------------------------------------
         // SEARCH
         // ----------------------------------------------------
 
         item {
-            SearchBar()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(0.dp)
+            ) {
+                Box(modifier = Modifier.weight(1f)) {
+                    SearchBar()
+                }
 
-            Spacer(
-                modifier = Modifier.height(20.dp)
-            )
+                // Location Button
+                Box(
+                    modifier = Modifier
+                        .padding(end = 12.dp)
+                        .height(40.dp)
+                        .clickable {
+                            //
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(7.dp))
+                            .background(EntryOrange)
+                            .height(45.dp)
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        if (isLocationLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text(
+                                text = selectedCity,
+                                style = MaterialTheme.typography.labelMedium,
+                                maxLines = 1,
+                                color = Color.White
+                            )
+
+                            Icon(
+                                imageVector = Icons.Default.KeyboardArrowDown,
+                                contentDescription = "Select location",
+                                modifier = Modifier.size(18.dp),
+                                tint = Color.White
+                            )
+                        }
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(18.dp))
         }
 
         // ----------------------------------------------------
@@ -625,6 +694,16 @@ private fun HomeContent(
                 modifier = Modifier.height(20.dp)
             )
         }
+    }
+    // Dialog-ah open panra logic
+    if (showLocationPicker) {
+        ProfessionalLocationPicker(
+            onDismiss = { showLocationPicker = false },
+            onCitySelected = { city ->
+                selectedCity = city
+                showLocationPicker = false
+            }
+        )
     }
 }
 
@@ -1244,6 +1323,144 @@ private fun HomeBottomNavigation(
                             maxLines = 1
                         )
                     }
+                }
+            }
+        }
+    }
+}
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ProfessionalLocationPicker(onDismiss: () -> Unit, onCitySelected: (String) -> Unit) {
+    val darkBlueBg = Color(0xFF051336)
+    val cardBlue = Color(0xFF0A1C47)
+    val primaryBlue = Color(0xFF0057FF)
+    val textGray = Color(0xFFA0AABF)
+    val borderColor = Color(0xFF1A2C5B)
+
+    var searchQuery by remember { mutableStateOf("") }
+    val districts = listOf("Ariyalur", "Chengalpattu", "Chennai", "Coimbatore", "Cuddalore", "Dharmapuri")
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = darkBlueBg),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp)
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(20.dp)
+            ) {
+                // Header Row with Close Button (Fixed Error Here)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Choose your district",
+                            color = Color.White,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "To show venues, events, and movies near you.",
+                            color = textGray,
+                            fontSize = 12.sp
+                        )
+                    }
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Rounded.Close, contentDescription = "Close", tint = textGray)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Button(
+                    onClick = { /* TODO */ },
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = primaryBlue)
+                ) {
+                    Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color.White)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = "Use my current location", color = Color.White, fontWeight = FontWeight.SemiBold)
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Divider(modifier = Modifier.weight(1f), color = borderColor)
+                    Text(
+                        text = "OR PICK MANUALLY",
+                        color = textGray,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(horizontal = 12.dp)
+                    )
+                    Divider(modifier = Modifier.weight(1f), color = borderColor)
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("Search Tamil Nadu districts...", color = textGray) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = textGray) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = primaryBlue,
+                        unfocusedBorderColor = borderColor,
+                        cursorColor = primaryBlue,
+                        focusedContainerColor = cardBlue,
+                        unfocusedContainerColor = cardBlue
+                    ),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f, fill = false)
+                        .border(1.dp, borderColor, RoundedCornerShape(8.dp))
+                ) {
+                    LazyColumn {
+                        items(districts) { district ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    // FIXED ERROR HERE
+                                    .clickable { onCitySelected(district) }
+                                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(text = district, color = Color.White, fontSize = 14.sp)
+                                Text(
+                                    text = district.take(3).uppercase(),
+                                    color = textGray,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Divider(color = borderColor)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Info, contentDescription = null, tint = textGray, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Your selection is stored on this device only. We don't track your GPS.",
+                        color = textGray,
+                        fontSize = 11.sp
+                    )
                 }
             }
         }
