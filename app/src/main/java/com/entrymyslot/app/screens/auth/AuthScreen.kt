@@ -69,8 +69,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.viewmodel.compose.viewModel
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
+import com.entrymyslot.app.EntryMySlotApp
 
 import com.entrymyslot.app.R
+import kotlin.math.log
 
 private val EntryBlue = Color(0xFF123BBD)
 private val EntryOrange = Color(0xFFFF6500)
@@ -80,7 +86,8 @@ private val BorderColor = Color(0xFFE2E8F0)
 
 @Composable
 fun AuthScreen(
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit = {},
+    onAuthSuccess: () -> Unit = {}
 ) {
 
     var isLogin by remember { mutableStateOf(true) }
@@ -97,6 +104,45 @@ fun AuthScreen(
     
     var otpValue by remember { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
+
+    val context = LocalContext.current
+    val app = context.applicationContext as EntryMySlotApp
+
+    val viewModel: AuthScreenViewModel = viewModel(
+        factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : androidx.lifecycle.ViewModel> create(
+                modelClass: Class<T>
+            ): T {
+                return AuthScreenViewModel(
+                    repository = app.appContainer.authRepository
+                ) as T
+            }
+        }
+    )
+
+    val uiState by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(
+        uiState.errorMessage,
+        uiState.successMessage,
+        uiState.isLoggedIn
+    ) {
+        uiState.errorMessage?.let {
+            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
+            viewModel.clearMessages()
+        }
+
+        uiState.successMessage?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.clearMessages()
+        }
+
+        if (uiState.isLoggedIn) {
+            onAuthSuccess()
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -125,8 +171,8 @@ fun AuthScreen(
                         .align(Alignment.CenterStart)
                         .padding(start = 16.dp)
                         .clickable { 
-                            if (isOtpMode) {
-                                isOtpMode = false
+                            if (uiState.isOtpMode) {
+                                viewModel.clearOtpMode()
                             } else {
                                 onBackClick()
                             }
@@ -194,7 +240,7 @@ fun AuthScreen(
                             modifier = Modifier.fillMaxWidth()
                         ) {
 
-                            if (isOtpMode) {
+                            if (uiState.isOtpMode) {
                                 // -------------------------------------------------
                                 // OTP VERIFICATION VIEW
                                 // -------------------------------------------------
@@ -257,7 +303,9 @@ fun AuthScreen(
                                             fontSize = 13.sp,
                                             color = EntryOrange,
                                             fontWeight = FontWeight.Bold,
-                                            modifier = Modifier.clickable { /* Handle resend */ }
+                                            modifier = Modifier.clickable {
+                                                viewModel.resendOtp(email)
+                                            }
                                         )
                                     }
                                     
@@ -265,9 +313,12 @@ fun AuthScreen(
                                     
                                     Button(
                                         onClick = {
-                                            isLogin = true
-                                            isOtpMode = false
+                                            viewModel.verifyOtp(
+                                                email = email,
+                                                otp = otpValue
+                                            )
                                         },
+                                        enabled = !uiState.isLoading && otpValue.length == 6,
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .height(48.dp),
@@ -427,10 +478,21 @@ fun AuthScreen(
 
                                     Button(
                                         onClick = {
-                                            if (!isLogin) {
-                                                isOtpMode = true
+                                            if (isLogin) {
+                                                viewModel.login(
+                                                    email = email,
+                                                    password = password
+                                                )
+                                            } else {
+                                                viewModel.register(
+                                                    email = email,
+                                                    fullName = fullName,
+                                                    password = password,
+                                                    confirmPassword = confirmPassword
+                                                )
                                             }
                                         },
+                                        enabled = !uiState.isLoading,
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .height(48.dp),
@@ -450,7 +512,7 @@ fun AuthScreen(
                                             )
                                             Spacer(modifier = Modifier.width(8.dp))
                                             Text(
-                                                text = if (isLogin) "LOGIN" else "CREATE ACCOUNT",
+                                                text = if (uiState.isLoading) "PLEASE WAIT..." else if (isLogin) "LOGIN" else "CREATE ACCOUNT",
                                                 fontSize = 15.sp,
                                                 fontWeight = FontWeight.Bold
                                             )

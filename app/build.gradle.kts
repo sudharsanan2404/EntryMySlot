@@ -1,6 +1,8 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    id("com.google.devtools.ksp")
+    id("org.jetbrains.kotlin.plugin.serialization")
 }
 
 android {
@@ -46,6 +48,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.play.services.cloud.messaging)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
@@ -55,17 +58,56 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     // Material Extended Icons (Lock, Visibility, Person, Email icons-kaga)
-    implementation("androidx.compose.material:material-icons-extended")
+    implementation(libs.androidx.compose.material.icons.extended)
 
     // Image loading (Coil - future screens-kum theva padum)
-    implementation("io.coil-kt:coil-compose:2.7.0")
+    implementation(libs.coil.compose)
 
     // Tooling & Debugging
-    debugImplementation("androidx.compose.ui:ui-tooling")
-    debugImplementation("androidx.compose.ui:ui-test-manifest")
+    debugImplementation(libs.androidx.ui.tooling)
+    debugImplementation(libs.androidx.ui.test.manifest)
 
-    implementation("io.coil-kt.coil3:coil-compose:3.5.0")
-    implementation("io.coil-kt.coil3:coil-network-okhttp:3.5.0")
+    implementation(libs.coil3.coil.compose)
+    implementation(libs.coil.network.okhttp)
 
-    implementation("com.google.accompanist:accompanist-systemuicontroller:0.36.0")
+    implementation(libs.accompanist.systemuicontroller)
+
+    // Compose
+    implementation(platform(libs.androidx.compose.bom.v20260800))
+    implementation(libs.androidx.ui)
+    implementation(libs.androidx.ui.tooling.preview)
+    implementation(libs.androidx.material3)
+    debugImplementation(libs.ui.tooling)
+
+    // Activity
+    implementation(libs.androidx.activity.compose.v1130)
+
+    // Lifecycle / ViewModel
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+
+    // Navigation
+    implementation(libs.androidx.navigation.compose)
+
+    // Coroutines
+    implementation(libs.kotlinx.coroutines.android)
+
+    // Retrofit
+    implementation(libs.retrofit)
+
+    // OkHttp
+    implementation(libs.okhttp)
+    implementation(libs.logging.interceptor)
+
+    // JSON Serialization
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.retrofit2.kotlinx.serialization.converter)
+
+    // DataStore
+    implementation(libs.androidx.datastore.preferences)
+
+    // Room - local/offline database
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
 }
