@@ -10,9 +10,13 @@ import com.entrymyslot.app.screens.auth.AuthScreen
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        val app = applicationContext as EntryMySlotApp
+        val authTokenStore = app.appContainer.authTokenStore
+        
         enableEdgeToEdge()
         setContent {
-            AppNavigation()
+            AppNavigation(authTokenStore = authTokenStore)
         }
     }
 }

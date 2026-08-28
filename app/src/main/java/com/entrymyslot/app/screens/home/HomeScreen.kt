@@ -320,7 +320,6 @@ fun HomeScreen(
     onCategoryClick: (String) -> Unit = {},
     onEventClick: (PopularEvent) -> Unit = {},
     onBottomNavigationClick: (String) -> Unit = {},
-    onAuthClick: () -> Unit = {},
     onSportClick: (PopularEvent) -> Unit = {},
     onMovieBookClick: (PopularEvent) -> Unit = {}
 ) {
@@ -365,7 +364,6 @@ fun HomeScreen(
                     selectedMovie = event
                     showMovieOverview = true
                 },
-                onAuthClick = onAuthClick,
                 onSportClick = onSportClick,
                 featuredEvents = homeState.events.map { it.toPopularEvent() }.ifEmpty { popularEvents },
                 featuredMovies = homeState.movies.map { it.toPopularEvent() }.ifEmpty { latestMovies },
@@ -445,7 +443,6 @@ private fun HomeContent(
     onFavoriteClick: (String) -> Unit,
     onCategoryClick: (String) -> Unit,
     onEventClick: (PopularEvent) -> Unit,
-    onAuthClick: () -> Unit,
     onSportClick: (PopularEvent) -> Unit,
     featuredEvents: List<PopularEvent>,
     featuredMovies: List<PopularEvent>,
@@ -468,7 +465,7 @@ private fun HomeContent(
         // ----------------------------------------------------
 
         item {
-            HomeHeader(onAuthClick = onAuthClick)
+            HomeHeader()
 
             Spacer(
                 modifier = Modifier.height(12.dp)
@@ -637,9 +634,7 @@ private fun HomeContent(
 // ------------------------------------------------------------
 
 @Composable
-private fun HomeHeader(
-    onAuthClick: () -> Unit
-) {
+private fun HomeHeader() {
 
     Box(
         modifier = Modifier
@@ -671,25 +666,6 @@ private fun HomeHeader(
                         .align(Alignment.Center),
                     contentScale = ContentScale.Fit
                 )
-
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(top = 16.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(EntryOrange)
-                        .clickable { onAuthClick() }
-                        .padding(horizontal = 6.dp, vertical = 10.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-
-                    Text(
-                        text = "Login/Register",
-                        color = EntryWhite,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
             }
         }
     }

@@ -9,7 +9,7 @@ class AppContainer(
     context: Context
 ) {
 
-    private val authTokenStore = AuthTokenStore(
+    val authTokenStore = AuthTokenStore(
         context = context.applicationContext
     )
 
