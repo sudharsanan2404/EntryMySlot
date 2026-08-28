@@ -90,6 +90,18 @@ class AuthScreenViewModel(
 
             password.length < 8 ->
                 setError("Password must be at least 8 characters")
+                
+            !password.contains(Regex("[A-Z]")) ->
+                setError("Must contain at least one uppercase letter")
+                
+            !password.contains(Regex("[a-z]")) ->
+                setError("Must contain at least one lowercase letter")
+                
+            !password.contains(Regex("[0-9]")) ->
+                setError("Must contain at least one number")
+                
+            !password.contains(Regex("[!@#\$%^&*(),.?\":{}|<>]")) ->
+                setError("Must contain at least one special character")
 
             password != confirmPassword ->
                 setError("Passwords do not match")
@@ -257,17 +269,32 @@ class AuthScreenViewModel(
     }
 
     private fun getErrorMessage(error: Throwable): String {
+        val message = error.message ?: ""
+        
+        // Try to see if it's a JSON error message from our backend
+        if (message.contains("\"message\":\"")) {
+            try {
+                val json = org.json.JSONObject(message)
+                return json.optString("message", "An unexpected error occurred")
+            } catch (e: Exception) {
+                // Fallback to manual parsing if JSON parsing fails
+            }
+        }
 
-        android.util.Log.e(
-            "AUTH_DEBUG",
-            "Auth Error",
-            error
-        )
-
-        return buildString {
-            append(error::class.java.simpleName)
-            append("\n")
-            append(error.message ?: "Unknown error")
+        return when {
+            message.contains("401") || message.contains("Unauthorized") || message.contains("Invalid email or password") -> 
+                "Invalid email or password"
+            message.contains("409") || message.contains("Conflict") || message.contains("already exists") -> 
+                "User with this email already exists"
+            message.contains("400") || message.contains("Bad Request") -> 
+                "Invalid request. Please check your inputs"
+            message.contains("timeout") || message.contains("Connection") || message.contains("Unable to resolve host") -> 
+                "Network error. Please check your internet connection"
+            message.contains("404") -> 
+                "Server endpoint not found"
+            message.contains("500") || message.contains("Internal Server Error") ->
+                "Server is currently undergoing maintenance. Please try later"
+            else -> message.takeIf { it.isNotBlank() && it.length < 50 } ?: "An unexpected error occurred. Please try again"
         }
     }
 }
