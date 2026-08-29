@@ -15,7 +15,7 @@ import kotlin.jvm.java
 object RetrofitClient {
 
     private const val BASE_URL =
-        "http://192.168.1.36:4000/api/v1/"
+        "http://98.130.20.52:4000/api/v1/"
 
     private lateinit var authTokenStore: AuthTokenStore
 

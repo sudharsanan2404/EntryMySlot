@@ -28,7 +28,6 @@ private val MovieBlueBottom = Color(0xFF041F5D)
 private val MovieOrange = Color(0xFFFF8A00)
 private val MovieWhite = Color.White
 private val MovieGray = Color(0xFFB8C0D0)
-private val MovieCard = Color(0xFF111D32)
 private val MovieCardLight = Color(0xFF142B58)
 private val SeatAvailable = Color(0xFF183E65)
 private val SeatSelected = Color(0xFFFF8A00)
@@ -161,13 +160,6 @@ fun MovieBookingScreen(
                     )
                     Spacer(modifier = Modifier.height(30.dp))
                 }
-
-                // Summary
-                item {
-                    if (selectedSeats.isNotEmpty()) {
-                        MovieBookingSummary(selectedSeats.size, ticketPrice, totalPrice)
-                    }
-                }
             }
 
             MovieBottomBar(selectedSeats.size, totalPrice, onContinueClick)
@@ -277,39 +269,6 @@ private fun SeatItem(isSelected: Boolean, isBooked: Boolean, onClick: () -> Unit
         contentAlignment = Alignment.Center
     ) {
         if (isSelected) Icon(Icons.Outlined.Check, null, tint = Color.White, modifier = Modifier.size(16.dp))
-    }
-}
-
-@Composable
-private fun MovieBookingSummary(count: Int, price: Int, total: Int) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 18.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(MovieCard)
-            .border(1.dp, Color(0xFF2A426B), RoundedCornerShape(16.dp))
-            .padding(20.dp)
-    ) {
-        Text("Booking Summary", color = MovieWhite, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(16.dp))
-        SummaryRow("Tickets", "$count seat(s)")
-        SummaryRow("Price", "₹$price × $count")
-        Spacer(modifier = Modifier.height(12.dp))
-        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFF293A59)))
-        Spacer(modifier = Modifier.height(12.dp))
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Total", color = MovieWhite, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            Text("₹$total", color = MovieOrange, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-        }
-    }
-}
-
-@Composable
-private fun SummaryRow(label: String, value: String) {
-    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, color = MovieGray, fontSize = 14.sp)
-        Text(value, color = MovieWhite, fontSize = 14.sp, fontWeight = FontWeight.Medium)
     }
 }
 

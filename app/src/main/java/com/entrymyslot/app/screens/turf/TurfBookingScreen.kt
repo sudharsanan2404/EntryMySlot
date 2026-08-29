@@ -55,7 +55,6 @@ private val TurfOrange = Color(0xFFFF8A00)
 private val TurfWhite = Color.White
 private val TurfGray = Color(0xFFB8C0D0)
 
-private val TurfCard = Color(0xFF111D32)
 private val TurfCardLight = Color(0xFF142B58)
 
 private val AvailableColor = Color(0xFF163D63)
@@ -347,18 +346,6 @@ fun TurfBookingScreen(
 
                     Spacer(
                         modifier = Modifier.height(24.dp)
-                    )
-                }
-
-                // ------------------------------------------------
-                // BOOKING SUMMARY
-                // ------------------------------------------------
-
-                item {
-
-                    BookingSummary(
-                        selectedSlots = selectedSlots.size,
-                        totalPrice = totalPrice
                     )
                 }
             }
@@ -785,135 +772,6 @@ private fun TurfSlotItem(
                 },
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Medium
-            )
-        }
-    }
-}
-
-
-// ------------------------------------------------------------
-// BOOKING SUMMARY
-// ------------------------------------------------------------
-
-@Composable
-private fun BookingSummary(
-    selectedSlots: Int,
-    totalPrice: Int
-) {
-
-    if (selectedSlots == 0) {
-        return
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 18.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(TurfCard)
-            .border(
-                width = 1.dp,
-                color = Color(0xFF2A426B),
-                shape = RoundedCornerShape(14.dp)
-            )
-            .padding(16.dp)
-    ) {
-
-        Text(
-            text = "Booking Summary",
-            color = TurfWhite,
-            fontSize = 17.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(
-            modifier = Modifier.height(12.dp)
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-
-            Text(
-                text = "Selected Slots",
-                color = TurfGray,
-                fontSize = 13.sp
-            )
-
-            Spacer(
-                modifier = Modifier.weight(1f)
-            )
-
-            Text(
-                text = "$selectedSlots hour(s)",
-                color = TurfWhite,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium
-            )
-        }
-
-        Spacer(
-            modifier = Modifier.height(7.dp)
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-
-            Text(
-                text = "Price / Hour",
-                color = TurfGray,
-                fontSize = 13.sp
-            )
-
-            Spacer(
-                modifier = Modifier.weight(1f)
-            )
-
-            Text(
-                text = "₹800",
-                color = TurfWhite,
-                fontSize = 13.sp
-            )
-        }
-
-        Spacer(
-            modifier = Modifier.height(12.dp)
-        )
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(
-                    Color(0xFF293A59)
-                )
-        )
-
-        Spacer(
-            modifier = Modifier.height(12.dp)
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-
-            Text(
-                text = "Total",
-                color = TurfWhite,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(
-                modifier = Modifier.weight(1f)
-            )
-
-            Text(
-                text = "₹$totalPrice",
-                color = TurfOrange,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
             )
         }
     }
