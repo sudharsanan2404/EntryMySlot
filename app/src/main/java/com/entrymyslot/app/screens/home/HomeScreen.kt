@@ -153,7 +153,7 @@ private val categories = listOf(
     CategoryItem("Concerts", Icons.Outlined.MusicNote)
 )
 
-private val popularEvents = listOf(
+val popularEvents = listOf(
     PopularEvent(
         id = "pop_1",
         title = "IND vs AUS - 2nd ODI",
@@ -174,16 +174,37 @@ private val popularEvents = listOf(
         date = "12 Dec 2024 | 8:00 PM",
         location = "Chennai",
         price = "From ₹499"
+    ),
+    PopularEvent(
+        id = "pop_4",
+        title = "Tech Summit 2024",
+        date = "15 Jan 2025 | 10:00 AM",
+        location = "Trade Center, Bangalore",
+        price = "Free Entry"
+    ),
+    PopularEvent(
+        id = "pop_5",
+        title = "Stand-up Comedy",
+        date = "05 Dec 2024 | 9:00 PM",
+        location = "The Laugh Club, Chennai",
+        price = "From ₹350"
+    ),
+    PopularEvent(
+        id = "pop_6",
+        title = "Food Festival",
+        date = "10 Nov 2024 | 11:00 AM",
+        location = "Island Ground, Chennai",
+        price = "From ₹100"
     )
 )
 
-private val latestMovies = listOf(
+val latestMovies = listOf(
     PopularEvent(
         id = "mov_1",
         title = "The Dark Knight",
         date = "In Cinemas Now",
         location = "IMAX, Chennai",
-        price = "From ₹199"
+        price = "From ₹190"
     ),
     PopularEvent(
         id = "mov_2",
@@ -198,10 +219,31 @@ private val latestMovies = listOf(
         date = "15 Oct 2024",
         location = "Luxe, Mumbai",
         price = "From ₹300"
+    ),
+    PopularEvent(
+        id = "mov_4",
+        title = "Avatar: Way of Water",
+        date = "In Cinemas Now",
+        location = "PVR, Chennai",
+        price = "From ₹220"
+    ),
+    PopularEvent(
+        id = "mov_5",
+        title = "The Matrix",
+        date = "Next Week",
+        location = "Sathyam, Chennai",
+        price = "From ₹180"
+    ),
+    PopularEvent(
+        id = "mov_6",
+        title = "Avengers: Endgame",
+        date = "20 Oct 2024",
+        location = "INOX, Madurai",
+        price = "From ₹150"
     )
 )
 
-private val sportsNearYou = listOf(
+val sportsNearYou = listOf(
     PopularEvent(
         id = "sport_1",
         title = "Green Arena Turf",
@@ -222,6 +264,27 @@ private val sportsNearYou = listOf(
         date = "Available Today",
         location = "T. Nagar, Chennai",
         price = "From ₹400"
+    ),
+    PopularEvent(
+        id = "sport_4",
+        title = "Victory Cricket Ground",
+        date = "Slots Available",
+        location = "OMR, Chennai",
+        price = "From ₹1500"
+    ),
+    PopularEvent(
+        id = "sport_5",
+        title = "Smash Tennis Court",
+        date = "Open 24/7",
+        location = "Anna Nagar, Chennai",
+        price = "From ₹600"
+    ),
+    PopularEvent(
+        id = "sport_6",
+        title = "Dunk Basket Court",
+        date = "Available Now",
+        location = "Porur, Chennai",
+        price = "From ₹300"
     )
 )
 
@@ -1299,7 +1362,6 @@ private fun HomeBottomNavigation(
     val items = listOf(
         Triple("Home", Icons.Outlined.Home, Icons.Rounded.Home),
         Triple("My Bookings", Icons.Outlined.ConfirmationNumber, Icons.Outlined.ConfirmationNumber),
-        Triple("Wallet", Icons.Outlined.Wallet, Icons.Outlined.Wallet),
         Triple("Profile", Icons.Outlined.AccountCircle, Icons.Outlined.AccountCircle)
     )
 

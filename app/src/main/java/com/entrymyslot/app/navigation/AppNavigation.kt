@@ -26,9 +26,15 @@ import com.entrymyslot.app.screens.turf.TurfScreen
 import com.entrymyslot.app.screens.turf.TurfBookingScreen
 import com.entrymyslot.app.screens.turf.SportsListScreen
 import com.entrymyslot.app.screens.events.EventsListScreen
+import com.entrymyslot.app.screens.events.EventBookingScreen
 import com.entrymyslot.app.screens.home.HomeViewModel
 import com.entrymyslot.app.screens.home.PopularEvent
 import com.entrymyslot.app.screens.home.toPopularEvent
+import com.entrymyslot.app.screens.home.latestMovies
+import com.entrymyslot.app.screens.home.sportsNearYou
+import com.entrymyslot.app.screens.home.popularEvents
+import com.entrymyslot.app.screens.profile.ProfileScreen
+import com.entrymyslot.app.screens.booking.BookingScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
@@ -83,7 +89,6 @@ fun AppNavigation(
                 onBottomNavigationClick = { item ->
                     when (item) {
                         "My Bookings" -> navController.navigate("bookings")
-                        "Wallet" -> navController.navigate("wallet")
                         "Profile" -> navController.navigate("profile")
                     }
                 }
@@ -92,10 +97,9 @@ fun AppNavigation(
 
         composable("movies_list") {
             MoviesListScreen(
-                movies = homeState.movies.map { it.toPopularEvent() },
+                movies = homeState.movies.map { it.toPopularEvent() }.ifEmpty { latestMovies },
                 onBackClick = { navController.popBackStack() },
                 onMovieClick = { movie ->
-                    // For now, movie click goes to cinema selection
                     navController.navigate("cinema_selection")
                 }
             )
@@ -103,7 +107,7 @@ fun AppNavigation(
 
         composable("sports_list") {
             SportsListScreen(
-                sports = homeState.sports.map { it.toPopularEvent() },
+                sports = homeState.sports.map { it.toPopularEvent() }.ifEmpty { sportsNearYou },
                 onBackClick = { navController.popBackStack() },
                 onSportClick = { sport ->
                     navController.navigate("turf_details/${sport.id}")
@@ -114,44 +118,80 @@ fun AppNavigation(
         composable("events_list") {
             EventsListScreen(
                 title = "Upcoming Events",
-                events = homeState.events.map { it.toPopularEvent() },
+                events = homeState.events.map { it.toPopularEvent() }.ifEmpty { popularEvents },
                 onBackClick = { navController.popBackStack() },
                 onEventClick = { event ->
-                    navController.navigate("payment/EVENT/${event.title}")
+                    navController.navigate("event_booking/${event.id}")
                 }
             )
         }
 
         composable("concerts_list") {
+            val concerts = homeState.events
+                .filter { it.title.contains("Live", ignoreCase = true) || it.title.contains("Music", ignoreCase = true) }
+                .map { it.toPopularEvent() }
+                .ifEmpty { popularEvents.filter { it.title.contains("Live", ignoreCase = true) } }
+
             EventsListScreen(
                 title = "Music Concerts",
-                events = homeState.events.filter { it.title.contains("Live", ignoreCase = true) || it.title.contains("Music", ignoreCase = true) }.map { it.toPopularEvent() },
+                events = concerts,
                 onBackClick = { navController.popBackStack() },
                 onEventClick = { event ->
+                    navController.navigate("event_booking/${event.id}")
+                }
+            )
+        }
+
+        composable("event_booking/{eventId}") { backStackEntry ->
+            val eventId = backStackEntry.arguments?.getString("eventId")
+            val allEvents = (homeState.events.map { it.toPopularEvent() } + popularEvents)
+            val event = allEvents.find { it.id == eventId } ?: popularEvents[0]
+
+            EventBookingScreen(
+                event = event,
+                onBackClick = { navController.popBackStack() },
+                onContinueClick = { _ ->
                     navController.navigate("payment/EVENT/${event.title}")
                 }
             )
         }
 
         composable("bookings") {
-            // Placeholder for Bookings
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("My Bookings Screen", color = Color.White)
-            }
-        }
-
-        composable("wallet") {
-            // Placeholder for Wallet
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Wallet Screen", color = Color.White)
-            }
+            BookingScreen(
+                onBackClick = { navController.popBackStack() },
+                onBottomNavigationClick = { item ->
+                    when (item) {
+                        "Home" -> navController.navigate("home")
+                        "Profile" -> navController.navigate("profile")
+                    }
+                },
+                onViewTicketClick = { booking ->
+                    // Logic to show ticket, maybe navigate to a ticket screen
+                }
+            )
         }
 
         composable("profile") {
-            // Placeholder for Profile
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Profile Screen", color = Color.White)
-            }
+            ProfileScreen(
+                onBottomNavigationClick = { item ->
+                    when (item) {
+                        "Home" -> navController.navigate("home")
+                        "My Bookings" -> navController.navigate("bookings")
+                    }
+                },
+                onBookingClick = {
+                    navController.navigate("bookings")
+                },
+                onActivityClick = {
+                    // Navigate to Activity tab in bookings
+                    navController.navigate("bookings")
+                },
+                onLogoutClick = {
+                    navController.navigate("auth") {
+                        popUpTo("home") { inclusive = true }
+                    }
+                }
+            )
         }
 
         composable("turf_details/{sportId}") { backStackEntry ->
