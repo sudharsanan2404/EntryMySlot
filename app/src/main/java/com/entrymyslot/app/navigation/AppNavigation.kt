@@ -221,10 +221,6 @@ fun AppNavigation(
                 onBookingClick = {
                     navController.navigate("bookings")
                 },
-                onActivityClick = {
-                    // Navigate to Activity tab in bookings
-                    navController.navigate("bookings")
-                },
                 onLogoutClick = {
                     navController.navigate("auth") {
                         popUpTo("home") { inclusive = true }

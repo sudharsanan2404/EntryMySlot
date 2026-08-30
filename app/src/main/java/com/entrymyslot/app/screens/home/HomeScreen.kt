@@ -46,7 +46,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.entrymyslot.app.R
-import com.entrymyslot.app.screens.movies.MovieOverviewContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -459,9 +458,6 @@ fun HomeScreen(
         mutableStateOf(setOf<String>())
     }
 
-    var showMovieOverview by remember { mutableStateOf(false) }
-    var selectedMovie by remember { mutableStateOf<PopularEvent?>(null) }
-
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -484,10 +480,7 @@ fun HomeScreen(
                         }
                 },
                 onCategoryClick = onCategoryClick,
-                onEventClick = { event ->
-                    selectedMovie = event
-                    showMovieOverview = true
-                },
+                onEventClick = onMovieBookClick,
                 onSportClick = onSportClick,
                 featuredEvents = homeState.events.map { it.toPopularEvent() }.ifEmpty { popularEvents },
                 featuredMovies = homeState.movies.map { it.toPopularEvent() }.ifEmpty { latestMovies },
@@ -513,51 +506,9 @@ fun HomeScreen(
                 }
             )
         }
-
-        // ----------------------------------------------------
-        // MOVIE OVERVIEW BOTTOM SHEET
-        // ----------------------------------------------------
-        if (showMovieOverview && selectedMovie != null) {
-            MovieOverviewBottomSheet(
-                movie = selectedMovie!!,
-                onDismiss = { showMovieOverview = false },
-                onBookClick = {
-                    showMovieOverview = false
-                    onMovieBookClick(selectedMovie!!)
-                }
-            )
-        }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun MovieOverviewBottomSheet(
-    movie: PopularEvent,
-    onDismiss: () -> Unit,
-    onBookClick: () -> Unit
-) {
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        containerColor = Color(0xFF101A2C),
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        dragHandle = {
-            Box(
-                modifier = Modifier
-                    .padding(top = 12.dp, bottom = 8.dp)
-                    .width(40.dp)
-                    .height(4.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(Color.White.copy(alpha = 0.2f))
-            )
-        }
-    ) {
-        MovieOverviewContent(
-            movie = movie,
-            onBookClick = onBookClick
-        )
-    }
-}
 
 
 // ------------------------------------------------------------

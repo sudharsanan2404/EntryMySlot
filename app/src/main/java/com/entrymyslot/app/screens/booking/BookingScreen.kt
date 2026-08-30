@@ -56,15 +56,6 @@ data class BookingItem(
     val status: BookingStatus
 )
 
-data class ActivityItem(
-    val id: String,
-    val title: String,
-    val description: String,
-    val time: String,
-    val icon: ImageVector,
-    val statusColor: Color
-)
-
 // ------------------------------------------------------------
 // SAMPLE DATA
 // ------------------------------------------------------------
@@ -79,14 +70,6 @@ val pastBookings = listOf(
     BookingItem("5", BookingType.TURF, "Power Turf", "Adyar", "20 Aug 2026 • 5:00 PM", "1 Hour Booked", "₹800", BookingStatus.CANCELLED)
 )
 
-val activities = listOf(
-    ActivityItem("a1", "Movie booking confirmed", "The Epic Blockbuster\nPVR Cinemas", "Today • 12:30 PM", Icons.Outlined.Movie, StatusCompleted),
-    ActivityItem("a2", "Turf booking completed", "Green Arena Turf\n2 hours booked", "Yesterday • 6:20 PM", Icons.Outlined.SportsSoccer, StatusCompleted),
-    ActivityItem("a3", "Event ticket purchased", "Live Cricket Championship\nVIP × 2", "28 Aug • 4:10 PM", Icons.Outlined.ConfirmationNumber, StatusCompleted),
-    ActivityItem("a4", "Payment refunded", "The Epic Blockbuster\n₹360 refunded", "26 Aug • 11:40 AM", Icons.Outlined.Refresh, StatusUpcoming),
-    ActivityItem("a5", "Booking cancelled", "Green Arena Turf", "25 Aug • 8:30 PM", Icons.Outlined.Close, StatusCancelled)
-)
-
 // ------------------------------------------------------------
 // BOOKING SCREEN
 // ------------------------------------------------------------
@@ -98,7 +81,7 @@ fun BookingScreen(
     onViewTicketClick: (BookingItem) -> Unit = {}
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Upcoming", "Past", "Activity")
+    val tabs = listOf("Upcoming", "Past")
     var selectedFilter by remember { mutableStateOf("All") }
     val filters = listOf("All", "Movies", "Turf", "Events", "Concerts")
 
@@ -194,9 +177,6 @@ fun BookingScreen(
                         } else {
                             items(filtered, key = { it.id }) { BookingCard(it, onViewTicketClick) }
                         }
-                    }
-                    2 -> { // Activity
-                        item { TimelineSection(activities) }
                     }
                 }
             }
@@ -336,55 +316,6 @@ private fun StatusBadge(status: BookingStatus) {
     }
 }
 
-@Composable
-private fun TimelineSection(activities: List<ActivityItem>) {
-    Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
-        activities.forEachIndexed { index, activity ->
-            TimelineItem(
-                activity = activity,
-                isLast = index == activities.lastIndex
-            )
-        }
-    }
-}
-
-@Composable
-private fun TimelineItem(activity: ActivityItem, isLast: Boolean) {
-    Row(modifier = Modifier.fillMaxWidth()) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(
-                modifier = Modifier
-                    .size(12.dp)
-                    .clip(CircleShape)
-                    .background(activity.statusColor)
-            )
-            if (!isLast) {
-                Box(
-                    modifier = Modifier
-                        .width(2.dp)
-                        .height(80.dp)
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(activity.statusColor.copy(alpha = 0.5f), Color.Transparent)
-                            )
-                        )
-                )
-            }
-        }
-        
-        Spacer(modifier = Modifier.width(16.dp))
-        
-        Column(modifier = Modifier.padding(bottom = 24.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(activity.icon, null, tint = EntryOrange, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(activity.title, color = EntryWhite, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-            }
-            Text(activity.description, color = EntryGray, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
-            Text(activity.time, color = EntryGray.copy(alpha = 0.7f), fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
-        }
-    }
-}
 
 @Composable
 private fun EmptyState(title: String, subtitle: String) {

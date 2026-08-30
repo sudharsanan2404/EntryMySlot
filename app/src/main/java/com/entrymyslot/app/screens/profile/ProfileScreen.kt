@@ -46,7 +46,6 @@ private val EntryBorder = Color(0xFF1E3A8A).copy(alpha = 0.4f)
 fun ProfileScreen(
     onBottomNavigationClick: (String) -> Unit = {},
     onBookingClick: () -> Unit = {},
-    onActivityClick: () -> Unit = {},
     onLogoutClick: () -> Unit = {}
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
@@ -78,9 +77,9 @@ fun ProfileScreen(
                     StatisticsRow()
                 }
 
-                // 3. Quick Actions (My Bookings & Activity)
+                // 3. Quick Actions (My Bookings)
                 item {
-                    QuickActionsSection(onBookingClick, onActivityClick)
+                    QuickActionsSection(onBookingClick)
                 }
 
                 // 4. Account Settings
@@ -204,7 +203,7 @@ private fun StatDivider() {
 }
 
 @Composable
-private fun QuickActionsSection(onBookingClick: () -> Unit, onActivityClick: () -> Unit) {
+private fun QuickActionsSection(onBookingClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -214,14 +213,8 @@ private fun QuickActionsSection(onBookingClick: () -> Unit, onActivityClick: () 
         QuickActionCard(
             title = "My Bookings",
             icon = Icons.Outlined.ConfirmationNumber,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.fillMaxWidth(),
             onClick = onBookingClick
-        )
-        QuickActionCard(
-            title = "Activity",
-            icon = Icons.Outlined.History,
-            modifier = Modifier.weight(1f),
-            onClick = onActivityClick
         )
     }
 }
