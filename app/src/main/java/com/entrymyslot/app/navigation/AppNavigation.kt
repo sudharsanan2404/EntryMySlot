@@ -295,7 +295,8 @@ fun AppNavigation(
                     venue = booking.location,
                     date = booking.dateTime.substringBefore(" • "),
                     time = booking.dateTime.substringAfter(" • ", "Confirmed"),
-                    admission = booking.details
+                    admission = booking.details,
+                    amount = booking.price
                 )
             } else {
                 TicketDetails("EMS-260830", "Booking Confirmed", "Entry Pass", "EntryMySlot Venue", "30 Aug 2026", "Confirmed", "1 Guest")

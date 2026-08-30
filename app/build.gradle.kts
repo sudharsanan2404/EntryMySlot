@@ -85,4 +85,5 @@ dependencies {
 
     implementation("com.google.accompanist:accompanist-systemuicontroller:0.36.0")
     implementation("com.google.android.gms:play-services-location:21.3.0")
+    implementation("com.google.zxing:core:3.5.2")
 }

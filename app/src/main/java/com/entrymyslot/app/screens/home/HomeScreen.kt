@@ -360,14 +360,14 @@ fun GlowBackground(
             x = 0.00f,
             y = 0.88f,
             radius = 0.65f,
-            color = Color(0xFF020E2D),
+            color = Color(0xFF071C54),
             alpha = 0.30f
         ),
         Glow(
             x = 0.48f,
             y = 1.05f,
             radius = 0.60f,
-            color = Color(0xFF020F31),
+            color = Color(0xFF0F2672),
             alpha = 0.22f
         )
     )
