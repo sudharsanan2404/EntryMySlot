@@ -15,6 +15,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Text
@@ -102,14 +103,7 @@ fun TicketScreen(
                     Spacer(Modifier.height(24.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         TicketSaveButton(onDownloadClick)
-//                        Text(
-//                            "DONE",
-//                            color = TicketWhite60,
-//                            fontSize = 13.sp,
-//                            fontWeight = FontWeight.Bold,
-//                            letterSpacing = 1.sp,
-//                            modifier = Modifier.clickable(onClick = onDoneClick).padding(14.dp)
-//                        )
+                        TicketShareButton(onShareClick)
                     }
                     Spacer(Modifier.navigationBarsPadding())
                 }
@@ -377,12 +371,25 @@ private fun TicketQr(payload: String, modifier: Modifier) {
 private fun TicketSaveButton(onSavePdf: () -> Unit) {
     Row(
         Modifier.background(TicketOrange, RoundedCornerShape(12.dp)).clickable(onClick = onSavePdf)
-            .padding(horizontal = 28.dp, vertical = 16.dp),
+            .padding(horizontal = 24.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(Icons.Default.Download, null, tint = Color.White, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(12.dp))
-        Text("SAVE PDF", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.2.sp)
+        Spacer(Modifier.width(10.dp))
+        Text("SAVE PDF", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
+    }
+}
+
+@Composable
+private fun TicketShareButton(onShare: () -> Unit) {
+    Box(
+        Modifier.size(48.dp).clip(RoundedCornerShape(12.dp))
+            .background(Color.White.copy(alpha = .10f))
+            .border(1.dp, Color.White.copy(alpha = .20f), RoundedCornerShape(12.dp))
+            .clickable(onClick = onShare),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(Icons.Default.Share, "Share ticket", tint = Color.White, modifier = Modifier.size(20.dp))
     }
 }
 
