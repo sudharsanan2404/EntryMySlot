@@ -1,53 +1,89 @@
 package com.entrymyslot.app.screens.booking
 
-import androidx.compose.foundation.*
-import androidx.compose.foundation.layout.*
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.CalendarToday
+import androidx.compose.material.icons.outlined.ConfirmationNumber
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Movie
+import androidx.compose.material.icons.outlined.MusicNote
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.SentimentDissatisfied
+import androidx.compose.material.icons.outlined.SportsSoccer
 import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.entrymyslot.app.screens.home.GlowBackground
-import com.entrymyslot.app.core.components.ElevatedCardSubtitle
-import com.entrymyslot.app.core.components.ElevatedCardTitle
-import com.entrymyslot.app.core.components.ElevatedContrastCard
-import com.entrymyslot.app.core.components.EntryCardAccent
 
-// ------------------------------------------------------------
-// COLORS & STYLES
-// ------------------------------------------------------------
-private val EntryBlueTop = Color(0xFF0B3A82)
-private val EntryBlueBottom = Color(0xFF061A33)
-private val EntryOrange = EntryCardAccent
-private val EntryWhite = Color.White
-private val EntryGray = Color(0xFF98A2B3)
-private val EntryCardBg = Color(0xFF0E0B38).copy(alpha = .68f)
-private val EntryBorder = Color(0xFF1648D5).copy(alpha = .38f)
-private val StatusUpcoming = EntryCardAccent
-private val StatusCompleted = Color(0xFF4CAF50)
-private val StatusCancelled = Color(0xFFE53935)
+private val BookingBackground = Color(0xFF061A38)
+private val BookingSurface = Color(0xFF0B274F)
+private val BookingSurfaceRaised = Color(0xFF0D2D5A)
+private val BookingBorder = Color(0xFF24527D)
+private val BookingAccent = Color(0xFFFA580B)
+private val BookingPrimaryText = Color(0xFFF8FAFF)
+private val BookingSecondaryText = Color(0xFFA8B8CF)
+private val BookingMutedText = Color(0xFF7185A1)
+private val StatusCompletedColor = Color(0xFF52A77A)
+private val StatusCancelledColor = Color(0xFFD46B6B)
 
-// ------------------------------------------------------------
-// MODELS
-// ------------------------------------------------------------
 enum class BookingType { MOVIE, TURF, EVENT, CONCERT }
+
 enum class BookingStatus { UPCOMING, COMPLETED, CANCELLED }
 
 data class BookingItem(
@@ -61,9 +97,6 @@ data class BookingItem(
     val status: BookingStatus
 )
 
-// ------------------------------------------------------------
-// SAMPLE DATA
-// ------------------------------------------------------------
 val upcomingBookings = listOf(
     BookingItem("1", BookingType.MOVIE, "The Epic Blockbuster", "PVR Cinemas", "28 Aug 2026 • 1:30 PM", "Seats: A3, A4", "₹360", BookingStatus.UPCOMING),
     BookingItem("2", BookingType.TURF, "Green Arena Turf", "Chennai", "29 Aug 2026 • 6:00 PM - 8:00 PM", "2 Hours Booked", "₹1,600", BookingStatus.UPCOMING),
@@ -75,10 +108,6 @@ val pastBookings = listOf(
     BookingItem("5", BookingType.TURF, "Power Turf", "Adyar", "20 Aug 2026 • 5:00 PM", "1 Hour Booked", "₹800", BookingStatus.CANCELLED)
 )
 
-// ------------------------------------------------------------
-// BOOKING SCREEN
-// ------------------------------------------------------------
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookingScreen(
     onBackClick: () -> Unit = {},
@@ -90,63 +119,51 @@ fun BookingScreen(
     var selectedFilter by remember { mutableStateOf("All") }
     val filters = listOf("All", "Movies", "Turf", "Events", "Concerts")
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        GlowBackground()
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(BookingBackground)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(248.dp)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFF0C3B78),
+                            BookingBackground.copy(alpha = 0.22f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
         ) {
-            // Top Bar
-            TopAppBar(
-                title = { Text("My Bookings", color = EntryWhite, fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = EntryWhite)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+            BookingHeader(onBackClick = onBackClick)
+
+            BookingTabs(
+                tabs = tabs,
+                selectedTab = selectedTab,
+                onTabSelected = { selectedTab = it }
             )
 
-            // Tabs
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 8.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(EntryCardBg)
-                    .padding(4.dp)
-            ) {
-                tabs.forEachIndexed { index, title ->
-                    val isSelected = selectedTab == index
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(40.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(if (isSelected) EntryOrange else Color.Transparent)
-                            .clickable { selectedTab = index },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = title,
-                            color = if (isSelected) EntryWhite else EntryGray,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-
-            // Filters (Only for Bookings tabs)
             if (selectedTab < 2) {
                 LazyRow(
-                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    contentPadding = PaddingValues(
+                        start = 16.dp,
+                        top = 10.dp,
+                        end = 16.dp,
+                        bottom = 10.dp
+                    ),
+                    horizontalArrangement = Arrangement.spacedBy(7.dp)
                 ) {
                     items(filters, key = { it }) { filter ->
-                        FilterChip(
+                        BookingFilterChip(
                             label = filter,
                             isSelected = selectedFilter == filter,
                             onClick = { selectedFilter = filter }
@@ -155,34 +172,59 @@ fun BookingScreen(
                 }
             }
 
-            // List Content
             LazyColumn(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
-                contentPadding = PaddingValues(bottom = 24.dp)
+                contentPadding = PaddingValues(
+                    top = 2.dp,
+                    bottom = 20.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 when (selectedTab) {
-                    0 -> { // Upcoming
+                    0 -> {
                         val filtered = filterBookings(upcomingBookings, selectedFilter)
                         if (filtered.isEmpty()) {
-                            item { EmptyState("No Upcoming Bookings", "Your next experience is waiting for you.") }
+                            item {
+                                EmptyState(
+                                    title = "No Upcoming Bookings",
+                                    subtitle = "Your next experience is waiting for you."
+                                )
+                            }
                         } else {
-                            items(filtered, key = { it.id }) { BookingCard(it, onViewTicketClick) }
+                            items(filtered, key = { it.id }) { item ->
+                                BookingCard(
+                                    item = item,
+                                    isPast = false,
+                                    onViewTicketClick = onViewTicketClick
+                                )
+                            }
                         }
                     }
-                    1 -> { // Past
+
+                    1 -> {
                         val filtered = filterBookings(pastBookings, selectedFilter)
                         if (filtered.isEmpty()) {
-                            item { EmptyState("No Past Bookings", "Go book something amazing!") }
+                            item {
+                                EmptyState(
+                                    title = "No Past Bookings",
+                                    subtitle = "Go book something amazing!"
+                                )
+                            }
                         } else {
-                            items(filtered, key = { it.id }) { BookingCard(it, onViewTicketClick) }
+                            items(filtered, key = { it.id }) { item ->
+                                BookingCard(
+                                    item = item,
+                                    isPast = true,
+                                    onViewTicketClick = onViewTicketClick
+                                )
+                            }
                         }
                     }
                 }
             }
 
-            // Bottom Navigation
             BookingBottomNavigation(
                 selectedItem = "My Bookings",
                 onItemSelected = onBottomNavigationClick
@@ -192,167 +234,529 @@ fun BookingScreen(
 }
 
 @Composable
-private fun FilterChip(label: String, isSelected: Boolean, onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(50),
-        color = if (isSelected) EntryOrange.copy(alpha = 0.2f) else EntryCardBg,
-        border = BorderStroke(1.dp, if (isSelected) EntryOrange else EntryBorder)
+private fun BookingHeader(onBackClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(70.dp)
+            .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
+        BookingBackButton(onClick = onBackClick)
+        Spacer(modifier = Modifier.width(12.dp))
         Text(
-            text = label,
-            color = if (isSelected) EntryOrange else EntryWhite,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium
+            text = "My Bookings",
+            color = BookingPrimaryText,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.ExtraBold
         )
     }
 }
 
 @Composable
-private fun BookingCard(item: BookingItem, onViewTicketClick: (BookingItem) -> Unit) {
-    ElevatedContrastCard(
+private fun BookingBackButton(onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.92f else 1f,
+        animationSpec = tween(durationMillis = 110),
+        label = "bookingBackScale"
+    )
+
+    Box(
+        modifier = Modifier
+            .size(44.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(CircleShape)
+            .background(BookingSurface.copy(alpha = 0.94f))
+            .border(BorderStroke(1.dp, BookingBorder), CircleShape)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                role = Role.Button,
+                onClickLabel = "Go back",
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+            contentDescription = "Back",
+            tint = BookingPrimaryText,
+            modifier = Modifier.size(22.dp)
+        )
+    }
+}
+
+@Composable
+private fun BookingTabs(
+    tabs: List<String>,
+    selectedTab: Int,
+    onTabSelected: (Int) -> Unit
+) {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(13.dp))
+            .background(BookingSurface.copy(alpha = 0.90f))
+            .border(
+                BorderStroke(1.dp, BookingBorder.copy(alpha = 0.76f)),
+                RoundedCornerShape(13.dp)
+            )
+            .padding(4.dp)
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            // Header: Type & Status
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+        tabs.forEachIndexed { index, title ->
+            val isSelected = selectedTab == index
+            val interactionSource = remember { MutableInteractionSource() }
+            val isPressed by interactionSource.collectIsPressedAsState()
+            val scale by animateFloatAsState(
+                targetValue = if (isPressed) 0.97f else 1f,
+                animationSpec = tween(durationMillis = 100),
+                label = "bookingTabScale"
+            )
+            val containerColor by animateColorAsState(
+                targetValue = if (isSelected) BookingAccent else Color.Transparent,
+                animationSpec = tween(durationMillis = 170),
+                label = "bookingTabColor"
+            )
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(38.dp)
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                    }
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(containerColor)
+                    .semantics {
+                        selected = isSelected
+                        stateDescription = if (isSelected) "Selected" else "Not selected"
+                        role = Role.Button
+                    }
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = null,
+                        role = Role.Button,
+                        onClickLabel = title,
+                        onClick = { onTabSelected(index) }
+                    ),
+                contentAlignment = Alignment.Center
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = when(item.type) {
-                            BookingType.MOVIE -> Icons.Outlined.Movie
-                            BookingType.TURF -> Icons.Outlined.SportsSoccer
-                            BookingType.EVENT -> Icons.Outlined.ConfirmationNumber
-                            BookingType.CONCERT -> Icons.Outlined.MusicNote
-                        },
-                        contentDescription = null,
-                        tint = EntryGray,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = item.type.name,
-                        color = EntryGray,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                
-                StatusBadge(item.status)
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            ElevatedCardTitle(item.title)
-            Spacer(modifier = Modifier.height(2.dp))
-            ElevatedCardSubtitle(item.location)
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.CalendarToday, null, tint = EntryOrange, modifier = Modifier.size(14.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(item.dateTime, color = EntryWhite.copy(alpha = 0.9f), fontSize = 13.sp)
-            }
-            
-            Spacer(modifier = Modifier.height(4.dp))
-            
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Info, null, tint = EntryGray, modifier = Modifier.size(14.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(item.details, color = EntryGray, fontSize = 13.sp)
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(item.price, color = EntryWhite, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
-                
-                Button(
-                    onClick = { onViewTicketClick(item) },
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = EntryOrange),
-                    modifier = Modifier.height(36.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
-                ) {
-                    Text(
-                        if (item.type == BookingType.TURF) "View Booking" else "View Ticket",
-                        color = EntryWhite,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                Text(
+                    text = title,
+                    color = if (isSelected) Color.White else BookingSecondaryText,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun BookingFilterChip(
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.96f else 1f,
+        animationSpec = tween(durationMillis = 100),
+        label = "bookingFilterScale"
+    )
+    val containerColor by animateColorAsState(
+        targetValue = if (isSelected) BookingAccent else BookingSurfaceRaised,
+        animationSpec = tween(durationMillis = 150),
+        label = "bookingFilterColor"
+    )
+    val borderColor by animateColorAsState(
+        targetValue = if (isSelected) BookingAccent else BookingBorder.copy(alpha = 0.72f),
+        animationSpec = tween(durationMillis = 150),
+        label = "bookingFilterBorder"
+    )
+
+    Box(
+        modifier = Modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(RoundedCornerShape(9.dp))
+            .background(containerColor)
+            .border(BorderStroke(1.dp, borderColor), RoundedCornerShape(9.dp))
+            .semantics {
+                selected = isSelected
+                stateDescription = if (isSelected) "Selected filter" else "Not selected"
+                role = Role.Button
+            }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                role = Role.Button,
+                onClickLabel = "$label filter",
+                onClick = onClick
+            )
+            .padding(horizontal = 13.dp, vertical = 7.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            color = if (isSelected) Color.White else BookingSecondaryText,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+    }
+}
+
+@Composable
+private fun BookingCard(
+    item: BookingItem,
+    isPast: Boolean,
+    onViewTicketClick: (BookingItem) -> Unit
+) {
+    val actionInteractionSource = remember { MutableInteractionSource() }
+    val isActionPressed by actionInteractionSource.collectIsPressedAsState()
+    val cardScale by animateFloatAsState(
+        targetValue = if (isActionPressed) 0.988f else 1f,
+        animationSpec = tween(durationMillis = 110),
+        label = "bookingCardScale"
+    )
+    val cardElevation by animateDpAsState(
+        targetValue = if (isActionPressed) 2.dp else 6.dp,
+        animationSpec = tween(durationMillis = 110),
+        label = "bookingCardElevation"
+    )
+    val cardShape = RoundedCornerShape(17.dp)
+    val actionLabel = if (item.type == BookingType.TURF) "View Booking" else "View Ticket"
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .graphicsLayer {
+                scaleX = cardScale
+                scaleY = cardScale
+                alpha = if (isPast) 0.90f else 1f
+            }
+            .shadow(
+                elevation = cardElevation,
+                shape = cardShape,
+                ambientColor = Color.Black.copy(alpha = 0.18f),
+                spotColor = Color.Black.copy(alpha = 0.25f)
+            )
+            .clip(cardShape)
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(
+                        BookingSurface,
+                        BookingSurfaceRaised.copy(alpha = if (isPast) 0.68f else 0.90f)
+                    )
+                )
+            )
+            .border(
+                BorderStroke(1.dp, BookingBorder.copy(alpha = if (isPast) 0.58f else 0.80f)),
+                cardShape
+            )
+            .semantics(mergeDescendants = true) {
+                contentDescription = buildString {
+                    append(item.type.name)
+                    append(", ")
+                    append(item.status.name)
+                    append(", ")
+                    append(item.title)
+                    append(", ")
+                    append(item.location)
+                    append(", ")
+                    append(item.dateTime)
+                    append(", ")
+                    append(item.details)
+                    append(", ")
+                    append(item.price)
+                }
+            }
+            .padding(15.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            BookingTypeLabel(type = item.type)
+            StatusBadge(status = item.status)
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Text(
+            text = item.title,
+            color = BookingPrimaryText,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            lineHeight = 20.sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+        Spacer(modifier = Modifier.height(3.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Outlined.LocationOn,
+                contentDescription = null,
+                tint = BookingMutedText,
+                modifier = Modifier.size(13.dp)
+            )
+            Spacer(modifier = Modifier.width(5.dp))
+            Text(
+                text = item.location,
+                modifier = Modifier.weight(1f),
+                color = BookingSecondaryText,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        BookingMetadataRow(
+            icon = Icons.Outlined.CalendarToday,
+            text = item.dateTime,
+            accentIcon = true
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        BookingMetadataRow(
+            icon = Icons.Outlined.Info,
+            text = item.details,
+            accentIcon = false
+        )
+
+        Spacer(modifier = Modifier.height(13.dp))
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(BookingBorder.copy(alpha = 0.42f))
+        )
+
+        Spacer(modifier = Modifier.height(11.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = item.price,
+                color = if (item.status == BookingStatus.UPCOMING) {
+                    BookingAccent
+                } else {
+                    BookingPrimaryText
+                },
+                fontSize = 18.sp,
+                fontWeight = FontWeight.ExtraBold
+            )
+
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(BookingAccent)
+                    .clickable(
+                        interactionSource = actionInteractionSource,
+                        indication = null,
+                        role = Role.Button,
+                        onClickLabel = actionLabel,
+                        onClick = { onViewTicketClick(item) }
+                    )
+                    .padding(horizontal = 15.dp, vertical = 9.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = actionLabel,
+                    color = Color.White,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BookingTypeLabel(type: BookingType) {
+    val icon = when (type) {
+        BookingType.MOVIE -> Icons.Outlined.Movie
+        BookingType.TURF -> Icons.Outlined.SportsSoccer
+        BookingType.EVENT -> Icons.Outlined.ConfirmationNumber
+        BookingType.CONCERT -> Icons.Outlined.MusicNote
+    }
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(BookingAccent.copy(alpha = 0.12f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = BookingAccent,
+                modifier = Modifier.size(15.dp)
+            )
+        }
+        Spacer(modifier = Modifier.width(7.dp))
+        Text(
+            text = type.name,
+            color = BookingSecondaryText,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 0.7.sp
+        )
+    }
+}
+
+@Composable
+private fun BookingMetadataRow(
+    icon: ImageVector,
+    text: String,
+    accentIcon: Boolean
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = if (accentIcon) BookingAccent else BookingMutedText,
+            modifier = Modifier.size(14.dp)
+        )
+        Spacer(modifier = Modifier.width(7.dp))
+        Text(
+            text = text,
+            modifier = Modifier.weight(1f),
+            color = BookingSecondaryText,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
 @Composable
 private fun StatusBadge(status: BookingStatus) {
-    val (color, text) = when(status) {
-        BookingStatus.UPCOMING -> StatusUpcoming to "UPCOMING"
-        BookingStatus.COMPLETED -> StatusCompleted to "COMPLETED"
-        BookingStatus.CANCELLED -> StatusCancelled to "CANCELLED"
+    val (color, text) = when (status) {
+        BookingStatus.UPCOMING -> BookingAccent to "UPCOMING"
+        BookingStatus.COMPLETED -> StatusCompletedColor to "COMPLETED"
+        BookingStatus.CANCELLED -> StatusCancelledColor to "CANCELLED"
     }
-    
+
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(4.dp))
-            .background(color.copy(alpha = 0.15f))
+            .clip(RoundedCornerShape(7.dp))
+            .background(color.copy(alpha = 0.13f))
+            .border(
+                BorderStroke(1.dp, color.copy(alpha = 0.28f)),
+                RoundedCornerShape(7.dp)
+            )
+            .semantics { stateDescription = text }
             .padding(horizontal = 8.dp, vertical = 4.dp)
     ) {
-        Text(text, color = color, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Text(
+            text = text,
+            color = color,
+            fontSize = 8.sp,
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = 0.6.sp
+        )
     }
 }
 
-
 @Composable
-private fun EmptyState(title: String, subtitle: String) {
+private fun EmptyState(
+    title: String,
+    subtitle: String
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(48.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .padding(horizontal = 24.dp, vertical = 52.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(
-            Icons.Outlined.SentimentDissatisfied,
-            null,
-            tint = EntryGray.copy(alpha = 0.3f),
-            modifier = Modifier.size(80.dp)
+        Box(
+            modifier = Modifier
+                .size(54.dp)
+                .clip(CircleShape)
+                .background(BookingSurfaceRaised.copy(alpha = 0.74f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.SentimentDissatisfied,
+                contentDescription = null,
+                tint = BookingSecondaryText,
+                modifier = Modifier.size(27.dp)
+            )
+        }
+        Spacer(modifier = Modifier.height(13.dp))
+        Text(
+            text = title,
+            color = BookingPrimaryText,
+            fontSize = 17.sp,
+            fontWeight = FontWeight.Bold
         )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(title, color = EntryWhite, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-        Text(subtitle, color = EntryGray, fontSize = 14.sp, textAlign = TextAlign.Center)
-        
-        Spacer(modifier = Modifier.height(24.dp))
-        
-        listOf("Movies", "Turf", "Events").forEach { category ->
-            OutlinedButton(
-                onClick = { },
-                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                border = BorderStroke(1.dp, EntryBorder),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = EntryOrange)
-            ) {
-                Text("Explore $category")
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = subtitle,
+            color = BookingSecondaryText,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(18.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+            listOf("Movies", "Turf", "Events").forEach { category ->
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(9.dp))
+                        .background(BookingSurfaceRaised)
+                        .border(
+                            BorderStroke(1.dp, BookingBorder.copy(alpha = 0.72f)),
+                            RoundedCornerShape(9.dp)
+                        )
+                        .clickable(
+                            role = Role.Button,
+                            onClickLabel = "Explore $category",
+                            onClick = {}
+                        )
+                        .padding(horizontal = 11.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = category,
+                        color = BookingAccent,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
         }
     }
 }
 
-private fun filterBookings(list: List<BookingItem>, filter: String): List<BookingItem> {
+private fun filterBookings(
+    list: List<BookingItem>,
+    filter: String
+): List<BookingItem> {
     if (filter == "All") return list
-    val type = when(filter) {
+    val type = when (filter) {
         "Movies" -> BookingType.MOVIE
         "Turf" -> BookingType.TURF
         "Events" -> BookingType.EVENT
@@ -377,50 +781,101 @@ private fun BookingBottomNavigation(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 5.dp)
             .navigationBarsPadding()
+            .padding(horizontal = 14.dp, vertical = 5.dp)
     ) {
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = Color(0xFF0E0B38).copy(alpha = .86f),
-            shape = RoundedCornerShape(18.dp),
-            border = BorderStroke(1.dp, Color(0xFF1648D5).copy(alpha = .38f)),
-            shadowElevation = 10.dp
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(
+                    elevation = 8.dp,
+                    shape = RoundedCornerShape(18.dp),
+                    ambientColor = Color.Black.copy(alpha = 0.18f),
+                    spotColor = Color.Black.copy(alpha = 0.24f)
+                )
+                .clip(RoundedCornerShape(18.dp))
+                .background(BookingSurface.copy(alpha = 0.96f))
+                .border(
+                    BorderStroke(1.dp, BookingBorder.copy(alpha = 0.78f)),
+                    RoundedCornerShape(18.dp)
+                )
+                .padding(horizontal = 5.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 5.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                items.forEach { item ->
-                    val selected = selectedItem == item.first
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(if (selected) EntryOrange.copy(alpha = .16f) else Color.Transparent)
-                            .clickable { onItemSelected(item.first) }
-                            .padding(vertical = 4.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(
-                            imageVector = if (selected) item.third else item.second,
-                            contentDescription = item.first,
-                            tint = if (selected) EntryOrange else EntryGray,
-                            modifier = Modifier.size(19.dp)
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = item.first,
-                            color = if (selected) EntryOrange else EntryGray,
-                            fontSize = 8.sp,
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                            maxLines = 1
-                        )
-                    }
-                }
+            items.forEach { item ->
+                BookingNavigationItem(
+                    label = item.first,
+                    unselectedIcon = item.second,
+                    selectedIcon = item.third,
+                    selected = selectedItem == item.first,
+                    onClick = { onItemSelected(item.first) },
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun BookingNavigationItem(
+    label: String,
+    unselectedIcon: ImageVector,
+    selectedIcon: ImageVector,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.93f else 1f,
+        animationSpec = tween(durationMillis = 100),
+        label = "bookingNavScale"
+    )
+    val containerColor by animateColorAsState(
+        targetValue = if (selected) BookingAccent.copy(alpha = 0.15f) else Color.Transparent,
+        animationSpec = tween(durationMillis = 160),
+        label = "bookingNavColor"
+    )
+
+    Column(
+        modifier = modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(RoundedCornerShape(12.dp))
+            .background(containerColor)
+            .semantics {
+                this.selected = selected
+                stateDescription = if (selected) "Selected" else "Not selected"
+                role = Role.Button
+            }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                role = Role.Button,
+                onClickLabel = label,
+                onClick = onClick
+            )
+            .padding(vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            imageVector = if (selected) selectedIcon else unselectedIcon,
+            contentDescription = label,
+            tint = if (selected) BookingAccent else BookingMutedText,
+            modifier = Modifier.size(19.dp)
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = label,
+            color = if (selected) BookingAccent else BookingMutedText,
+            fontSize = 8.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }

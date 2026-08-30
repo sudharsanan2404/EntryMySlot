@@ -1,37 +1,68 @@
 package com.entrymyslot.app.screens.events
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.outlined.CalendarToday
-import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.LocationOn
-import androidx.compose.material3.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import com.entrymyslot.app.screens.home.PopularEvent
-import com.entrymyslot.app.screens.home.GlowBackground
-import com.entrymyslot.app.core.components.EntryCardAccent
 
-@OptIn(ExperimentalMaterial3Api::class)
+private val EventsBackground = Color(0xFF061A38)
+private val EventsSurface = Color(0xFF0B274F)
+private val EventsSurfacePressed = Color(0xFF0D2D5A)
+private val EventsBorder = Color(0xFF24527D)
+private val EventsAccent = Color(0xFFFA580B)
+private val EventsPrimaryText = Color(0xFFF8FAFF)
+private val EventsSecondaryText = Color(0xFFA8B8CF)
+private val EventsMutedText = Color(0xFF7185A1)
+
 @Composable
 fun EventsListScreen(
     title: String = "Events",
@@ -39,26 +70,50 @@ fun EventsListScreen(
     onBackClick: () -> Unit,
     onEventClick: (PopularEvent) -> Unit
 ) {
-    Box(modifier = Modifier.fillMaxSize()) {
-        GlowBackground()
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(EventsBackground)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(260.dp)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFF0C3B78),
+                            EventsBackground.copy(alpha = 0.22f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
 
-        Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
-            TopAppBar(
-                title = { Text(title, color = Color.White, fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back", tint = Color.White)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+        ) {
+            EventsHeader(
+                title = title,
+                onBackClick = onBackClick
             )
 
             LazyColumn(
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp),
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    top = 10.dp,
+                    end = 16.dp,
+                    bottom = 28.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
-                items(events, key = { it.id }) { event ->
+                items(
+                    items = events,
+                    key = { event -> event.id }
+                ) { event ->
                     EventListItem(
                         event = event,
                         onClick = { onEventClick(event) }
@@ -70,70 +125,310 @@ fun EventsListScreen(
 }
 
 @Composable
-fun EventListItem(
-    event: PopularEvent,
-    onClick: () -> Unit
+private fun EventsHeader(
+    title: String,
+    onBackClick: () -> Unit
 ) {
-    Column(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(12.dp, RoundedCornerShape(14.dp), ambientColor = Color.Black.copy(alpha = .35f), spotColor = Color.Black.copy(alpha = .35f))
-            .clip(RoundedCornerShape(14.dp))
-            .background(Brush.linearGradient(listOf(Color(0xFF1D2550), Color(0xFF171E42))))
-            .border(1.dp, Color.White.copy(alpha = .06f), RoundedCornerShape(14.dp))
-            .clickable { onClick() }
-            .padding(14.dp)
+            .height(76.dp)
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(modifier = Modifier.fillMaxWidth().height(160.dp)) {
-            if (event.imageUrl != null) {
-                coil3.compose.AsyncImage(
-                    model = event.imageUrl,
-                    contentDescription = event.title,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                Box(
-                    modifier = Modifier.fillMaxSize().background(Color(0xFF1648D5).copy(alpha = 0.18f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("EVENT", color = Color.White.copy(alpha = 0.3f), fontWeight = FontWeight.Bold)
-                }
-            }
+        PremiumBackButton(onClick = onBackClick)
 
-            Box(
-                modifier = Modifier
-                    .padding(12.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color.Black.copy(alpha = 0.6f))
-                    .padding(horizontal = 10.dp, vertical = 6.dp)
-                    .align(Alignment.BottomStart)
-            ) {
-                Text(text = event.price, color = EntryCardAccent, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            }
-        }
+        Spacer(modifier = Modifier.width(14.dp))
 
-        Column(modifier = Modifier.padding(top = 10.dp)) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.Center
+        ) {
             Text(
-                text = event.title,
-                color = Color.White,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Medium,
+                text = title,
+                color = EventsPrimaryText,
+                fontSize = 23.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = (-0.3).sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Spacer(modifier = Modifier.height(2.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.CalendarToday, null, tint = EntryCardAccent, modifier = Modifier.size(14.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(text = event.date, color = Color(0xFF9AA3C7), fontSize = 12.sp)
+            Text(
+                text = "Discover what’s happening",
+                color = EventsSecondaryText,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+@Composable
+private fun PremiumBackButton(onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.92f else 1f,
+        animationSpec = tween(durationMillis = 120),
+        label = "eventsBackScale"
+    )
+
+    Box(
+        modifier = Modifier
+            .size(42.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
             }
-            Spacer(modifier = Modifier.height(10.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.LocationOn, null, tint = Color(0xFF98A2B3), modifier = Modifier.size(14.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(text = event.location, color = Color(0xFF9AA3C7), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            .clip(CircleShape)
+            .background(EventsSurface.copy(alpha = 0.94f))
+            .border(BorderStroke(1.dp, EventsBorder), CircleShape)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                role = Role.Button,
+                onClickLabel = "Go back",
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+            contentDescription = "Back",
+            tint = EventsPrimaryText,
+            modifier = Modifier.size(22.dp)
+        )
+    }
+}
+
+@Composable
+fun EventListItem(
+    event: PopularEvent,
+    onClick: () -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val cardScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.985f else 1f,
+        animationSpec = tween(durationMillis = 120),
+        label = "eventCardScale"
+    )
+    val elevation by animateDpAsState(
+        targetValue = if (isPressed) 2.dp else 8.dp,
+        animationSpec = tween(durationMillis = 120),
+        label = "eventCardElevation"
+    )
+    val borderColor by animateColorAsState(
+        targetValue = if (isPressed) {
+            EventsAccent.copy(alpha = 0.68f)
+        } else {
+            EventsBorder.copy(alpha = 0.82f)
+        },
+        animationSpec = tween(durationMillis = 120),
+        label = "eventCardBorder"
+    )
+    val surfaceColor by animateColorAsState(
+        targetValue = if (isPressed) EventsSurfacePressed else EventsSurface,
+        animationSpec = tween(durationMillis = 120),
+        label = "eventCardSurface"
+    )
+    val cardShape = RoundedCornerShape(20.dp)
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = cardScale
+                scaleY = cardScale
+            }
+            .shadow(
+                elevation = elevation,
+                shape = cardShape,
+                ambientColor = Color.Black.copy(alpha = 0.22f),
+                spotColor = Color.Black.copy(alpha = 0.32f)
+            )
+            .clip(cardShape)
+            .background(surfaceColor)
+            .border(BorderStroke(1.dp, borderColor), cardShape)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                role = Role.Button,
+                onClickLabel = "Open ${event.title}",
+                onClick = onClick
+            )
+    ) {
+        EventImage(
+            event = event,
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f)
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 15.dp)
+        ) {
+            Text(
+                text = event.title,
+                color = EventsPrimaryText,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                lineHeight = 23.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            EventMetadataRow(
+                icon = {
+                    Icon(
+                        imageVector = Icons.Rounded.CalendarToday,
+                        contentDescription = null,
+                        tint = EventsAccent,
+                        modifier = Modifier.size(15.dp)
+                    )
+                },
+                text = event.date
+            )
+
+            Spacer(modifier = Modifier.height(9.dp))
+
+            EventMetadataRow(
+                icon = {
+                    Icon(
+                        imageVector = Icons.Rounded.LocationOn,
+                        contentDescription = null,
+                        tint = EventsMutedText,
+                        modifier = Modifier.size(16.dp)
+                    )
+                },
+                text = event.location
+            )
+        }
+    }
+}
+
+@Composable
+private fun EventImage(
+    event: PopularEvent,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier.background(
+            Brush.linearGradient(
+                colors = listOf(Color(0xFF123E70), Color(0xFF081F42))
+            )
+        ),
+        contentAlignment = Alignment.Center
+    ) {
+        if (event.imageUrl != null) {
+            AsyncImage(
+                model = event.imageUrl,
+                contentDescription = event.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(
+                    modifier = Modifier
+                        .size(58.dp)
+                        .clip(CircleShape)
+                        .background(EventsAccent.copy(alpha = 0.14f))
+                        .border(
+                            width = 1.dp,
+                            color = EventsAccent.copy(alpha = 0.38f),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Event,
+                        contentDescription = event.title,
+                        tint = EventsAccent,
+                        modifier = Modifier.size(29.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.height(9.dp))
+                Text(
+                    text = "ENTRYMYSLOT EVENTS",
+                    color = EventsSecondaryText,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
             }
         }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(74.dp)
+                .align(Alignment.BottomCenter)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            EventsBackground.copy(alpha = 0.68f)
+                        )
+                    )
+                )
+        )
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(14.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(EventsBackground.copy(alpha = 0.90f))
+                .border(
+                    width = 1.dp,
+                    color = EventsAccent.copy(alpha = 0.42f),
+                    shape = RoundedCornerShape(10.dp)
+                )
+                .padding(horizontal = 11.dp, vertical = 7.dp)
+        ) {
+            Text(
+                text = event.price,
+                color = EventsAccent,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.ExtraBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun EventMetadataRow(
+    icon: @Composable () -> Unit,
+    text: String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier.size(20.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            icon()
+        }
+        Spacer(modifier = Modifier.width(7.dp))
+        Text(
+            text = text,
+            modifier = Modifier.weight(1f),
+            color = EventsSecondaryText,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            lineHeight = 16.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }

@@ -448,134 +448,23 @@ fun HomeScreen(
     onSportClick: (PopularEvent) -> Unit = {},
     onMovieBookClick: (PopularEvent) -> Unit = {},
     onSearchClick: () -> Unit = {},
+    onLocationClick: () -> Unit = {},
     homeViewModel: HomeViewModel = viewModel()
 ) {
     val homeState by homeViewModel.uiState.collectAsStateWithLifecycle()
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    val scope = rememberCoroutineScope()
-
-    var selectedBottomItem by remember {
-        mutableStateOf("Home")
-    }
-
-    var favoriteEvents by remember {
-        mutableStateOf(setOf<String>())
-    }
-
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet(
-                drawerContainerColor = Color(0xFF0E0B38),
-                drawerShape = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp)
-            ) {
-                Spacer(Modifier.height(48.dp))
-                Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-                    Text(
-                        "EntryMySlot",
-                        color = EntryWhite,
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        "Your ultimate booking companion",
-                        color = EntryGray,
-                        fontSize = 12.sp
-                    )
-                }
-                Spacer(Modifier.height(32.dp))
-
-                NavigationDrawerItem(
-                    label = { Text("Profile", color = EntryWhite) },
-                    selected = false,
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        onBottomNavigationClick("Profile")
-                    },
-                    icon = { Icon(Icons.Outlined.AccountCircle, null, tint = EntryOrange) },
-                    colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent)
-                )
-                NavigationDrawerItem(
-                    label = { Text("My Bookings", color = EntryWhite) },
-                    selected = false,
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        onBottomNavigationClick("My Bookings")
-                    },
-                    icon = { Icon(Icons.Outlined.ConfirmationNumber, null, tint = EntryOrange) },
-                    colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent)
-                )
-                NavigationDrawerItem(
-                    label = { Text("Notifications", color = EntryWhite) },
-                    selected = false,
-                    onClick = { scope.launch { drawerState.close() } },
-                    icon = { Icon(Icons.Outlined.Notifications, null, tint = EntryOrange) },
-                    colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent)
-                )
-                NavigationDrawerItem(
-                    label = { Text("Settings", color = EntryWhite) },
-                    selected = false,
-                    onClick = { scope.launch { drawerState.close() } },
-                    icon = { Icon(Icons.Outlined.Settings, null, tint = EntryOrange) },
-                    colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent)
-                )
-            }
-        }
-    ) {
-        Box(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            GlowBackground()
-
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding()
-            ) {
-                // Actual content
-                HomeContent(
-                    favoriteEvents = favoriteEvents,
-                    onFavoriteClick = { id ->
-                        favoriteEvents =
-                            if (favoriteEvents.contains(id)) {
-                                favoriteEvents - id
-                            } else {
-                                favoriteEvents + id
-                            }
-                    },
-                    onCategoryClick = onCategoryClick,
-                    onEventClick = onMovieBookClick,
-                    onSportClick = onSportClick,
-                    onMenuClick = {
-                        scope.launch { drawerState.open() }
-                    },
-                    onNotificationClick = { /* Handle notification click */ },
-                    featuredEvents = homeState.events.map { it.toPopularEvent() }.ifEmpty { popularEvents },
-                    featuredMovies = homeState.movies.map { it.toPopularEvent() }.ifEmpty { latestMovies },
-                    nearbySports = homeState.sports.map { it.toPopularEvent() }.ifEmpty { sportsNearYou },
-                    isLoading = homeState.isLoading,
-                    loadError = homeState.error,
-                    selectedCity = homeState.selectedCity,
-                    onCityChanged = { homeViewModel.updateCity(it) },
-                    onRetry = homeViewModel::refresh,
-                    onSearchClick = onSearchClick,
-                    modifier = Modifier.weight(1f)
-                )
-
-                // ------------------------------------------------
-                // BOTTOM NAVIGATION
-                // ------------------------------------------------
-
-                HomeBottomNavigation(
-                    selectedItem = selectedBottomItem,
-                    onItemSelected = {
-                        selectedBottomItem = it
-                        onBottomNavigationClick(it)
-                    }
-                )
-            }
-        }
-    }
+    PremiumHomeScreen(
+        featuredEvents = homeState.events.map { it.toPopularEvent() }.ifEmpty { popularEvents },
+        featuredMovies = homeState.movies.map { it.toPopularEvent() }.ifEmpty { latestMovies },
+        nearbySports = homeState.sports.map { it.toPopularEvent() }.ifEmpty { sportsNearYou },
+        selectedCity = homeState.selectedCity,
+        onCategoryClick = onCategoryClick,
+        onEventClick = onEventClick,
+        onBottomNavigationClick = onBottomNavigationClick,
+        onSportClick = onSportClick,
+        onMovieBookClick = onMovieBookClick,
+        onSearchClick = onSearchClick,
+        onLocationClick = onLocationClick
+    )
 }
 
 

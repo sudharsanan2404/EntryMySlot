@@ -1,8 +1,21 @@
 package com.entrymyslot.app.screens.turf
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,17 +31,19 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material.icons.rounded.*
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,38 +51,38 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.entrymyslot.app.core.components.TermsAndPolicyBottomSheet
 import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Locale
-import com.entrymyslot.app.screens.home.GlowBackground
-import com.entrymyslot.app.core.components.TermsAndPolicyBottomSheet
 
-
-// ------------------------------------------------------------
-// COLORS
-// ------------------------------------------------------------
-
-private val TurfBlueTop = Color(0xFF0B3A82)
-private val TurfBlueBottom = Color(0xFF061A33)
-
-private val TurfOrange = Color(0xFFFF8A3D)
-private val TurfWhite = Color.White
-private val TurfGray = Color(0xFF98A2B3)
-
-private val TurfCardLight = Color(0xFF0E0B38).copy(alpha = .68f)
-
-private val AvailableColor = Color(0xFF1648D5).copy(alpha = .18f)
-private val BookedColor = Color(0xFF0E0B38).copy(alpha = .72f)
-private val SelectedColor = Color(0xFFFF8A3D)
-
-
-// ------------------------------------------------------------
-// SLOT MODEL
-// ------------------------------------------------------------
+private val TurfBookingBackground = Color(0xFF061A38)
+private val TurfBookingSurface = Color(0xFF0B274F)
+private val TurfBookingSurfaceRaised = Color(0xFF0D2D5A)
+private val TurfBookingBorder = Color(0xFF24527D)
+private val TurfBookingAccent = Color(0xFFFA580B)
+private val TurfBookingPrimaryText = Color(0xFFF8FAFF)
+private val TurfBookingSecondaryText = Color(0xFFA8B8CF)
+private val TurfBookingMutedText = Color(0xFF7185A1)
+private val AvailableSurface = Color(0xFF10345D)
+private val AvailableBorder = Color(0xFF3471A3)
+private val BookedSurface = Color(0xFF09182D)
+private val BookedBorder = Color(0xFF1A3049)
 
 private data class TurfSlot(
     val id: Int,
@@ -75,156 +90,90 @@ private data class TurfSlot(
     val booked: Boolean
 )
 
-
-// ------------------------------------------------------------
-// 24 SLOTS
-// ------------------------------------------------------------
-
 private val turfSlots = listOf(
-
     TurfSlot(0, "12 AM", false),
     TurfSlot(1, "1 AM", false),
     TurfSlot(2, "2 AM", true),
     TurfSlot(3, "3 AM", false),
-
     TurfSlot(4, "4 AM", true),
     TurfSlot(5, "5 AM", false),
     TurfSlot(6, "6 AM", false),
     TurfSlot(7, "7 AM", true),
-
     TurfSlot(8, "8 AM", false),
     TurfSlot(9, "9 AM", false),
     TurfSlot(10, "10 AM", true),
     TurfSlot(11, "11 AM", false),
-
     TurfSlot(12, "12 PM", false),
     TurfSlot(13, "1 PM", true),
     TurfSlot(14, "2 PM", false),
     TurfSlot(15, "3 PM", false),
-
     TurfSlot(16, "4 PM", false),
     TurfSlot(17, "5 PM", true),
     TurfSlot(18, "6 PM", false),
     TurfSlot(19, "7 PM", false),
-
     TurfSlot(20, "8 PM", true),
     TurfSlot(21, "9 PM", false),
     TurfSlot(22, "10 PM", false),
     TurfSlot(23, "11 PM", false)
 )
 
-
-// ------------------------------------------------------------
-// TURF BOOKING SCREEN
-// ------------------------------------------------------------
-
 @Composable
 fun TurfBookingScreen(
     onBackClick: () -> Unit = {},
     onContinueClick: () -> Unit = {}
 ) {
-
     var selectedDate by remember {
         mutableStateOf(Calendar.getInstance())
     }
-
     var selectedSlots by remember {
         mutableStateOf(setOf<Int>())
     }
-
     var showTerms by remember { mutableStateOf(false) }
 
     val pricePerHour = 800
-
-    val totalPrice =
-        selectedSlots.size * pricePerHour
+    val totalPrice = selectedSlots.size * pricePerHour
 
     Box(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
+            .background(TurfBookingBackground)
     ) {
-        GlowBackground()
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(260.dp)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFF0C3B78),
+                            TurfBookingBackground.copy(alpha = 0.22f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
 
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            TurfBookingTopBar(
+                onBackClick = onBackClick,
+                modifier = Modifier.statusBarsPadding()
+            )
 
             LazyColumn(
-                modifier = Modifier
-                    .weight(1f)
-                    .statusBarsPadding(),
-                contentPadding = PaddingValues(
-                    bottom = 20.dp
-                )
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(bottom = 24.dp)
             ) {
-
-                // ------------------------------------------------
-                // TOP BAR
-                // ------------------------------------------------
-
-                item {
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(
-                                horizontal = 16.dp,
-                                vertical = 14.dp
-                            ),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                            contentDescription = "Back",
-                            tint = TurfWhite,
-                            modifier = Modifier
-                                .size(28.dp)
-                                .clickable {
-                                    onBackClick()
-                                }
-                        )
-
-                        Spacer(
-                            modifier = Modifier.width(16.dp)
-                        )
-
-                        Text(
-                            text = "Book Turf",
-                            color = TurfWhite,
-                            fontSize = 21.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                item(key = "venue_summary") {
+                    VenueSummary()
+                    Spacer(modifier = Modifier.height(24.dp))
                 }
 
-                // ------------------------------------------------
-                // TURF INFORMATION
-                // ------------------------------------------------
-
-                item {
-
-                    TurfBookingHeader()
-
-                    Spacer(
-                        modifier = Modifier.height(20.dp)
-                    )
-                }
-
-                // ------------------------------------------------
-                // DATE
-                // ------------------------------------------------
-
-                item {
-
-                    SectionTitle(
+                item(key = "date_selector") {
+                    BookingSectionHeader(
                         icon = Icons.Outlined.CalendarMonth,
                         title = "Select Date"
                     )
-
-                    Spacer(
-                        modifier = Modifier.height(12.dp)
-                    )
-
+                    Spacer(modifier = Modifier.height(12.dp))
                     DateSelector(
                         selectedDate = selectedDate,
                         onDateSelected = {
@@ -232,124 +181,39 @@ fun TurfBookingScreen(
                             selectedSlots = emptySet()
                         }
                     )
-
-                    Spacer(
-                        modifier = Modifier.height(24.dp)
-                    )
+                    Spacer(modifier = Modifier.height(26.dp))
                 }
 
-                // ------------------------------------------------
-                // SLOTS TITLE
-                // ------------------------------------------------
-
-                item {
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-
-                        SectionTitle(
-                            icon = Icons.Outlined.Schedule,
-                            title = "Select Time Slot"
-                        )
-
-                        Spacer(
-                            modifier = Modifier.weight(1f)
-                        )
-
-                        Text(
-                            text = "24 Slots",
-                            color = TurfGray,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-
-                    Spacer(
-                        modifier = Modifier.height(14.dp)
+                item(key = "slot_header") {
+                    BookingSectionHeader(
+                        icon = Icons.Outlined.Schedule,
+                        title = "Select Time Slot",
+                        trailingText = "24 Slots"
                     )
-                }
-
-                // ------------------------------------------------
-                // LEGEND
-                // ------------------------------------------------
-
-                item {
-
+                    Spacer(modifier = Modifier.height(12.dp))
                     SlotLegend()
-
-                    Spacer(
-                        modifier = Modifier.height(18.dp)
-                    )
+                    Spacer(modifier = Modifier.height(15.dp))
                 }
 
-                // ------------------------------------------------
-                // 24 SLOTS
-                // ------------------------------------------------
-
-                item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        turfSlots.chunked(3).forEach { rowSlots ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                rowSlots.forEach { slot ->
-                                    Box(modifier = Modifier.weight(1f)) {
-                                        TurfSlotItem(
-                                            slot = slot,
-                                            selected = selectedSlots.contains(slot.id),
-                                            onClick = {
-                                                if (!slot.booked) {
-                                                    selectedSlots =
-                                                        if (selectedSlots.contains(slot.id)) {
-                                                            selectedSlots - slot.id
-                                                        } else {
-                                                            selectedSlots + slot.id
-                                                        }
-                                                }
-                                            }
-                                        )
-                                    }
-                                }
-                                // Fill remaining space in the last row
-                                repeat(3 - rowSlots.size) {
-                                    Spacer(modifier = Modifier.weight(1f))
+                item(key = "slot_grid") {
+                    SlotGrid(
+                        selectedSlots = selectedSlots,
+                        onSlotClick = { slot ->
+                            if (!slot.booked) {
+                                selectedSlots = if (selectedSlots.contains(slot.id)) {
+                                    selectedSlots - slot.id
+                                } else {
+                                    selectedSlots + slot.id
                                 }
                             }
                         }
-                    }
-
-                    Spacer(
-                        modifier = Modifier.height(18.dp)
                     )
-
-                    Text(
-                        text = "• Every booking comes with 55 minutes of active playtime",
-                        color = TurfGray.copy(alpha = 0.8f),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(horizontal = 18.dp)
-                    )
-
-                    Spacer(
-                        modifier = Modifier.height(24.dp)
-                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    BookingNote()
                 }
             }
 
-            // ----------------------------------------------------
-            // CONTINUE BUTTON
-            // ----------------------------------------------------
-
-            BottomBookingBar(
+            TurfBottomBookingBar(
                 selectedSlots = selectedSlots.size,
                 totalPrice = totalPrice,
                 onContinueClick = { showTerms = true }
@@ -360,7 +224,7 @@ fun TurfBookingScreen(
             TermsAndPolicyBottomSheet(
                 category = "TURF",
                 onDismiss = { showTerms = false },
-          onAccept = {
+                onAccept = {
                     showTerms = false
                     onContinueClick()
                 }
@@ -369,493 +233,679 @@ fun TurfBookingScreen(
     }
 }
 
-
-// ------------------------------------------------------------
-// TURF HEADER
-// ------------------------------------------------------------
-
 @Composable
-private fun TurfBookingHeader() {
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-    ) {
-
-        Text(
-            text = "Green Arena Turf",
-            color = TurfWhite,
-            fontSize = 23.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(
-            modifier = Modifier.height(7.dp)
-        )
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-
-            Text(
-                text = "★ 4.7",
-                color = TurfOrange,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold
-            )
-
-            Text(
-                text = "  •  Football  •  5v5",
-                color = TurfGray,
-                fontSize = 14.sp
-            )
-        }
-
-        Spacer(
-            modifier = Modifier.height(8.dp)
-        )
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-
-            Icon(
-                imageVector = Icons.Outlined.LocationOn,
-                contentDescription = null,
-                tint = TurfOrange,
-                modifier = Modifier.size(19.dp)
-            )
-
-            Spacer(
-                modifier = Modifier.width(4.dp)
-            )
-
-            Text(
-                text = "Chennai, Tamil Nadu",
-                color = TurfGray,
-                fontSize = 13.sp
-            )
-        }
-    }
-}
-
-
-// ------------------------------------------------------------
-// SECTION TITLE
-// ------------------------------------------------------------
-
-@Composable
-private fun SectionTitle(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String
+private fun TurfBookingTopBar(
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-
     Row(
-        modifier = Modifier.padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = TurfOrange,
-            modifier = Modifier.size(20.dp)
-        )
-
-        Spacer(
-            modifier = Modifier.width(10.dp)
-        )
-
-        Text(
-            text = title,
-            color = TurfWhite,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold
-        )
-    }
-}
-
-
-// ------------------------------------------------------------
-// DATE SELECTOR
-// ------------------------------------------------------------
-
-@Composable
-private fun DateSelector(
-    selectedDate: Calendar,
-    onDateSelected: (Calendar) -> Unit
-) {
-
-    Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
+            .height(76.dp)
             .padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(7.dp)
-    ) {
-
-        for (i in 0..6) {
-
-            val date = Calendar.getInstance()
-
-            date.add(
-                Calendar.DAY_OF_YEAR,
-                i
-            )
-
-            val selected =
-                date.get(Calendar.YEAR) ==
-                        selectedDate.get(Calendar.YEAR) &&
-                        date.get(Calendar.DAY_OF_YEAR) ==
-                        selectedDate.get(Calendar.DAY_OF_YEAR)
-
-            DateItem(
-                date = date,
-                selected = selected,
-                onClick = {
-                    onDateSelected(date)
-                }
-            )
-        }
-    }
-}
-
-
-// ------------------------------------------------------------
-// DATE ITEM
-// ------------------------------------------------------------
-
-@Composable
-private fun DateItem(
-    date: Calendar,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-
-    val dayName = SimpleDateFormat(
-        "EEE",
-        Locale.getDefault()
-    ).format(date.time)
-
-    val dayNumber =
-        date.get(Calendar.DAY_OF_MONTH)
-
-    val monthName = SimpleDateFormat(
-        "MMM",
-        Locale.getDefault()
-    ).format(date.time)
-
-    Column(
-        modifier = Modifier
-            .width(43.dp)
-            .clip(RoundedCornerShape(11.dp))
-            .background(
-                if (selected) {
-                    TurfOrange
-                } else {
-                    TurfCardLight
-                }
-            )
-            .border(
-                width = 1.dp,
-                color = if (selected) {
-                    TurfOrange
-                } else {
-                    Color(0xFF1648D5).copy(alpha = .38f)
-                },
-                shape = RoundedCornerShape(11.dp)
-            )
-            .clickable {
-                onClick()
-            }
-            .padding(
-                vertical = 9.dp
-            ),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-
-        Text(
-            text = dayName,
-            color = if (selected) {
-                Color.White
-            } else {
-                TurfGray
-            },
-            fontSize = 11.sp
-        )
-
-        Spacer(
-            modifier = Modifier.height(3.dp)
-        )
-
-        Text(
-            text = dayNumber.toString(),
-            color = Color.White,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(
-            modifier = Modifier.height(2.dp)
-        )
-
-        Text(
-            text = monthName,
-            color = if (selected) {
-                Color.White.copy(alpha = 0.85f)
-            } else {
-                TurfGray
-            },
-            fontSize = 9.sp
-        )
-    }
-}
-
-
-// ------------------------------------------------------------
-// SLOT LEGEND
-// ------------------------------------------------------------
-
-@Composable
-private fun SlotLegend() {
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-
-        LegendItem(
-            color = AvailableColor,
-            text = "Available"
-        )
-
-        LegendItem(
-            color = SelectedColor,
-            text = "Selected"
-        )
-
-        LegendItem(
-            color = BookedColor,
-            text = "Booked"
-        )
-    }
-}
-
-
-// ------------------------------------------------------------
-// LEGEND ITEM
-// ------------------------------------------------------------
-
-@Composable
-private fun LegendItem(
-    color: Color,
-    text: String
-) {
-
-    Row(
         verticalAlignment = Alignment.CenterVertically
     ) {
-
-        Box(
-            modifier = Modifier
-                .size(11.dp)
-                .clip(RoundedCornerShape(3.dp))
-                .background(color)
-        )
-
-        Spacer(
-            modifier = Modifier.width(5.dp)
-        )
-
-        Text(
-            text = text,
-            color = TurfGray,
-            fontSize = 11.sp
-        )
-    }
-}
-
-
-// ------------------------------------------------------------
-// TURF SLOT
-// ------------------------------------------------------------
-
-@Composable
-private fun TurfSlotItem(
-    slot: TurfSlot,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-
-    val backgroundColor = when {
-
-        slot.booked -> BookedColor
-
-        selected -> SelectedColor
-
-        else -> AvailableColor
-    }
-
-    val borderColor = when {
-
-        slot.booked ->
-            Color(0xFF242A35)
-
-        selected ->
-            Color(0xFFFF8A3D)
-
-        else ->
-            Color(0xFF1C5380)
-    }
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(52.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .background(backgroundColor)
-            .border(
-                width = 1.dp,
-                color = borderColor,
-                shape = RoundedCornerShape(10.dp)
-            )
-            .clickable(
-                enabled = !slot.booked,
-                onClick = onClick
-            )
-            .padding(horizontal = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-
-        Icon(
-            imageVector = if (selected) {
-                Icons.Rounded.CheckCircle
-            } else {
-                Icons.Rounded.Schedule
-            },
-            contentDescription = null,
-            tint = if (slot.booked) {
-                Color(0xFF535B69)
-            } else {
-                Color.White
-            },
-            modifier = Modifier.size(16.dp)
-        )
-
-        Spacer(
-            modifier = Modifier.width(6.dp)
-        )
-
+        PremiumBackButton(onClick = onBackClick)
+        Spacer(modifier = Modifier.width(14.dp))
         Column {
-
             Text(
-                text = slot.time,
-                color = if (slot.booked) {
-                    Color(0xFF8B95A1)
-                } else {
-                    Color.White
-                },
-                fontSize = 12.sp,
+                text = "Book Turf",
+                color = TurfBookingPrimaryText,
+                fontSize = 22.sp,
                 fontWeight = FontWeight.Bold
             )
-
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = if (slot.booked) {
-                    "Booked"
-                } else if (selected) {
-                    "Selected"
-                } else {
-                    "Available"
-                },
-                color = if (slot.booked) {
-                    Color(0xFF8B95A1).copy(alpha = 0.7f)
-                } else if (selected) {
-                    Color.White.copy(alpha = 0.9f)
-                } else {
-                    Color(0xFF9FC7EA)
-                },
-                fontSize = 10.sp,
+                text = "Choose your play time",
+                color = TurfBookingSecondaryText,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Medium
             )
         }
     }
 }
 
+@Composable
+private fun PremiumBackButton(onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.92f else 1f,
+        animationSpec = tween(durationMillis = 120),
+        label = "turfBookingBackScale"
+    )
 
-// ------------------------------------------------------------
-// BOTTOM BOOKING BAR
-// ------------------------------------------------------------
+    Box(
+        modifier = Modifier
+            .size(42.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(CircleShape)
+            .background(TurfBookingSurface.copy(alpha = 0.94f))
+            .border(BorderStroke(1.dp, TurfBookingBorder), CircleShape)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                role = Role.Button,
+                onClickLabel = "Go back",
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+            contentDescription = "Back",
+            tint = TurfBookingPrimaryText,
+            modifier = Modifier.size(22.dp)
+        )
+    }
+}
 
 @Composable
-private fun BottomBookingBar(
+private fun VenueSummary() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .shadow(
+                elevation = 6.dp,
+                shape = RoundedCornerShape(18.dp),
+                ambientColor = Color.Black.copy(alpha = 0.18f),
+                spotColor = Color.Black.copy(alpha = 0.26f)
+            )
+            .clip(RoundedCornerShape(18.dp))
+            .background(TurfBookingSurface)
+            .border(
+                BorderStroke(1.dp, TurfBookingBorder.copy(alpha = 0.82f)),
+                RoundedCornerShape(18.dp)
+            )
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "Green Arena Turf",
+            color = TurfBookingPrimaryText,
+            fontSize = 21.sp,
+            fontWeight = FontWeight.ExtraBold
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "★ 4.7",
+                color = TurfBookingAccent,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "  •  Football  •  5v5",
+                color = TurfBookingSecondaryText,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+        Spacer(modifier = Modifier.height(11.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(TurfBookingAccent.copy(alpha = 0.13f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.LocationOn,
+                    contentDescription = null,
+                    tint = TurfBookingAccent,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Chennai, Tamil Nadu",
+                color = TurfBookingSecondaryText,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun BookingSectionHeader(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    trailingText: String? = null
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(34.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(TurfBookingAccent.copy(alpha = 0.13f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = TurfBookingAccent,
+                modifier = Modifier.size(19.dp)
+            )
+        }
+        Spacer(modifier = Modifier.width(10.dp))
+        Text(
+            text = title,
+            modifier = Modifier.weight(1f),
+            color = TurfBookingPrimaryText,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold
+        )
+        if (trailingText != null) {
+            Text(
+                text = trailingText,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(TurfBookingSurfaceRaised)
+                    .padding(horizontal = 9.dp, vertical = 5.dp),
+                color = TurfBookingSecondaryText,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.5.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun DateSelector(
+    selectedDate: Calendar,
+    onDateSelected: (Calendar) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(TurfBookingSurface.copy(alpha = 0.78f))
+            .border(
+                BorderStroke(1.dp, TurfBookingBorder.copy(alpha = 0.68f)),
+                RoundedCornerShape(16.dp)
+            )
+            .padding(5.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        for (i in 0..6) {
+            val date = Calendar.getInstance()
+            date.add(Calendar.DAY_OF_YEAR, i)
+
+            val selected = date.get(Calendar.YEAR) == selectedDate.get(Calendar.YEAR) &&
+                date.get(Calendar.DAY_OF_YEAR) == selectedDate.get(Calendar.DAY_OF_YEAR)
+
+            DateItem(
+                date = date,
+                selected = selected,
+                onClick = { onDateSelected(date) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun DateItem(
+    date: Calendar,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val locale = LocalConfiguration.current.locales[0]
+    val dayName = SimpleDateFormat("EEE", locale).format(date.time)
+    val dayNumber = date.get(Calendar.DAY_OF_MONTH)
+    val monthName = SimpleDateFormat("MMM", locale).format(date.time)
+    val spokenDate = SimpleDateFormat("EEEE, MMMM d", locale).format(date.time)
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.94f else 1f,
+        animationSpec = tween(durationMillis = 110),
+        label = "datePressScale"
+    )
+    val containerColor by animateColorAsState(
+        targetValue = if (selected) TurfBookingAccent else Color.Transparent,
+        animationSpec = tween(durationMillis = 160),
+        label = "dateContainerColor"
+    )
+    val elevation by animateDpAsState(
+        targetValue = if (selected) 4.dp else 0.dp,
+        animationSpec = tween(durationMillis = 160),
+        label = "dateElevation"
+    )
+
+    Column(
+        modifier = modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .shadow(elevation = elevation, shape = RoundedCornerShape(11.dp))
+            .clip(RoundedCornerShape(11.dp))
+            .background(containerColor)
+            .border(
+                width = 1.dp,
+                color = if (selected) {
+                    TurfBookingAccent
+                } else {
+                    TurfBookingBorder.copy(alpha = 0.48f)
+                },
+                shape = RoundedCornerShape(11.dp)
+            )
+            .semantics(mergeDescendants = true) {
+                contentDescription = spokenDate
+                this.selected = selected
+                stateDescription = if (selected) "Selected" else "Not selected"
+                role = Role.Button
+            }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                role = Role.Button,
+                onClickLabel = "Select $spokenDate",
+                onClick = onClick
+            )
+            .padding(vertical = 9.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = dayName,
+            color = if (selected) {
+                Color.White.copy(alpha = 0.88f)
+            } else {
+                TurfBookingSecondaryText
+            },
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = dayNumber.toString(),
+            color = TurfBookingPrimaryText,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.ExtraBold
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = monthName,
+            color = if (selected) {
+                Color.White.copy(alpha = 0.82f)
+            } else {
+                TurfBookingMutedText
+            },
+            fontSize = 8.sp,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
+private fun SlotLegend() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(TurfBookingSurface.copy(alpha = 0.66f))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        LegendItem(
+            fillColor = AvailableSurface,
+            borderColor = AvailableBorder,
+            text = "Available"
+        )
+        LegendItem(
+            fillColor = TurfBookingAccent,
+            borderColor = TurfBookingAccent,
+            text = "Selected"
+        )
+        LegendItem(
+            fillColor = BookedSurface,
+            borderColor = BookedBorder,
+            text = "Booked"
+        )
+    }
+}
+
+@Composable
+private fun LegendItem(
+    fillColor: Color,
+    borderColor: Color,
+    text: String
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(14.dp)
+                .clip(CircleShape)
+                .background(fillColor)
+                .border(1.dp, borderColor, CircleShape)
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = text,
+            color = TurfBookingSecondaryText,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
+private fun SlotGrid(
+    selectedSlots: Set<Int>,
+    onSlotClick: (TurfSlot) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        turfSlots.chunked(3).forEach { rowSlots ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                rowSlots.forEach { slot ->
+                    TurfSlotItem(
+                        slot = slot,
+                        selected = selectedSlots.contains(slot.id),
+                        onClick = { onSlotClick(slot) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                repeat(3 - rowSlots.size) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TurfSlotItem(
+    slot: TurfSlot,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val status = when {
+        slot.booked -> "Booked"
+        selected -> "Selected"
+        else -> "Available"
+    }
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val selectionScale = remember { Animatable(1f) }
+
+    LaunchedEffect(selected) {
+        if (selected) {
+            selectionScale.snapTo(0.94f)
+            selectionScale.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 170)
+            )
+        } else {
+            selectionScale.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 120)
+            )
+        }
+    }
+
+    val pressScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.97f else 1f,
+        animationSpec = tween(durationMillis = 100),
+        label = "slotPressScale"
+    )
+    val containerColor by animateColorAsState(
+        targetValue = when {
+            slot.booked -> BookedSurface
+            selected -> TurfBookingAccent
+            else -> AvailableSurface
+        },
+        animationSpec = tween(durationMillis = 170),
+        label = "slotContainerColor"
+    )
+    val borderColor by animateColorAsState(
+        targetValue = when {
+            slot.booked -> BookedBorder
+            selected -> TurfBookingAccent
+            else -> AvailableBorder
+        },
+        animationSpec = tween(durationMillis = 170),
+        label = "slotBorderColor"
+    )
+    val elevation by animateDpAsState(
+        targetValue = if (selected) 6.dp else 1.dp,
+        animationSpec = tween(durationMillis = 170),
+        label = "slotElevation"
+    )
+
+    Box(
+        modifier = modifier
+            .height(72.dp)
+            .graphicsLayer {
+                val combinedScale = selectionScale.value * pressScale
+                scaleX = combinedScale
+                scaleY = combinedScale
+            }
+            .shadow(
+                elevation = elevation,
+                shape = RoundedCornerShape(14.dp),
+                ambientColor = if (selected) {
+                    TurfBookingAccent.copy(alpha = 0.20f)
+                } else {
+                    Color.Black.copy(alpha = 0.12f)
+                },
+                spotColor = if (selected) {
+                    TurfBookingAccent.copy(alpha = 0.28f)
+                } else {
+                    Color.Black.copy(alpha = 0.18f)
+                }
+            )
+            .clip(RoundedCornerShape(14.dp))
+            .background(containerColor)
+            .border(BorderStroke(1.dp, borderColor), RoundedCornerShape(14.dp))
+            .clickable(
+                enabled = !slot.booked,
+                interactionSource = interactionSource,
+                indication = null,
+                role = Role.Button,
+                onClickLabel = if (selected) "Deselect ${slot.time}" else "Select ${slot.time}",
+                onClick = onClick
+            )
+            .semantics(mergeDescendants = true) {
+                contentDescription = "${slot.time}, $status"
+                stateDescription = status
+                this.selected = selected
+                role = Role.Button
+                if (slot.booked) disabled()
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = slot.time,
+                color = if (slot.booked) TurfBookingMutedText else TurfBookingPrimaryText,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.ExtraBold
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = status,
+                color = when {
+                    slot.booked -> TurfBookingMutedText.copy(alpha = 0.70f)
+                    selected -> Color.White.copy(alpha = 0.90f)
+                    else -> TurfBookingSecondaryText
+                },
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+
+        AnimatedVisibility(
+            visible = selected,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(7.dp),
+            enter = fadeIn(tween(120)) + scaleIn(tween(150), initialScale = 0.72f),
+            exit = fadeOut(tween(90)) + scaleOut(tween(100), targetScale = 0.72f)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(17.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.20f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Check,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(12.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BookingNote() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(13.dp))
+            .background(TurfBookingSurface.copy(alpha = 0.64f))
+            .border(
+                BorderStroke(1.dp, TurfBookingBorder.copy(alpha = 0.46f)),
+                RoundedCornerShape(13.dp)
+            )
+            .padding(horizontal = 13.dp, vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.Info,
+            contentDescription = null,
+            tint = TurfBookingAccent,
+            modifier = Modifier.size(17.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = "Every booking comes with 55 minutes of active playtime",
+            modifier = Modifier.weight(1f),
+            color = TurfBookingSecondaryText,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+            lineHeight = 16.sp
+        )
+    }
+}
+
+@Composable
+private fun TurfBottomBookingBar(
     selectedSlots: Int,
     totalPrice: Int,
     onContinueClick: () -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val buttonScale by animateFloatAsState(
+        targetValue = if (isPressed && selectedSlots > 0) 0.975f else 1f,
+        animationSpec = tween(durationMillis = 120),
+        label = "turfContinueScale"
+    )
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(
-                Color(0xFF0E0B38).copy(alpha = .92f)
+            .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+            .background(TurfBookingBackground.copy(alpha = 0.98f))
+            .border(
+                BorderStroke(1.dp, TurfBookingBorder.copy(alpha = 0.58f)),
+                RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
             )
             .navigationBarsPadding()
-            .padding(
-                horizontal = 18.dp,
-                vertical = 12.dp
-            ),
+            .padding(horizontal = 18.dp, vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
-
+        Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = if (selectedSlots == 0) {
-                    "Select a slot"
-                } else {
-                    "$selectedSlots hour(s) selected"
+                text = when (selectedSlots) {
+                    0 -> "Select a slot"
+                    1 -> "1 hour selected"
+                    else -> "$selectedSlots hours selected"
                 },
-                color = TurfGray,
-                fontSize = 11.sp
+                color = TurfBookingSecondaryText,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium
             )
-
             Text(
                 text = "₹$totalPrice",
-                color = TurfWhite,
-                fontSize = 19.sp,
-                fontWeight = FontWeight.Bold
+                color = TurfBookingPrimaryText,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.ExtraBold
             )
         }
 
         Box(
             modifier = Modifier
-                .clip(RoundedCornerShape(11.dp))
+                .graphicsLayer {
+                    scaleX = buttonScale
+                    scaleY = buttonScale
+                }
+                .clip(RoundedCornerShape(13.dp))
                 .background(
                     if (selectedSlots > 0) {
-                        TurfOrange
+                        TurfBookingAccent
                     } else {
-                        Color(0xFF082A82).copy(alpha = .55f)
+                        TurfBookingSurfaceRaised
                     }
+                )
+                .border(
+                    BorderStroke(
+                        1.dp,
+                        if (selectedSlots > 0) {
+                            TurfBookingAccent
+                        } else {
+                            TurfBookingBorder.copy(alpha = 0.68f)
+                        }
+                    ),
+                    RoundedCornerShape(13.dp)
                 )
                 .clickable(
                     enabled = selectedSlots > 0,
+                    interactionSource = interactionSource,
+                    indication = null,
+                    role = Role.Button,
+                    onClickLabel = "Continue",
                     onClick = onContinueClick
                 )
-                .padding(
-                    horizontal = 25.dp,
-                    vertical = 13.dp
-                ),
+                .padding(horizontal = 29.dp, vertical = 15.dp),
             contentAlignment = Alignment.Center
         ) {
-
             Text(
                 text = "Continue",
-                color = Color.White,
-                fontSize = 14.sp,
+                color = if (selectedSlots > 0) Color.White else TurfBookingMutedText,
+                fontSize = 15.sp,
                 fontWeight = FontWeight.Bold
             )
         }

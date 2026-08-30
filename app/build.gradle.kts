@@ -41,6 +41,7 @@ android {
 dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.compose.animation)
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.foundation.layout)
     implementation(libs.androidx.compose.material3)
@@ -61,6 +62,7 @@ dependencies {
     implementation(libs.logging.interceptor)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.retrofit2.kotlinx.serialization.converter)
+    implementation(libs.zxing.core)
 
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
@@ -85,5 +87,4 @@ dependencies {
 
     implementation("com.google.accompanist:accompanist-systemuicontroller:0.36.0")
     implementation("com.google.android.gms:play-services-location:21.3.0")
-    implementation("com.google.zxing:core:3.5.2")
 }

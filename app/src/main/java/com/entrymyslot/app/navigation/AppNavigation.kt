@@ -14,6 +14,7 @@ import androidx.navigation.compose.rememberNavController
 import com.entrymyslot.app.core.storage.AuthTokenStore
 import com.entrymyslot.app.screens.auth.AuthScreen
 import com.entrymyslot.app.screens.home.HomeScreen
+import com.entrymyslot.app.screens.home.LocationSelectionScreen
 import com.entrymyslot.app.screens.movies.CinemaSelectionScreen
 import com.entrymyslot.app.screens.movies.MovieBookingScreen
 import com.entrymyslot.app.screens.movies.MovieDetailsScreen
@@ -26,6 +27,7 @@ import com.entrymyslot.app.screens.turf.TurfScreen
 import com.entrymyslot.app.screens.turf.TurfBookingScreen
 import com.entrymyslot.app.screens.turf.SportsListScreen
 import com.entrymyslot.app.screens.events.EventsListScreen
+import com.entrymyslot.app.screens.events.EventDetailsScreen
 import com.entrymyslot.app.screens.events.EventBookingScreen
 import com.entrymyslot.app.screens.home.HomeViewModel
 import com.entrymyslot.app.screens.home.PopularEvent
@@ -79,6 +81,9 @@ fun AppNavigation(
 
         composable("home") {
             HomeScreen(
+                onEventClick = { event ->
+                    navController.navigate("event_details/${event.id}")
+                },
                 onSportClick = { sport ->
                     navController.navigate("turf_details/${sport.id}")
                 },
@@ -86,6 +91,7 @@ fun AppNavigation(
                     navController.navigate("movie_details/${it.id}")
                 },
                 onSearchClick = { navController.navigate("search") },
+                onLocationClick = { navController.navigate("location_selection") },
                 homeViewModel = homeViewModel,
                 onCategoryClick = { category ->
                     when (category) {
@@ -100,6 +106,17 @@ fun AppNavigation(
                         "Profile" -> navController.navigate("profile")
                         "Search" -> navController.navigate("search")
                     }
+                }
+            )
+        }
+
+        composable("location_selection") {
+            LocationSelectionScreen(
+                selectedCity = homeState.selectedCity,
+                onBackClick = { navController.popBackStack() },
+                onCitySelected = { city ->
+                    homeViewModel.updateCity(city)
+                    navController.popBackStack()
                 }
             )
         }
@@ -124,7 +141,7 @@ fun AppNavigation(
                     when (result.type) {
                         SearchResultType.MOVIE -> navController.navigate("movie_details/${result.item.id}")
                         SearchResultType.SPORT -> navController.navigate("turf_details/${result.item.id}")
-                        SearchResultType.EVENT -> navController.navigate("event_booking/${result.item.id}")
+                        SearchResultType.EVENT -> navController.navigate("event_details/${result.item.id}")
                     }
                 }
             )
@@ -157,6 +174,20 @@ fun AppNavigation(
                 events = homeState.events.map { it.toPopularEvent() }.ifEmpty { popularEvents },
                 onBackClick = { navController.popBackStack() },
                 onEventClick = { event ->
+                    navController.navigate("event_details/${event.id}")
+                }
+            )
+        }
+
+        composable("event_details/{eventId}") { backStackEntry ->
+            val eventId = backStackEntry.arguments?.getString("eventId")
+            val allEvents = homeState.events.map { it.toPopularEvent() } + popularEvents
+            val event = allEvents.find { it.id == eventId } ?: popularEvents[0]
+
+            EventDetailsScreen(
+                event = event,
+                onBackClick = { navController.popBackStack() },
+                onBookTicketsClick = {
                     navController.navigate("event_booking/${event.id}")
                 }
             )

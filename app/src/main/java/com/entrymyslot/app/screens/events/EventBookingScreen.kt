@@ -1,50 +1,79 @@
 package com.entrymyslot.app.screens.events
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.ConfirmationNumber
 import androidx.compose.material.icons.rounded.LocationOn
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.entrymyslot.app.screens.home.PopularEvent
-import com.entrymyslot.app.screens.home.GlowBackground
+import coil3.compose.AsyncImage
 import com.entrymyslot.app.core.components.TermsAndPolicyBottomSheet
+import com.entrymyslot.app.screens.home.PopularEvent
 
-// ------------------------------------------------------------
-// COLORS
-// ------------------------------------------------------------
-private val EventBlueTop = Color(0xFF0B3A82)
-private val EventBlueBottom = Color(0xFF061A33)
-private val EventOrange = Color(0xFFFF8A3D)
-private val EventWhite = Color.White
-private val EventGray = Color(0xFF98A2B3)
-private val EventCard = Color(0xFF0E0B38).copy(alpha = .68f)
-private val EventCardLight = Color(0xFF1648D5).copy(alpha = .18f)
+private val BookingBackground = Color(0xFF061A38)
+private val BookingSurface = Color(0xFF0B274F)
+private val BookingSurfaceRaised = Color(0xFF0D2D5A)
+private val BookingBorder = Color(0xFF24527D)
+private val BookingAccent = Color(0xFFFA580B)
+private val BookingPrimaryText = Color(0xFFF8FAFF)
+private val BookingSecondaryText = Color(0xFFA8B8CF)
+private val BookingMutedText = Color(0xFF7185A1)
 
-// ------------------------------------------------------------
-// MODELS
-// ------------------------------------------------------------
 data class TicketTier(
     val id: String,
     val name: String,
@@ -54,10 +83,6 @@ data class TicketTier(
     val isSoldOut: Boolean = false
 )
 
-// ------------------------------------------------------------
-// EVENT BOOKING SCREEN
-// ------------------------------------------------------------
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EventBookingScreen(
     event: PopularEvent,
@@ -74,70 +99,98 @@ fun EventBookingScreen(
         )
     }
 
-    var selectedQuantities by remember { mutableStateOf(mapOf<String, Int>()) }
+    var selectedQuantities by remember(event.id) {
+        mutableStateOf(mapOf<String, Int>())
+    }
     var showTerms by remember { mutableStateOf(false) }
-    
+
     val totalTickets = selectedQuantities.values.sum()
-    val subtotal = tiers.sumOf { tier -> (selectedQuantities[tier.id] ?: 0) * tier.price }
+    val subtotal = tiers.sumOf { tier ->
+        (selectedQuantities[tier.id] ?: 0) * tier.price
+    }
     val convenienceFee = if (totalTickets > 0) 150 else 0
-    val taxes = (subtotal * 0.05).toInt() // 5% tax
+    val taxes = (subtotal * 0.05).toInt()
     val totalAmount = subtotal + convenienceFee + taxes
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Book Event", color = EventWhite, fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back", tint = EventWhite)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
-            )
-        },
-        bottomBar = {
-            BottomBookingBar(totalTickets, totalAmount, { showTerms = true }, selectedQuantities)
-        },
-        containerColor = Color.Transparent
-    ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize()) {
-            GlowBackground()
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentPadding = PaddingValues(bottom = 32.dp)
-            ) {
-                // 1. Event Header
-                item { EventHeader(event) }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(BookingBackground)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(250.dp)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFF0C3B78),
+                            BookingBackground.copy(alpha = 0.24f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
 
-                // 2. Section Title
-                item {
-                    Column(modifier = Modifier.padding(18.dp)) {
-                        Text("Select Tickets", color = EventWhite, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                        Text("Choose your preferred seating category", color = EventGray, fontSize = 14.sp)
+        Column(modifier = Modifier.fillMaxSize()) {
+            BookingHeader(
+                onBackClick = onBackClick,
+                modifier = Modifier.statusBarsPadding()
+            )
+
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    top = 8.dp,
+                    end = 16.dp,
+                    bottom = 24.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                item(key = "event_summary") {
+                    BookingEventSummary(event = event)
+                }
+
+                item(key = "ticket_heading") {
+                    Column(modifier = Modifier.padding(top = 8.dp, bottom = 2.dp)) {
+                        Text(
+                            text = "Select Tickets",
+                            color = BookingPrimaryText,
+                            fontSize = 21.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(3.dp))
+                        Text(
+                            text = "Choose a category and the number of tickets",
+                            color = BookingSecondaryText,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                 }
 
-                // 3. Venue Visualization
-                item { VenueVisualization() }
-
-                // 4. Ticket Tiers
-                items(tiers) { tier ->
+                items(
+                    items = tiers,
+                    key = { tier -> tier.id }
+                ) { tier ->
                     TicketTierCard(
                         tier = tier,
                         quantity = selectedQuantities[tier.id] ?: 0,
-                        onQuantityChange = { newQty ->
+                        onQuantityChange = { newQuantity ->
                             selectedQuantities = selectedQuantities.toMutableMap().apply {
-                                if (newQty > 0) put(tier.id, newQty) else remove(tier.id)
+                                if (newQuantity > 0) {
+                                    put(tier.id, newQuantity)
+                                } else {
+                                    remove(tier.id)
+                                }
                             }
                         }
                     )
                 }
 
-                // 5. Booking Summary
                 if (totalTickets > 0) {
-                    item {
+                    item(key = "booking_summary") {
                         BookingSummary(
                             tiers = tiers,
                             selectedQuantities = selectedQuantities,
@@ -148,116 +201,192 @@ fun EventBookingScreen(
                         )
                     }
                 }
-                
-                item { Spacer(modifier = Modifier.height(20.dp)) }
+
+                item(key = "booking_policy") {
+                    BookingPolicyNote()
+                }
             }
 
-            if (showTerms) {
-                TermsAndPolicyBottomSheet(
-                    category = "EVENT",
-                    onDismiss = { showTerms = false },
-              onAccept = {
-                        showTerms = false
-                        onContinueClick(selectedQuantities)
-                    }
+            EventBookingBottomBar(
+                count = totalTickets,
+                total = totalAmount,
+                onContinueClick = { showTerms = true }
+            )
+        }
+
+        if (showTerms) {
+            TermsAndPolicyBottomSheet(
+                category = "EVENT",
+                onDismiss = { showTerms = false },
+                onAccept = {
+                    showTerms = false
+                    onContinueClick(selectedQuantities)
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun BookingHeader(
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(74.dp)
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        BookingBackButton(onClick = onBackClick)
+        Spacer(modifier = Modifier.width(14.dp))
+        Column {
+            Text(
+                text = "Book Event",
+                color = BookingPrimaryText,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = "Choose your tickets",
+                color = BookingSecondaryText,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+@Composable
+private fun BookingBackButton(onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.92f else 1f,
+        animationSpec = tween(durationMillis = 120),
+        label = "bookingBackScale"
+    )
+
+    Box(
+        modifier = Modifier
+            .size(42.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(CircleShape)
+            .background(BookingSurface.copy(alpha = 0.94f))
+            .border(BorderStroke(1.dp, BookingBorder), CircleShape)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                role = Role.Button,
+                onClickLabel = "Go back",
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+            contentDescription = "Back",
+            tint = BookingPrimaryText,
+            modifier = Modifier.size(22.dp)
+        )
+    }
+}
+
+@Composable
+private fun BookingEventSummary(event: PopularEvent) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(BookingSurface)
+            .border(
+                BorderStroke(1.dp, BookingBorder.copy(alpha = 0.82f)),
+                RoundedCornerShape(18.dp)
+            )
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(width = 92.dp, height = 104.dp)
+                .clip(RoundedCornerShape(13.dp))
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(Color(0xFF123E70), Color(0xFF081F42))
+                    )
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            if (event.imageUrl != null) {
+                AsyncImage(
+                    model = event.imageUrl,
+                    contentDescription = event.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Outlined.Event,
+                    contentDescription = event.title,
+                    tint = BookingAccent,
+                    modifier = Modifier.size(34.dp)
                 )
             }
         }
-    }
-}
 
-@Composable
-private fun EventHeader(event: PopularEvent) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(18.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = EventCard),
-        border = BorderStroke(1.dp, Color(0xFF1648D5).copy(alpha = .38f))
-    ) {
-        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            // Thumbnail Placeholder
-            Box(
-                modifier = Modifier
-                    .size(90.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(EventCardLight),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Rounded.ConfirmationNumber, null, tint = EventGray, modifier = Modifier.size(32.dp))
-            }
+        Spacer(modifier = Modifier.width(13.dp))
 
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column {
-                Text(event.title, color = EventWhite, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                Text("Sports Event", color = EventGray, fontSize = 13.sp)
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.LocationOn, null, tint = EventOrange, modifier = Modifier.size(14.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(event.location, color = EventGray, fontSize = 12.sp)
-                }
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
-                    Icon(Icons.Rounded.CalendarToday, null, tint = EventOrange, modifier = Modifier.size(14.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(event.date, color = EventGray, fontSize = 12.sp)
-                }
-            }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = event.title,
+                color = BookingPrimaryText,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Bold,
+                lineHeight = 21.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(9.dp))
+            CompactMetadataRow(
+                icon = Icons.Rounded.CalendarToday,
+                text = event.date
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            CompactMetadataRow(
+                icon = Icons.Rounded.LocationOn,
+                text = event.location
+            )
         }
     }
 }
 
 @Composable
-private fun VenueVisualization() {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 18.dp, vertical = 12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // Stage
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(0.6f)
-                .height(30.dp)
-                .background(EventWhite.copy(alpha = 0.08f), RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
-                .border(1.dp, EventWhite.copy(alpha = 0.22f), RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("STAGE", color = EventWhite, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 4.sp)
-        }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // VIP Area
-        TierArea("VIP AREA", 0.5f)
-        TierArea("PLATINUM AREA", 0.65f)
-        TierArea("GOLD AREA", 0.8f)
-        TierArea("SILVER AREA", 0.95f)
-        
-        // General Area
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(2.dp)
-                .background(EventWhite.copy(alpha = 0.14f))
+private fun CompactMetadataRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    text: String
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = BookingAccent,
+            modifier = Modifier.size(14.dp)
         )
-        Text("GENERAL AREA", color = EventGray, fontSize = 9.sp, modifier = Modifier.padding(top = 4.dp))
-    }
-}
-
-@Composable
-private fun TierArea(label: String, width: Float) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(bottom = 8.dp)) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(width)
-                .height(20.dp)
-                .border(1.dp, EventWhite.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+        Spacer(modifier = Modifier.width(5.dp))
+        Text(
+            text = text,
+            modifier = Modifier.weight(1f),
+            color = BookingSecondaryText,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
-        Text(label, color = EventGray, fontSize = 8.sp, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -268,75 +397,232 @@ private fun TicketTierCard(
     onQuantityChange: (Int) -> Unit
 ) {
     val isSelected = quantity > 0
-    
-    Card(
+    val containerColor by animateColorAsState(
+        targetValue = when {
+            tier.isSoldOut -> BookingSurface.copy(alpha = 0.55f)
+            isSelected -> BookingAccent.copy(alpha = 0.12f)
+            else -> BookingSurface
+        },
+        animationSpec = tween(durationMillis = 160),
+        label = "ticketTierSurface"
+    )
+    val borderColor by animateColorAsState(
+        targetValue = when {
+            tier.isSoldOut -> BookingBorder.copy(alpha = 0.32f)
+            isSelected -> BookingAccent
+            else -> BookingBorder.copy(alpha = 0.82f)
+        },
+        animationSpec = tween(durationMillis = 160),
+        label = "ticketTierBorder"
+    )
+    val elevation by animateDpAsState(
+        targetValue = if (isSelected) 7.dp else 3.dp,
+        animationSpec = tween(durationMillis = 160),
+        label = "ticketTierElevation"
+    )
+
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 18.dp, vertical = 8.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) EventOrange.copy(alpha = 0.14f) else EventCard
-        ),
-        border = BorderStroke(
-            width = 1.5.dp,
-            color = if (isSelected) EventOrange else if (tier.isSoldOut) Color.Transparent else Color(0xFF1648D5).copy(alpha = .38f)
-        )
+            .shadow(
+                elevation = elevation,
+                shape = RoundedCornerShape(18.dp),
+                ambientColor = Color.Black.copy(alpha = 0.16f),
+                spotColor = Color.Black.copy(alpha = 0.24f)
+            )
+            .clip(RoundedCornerShape(18.dp))
+            .background(containerColor)
+            .border(
+                BorderStroke(if (isSelected) 1.5.dp else 1.dp, borderColor),
+                RoundedCornerShape(18.dp)
+            )
+            .semantics {
+                selected = isSelected
+                stateDescription = when {
+                    tier.isSoldOut -> "Sold out"
+                    quantity == 0 -> "No tickets selected"
+                    else -> "$quantity tickets selected"
+                }
+            }
+            .padding(16.dp)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(tier.name, color = if (tier.isSoldOut) EventGray else EventWhite, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                    if (tier.isSoldOut) {
-                        Badge(
-                            containerColor = Color.Red.copy(alpha = 0.2f),
-                            contentColor = Color.Red,
-                            modifier = Modifier.padding(start = 8.dp)
-                        ) { Text("SOLD OUT") }
-                    }
-                }
-                Text("₹${tier.price} / ticket", color = if (tier.isSoldOut) EventGray.copy(alpha = 0.5f) else EventOrange, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(tier.description, color = EventGray, fontSize = 12.sp)
-                if (!tier.isSoldOut) {
-                    Text("Only ${tier.available} tickets left", color = Color(0xFFF44336), fontSize = 11.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 4.dp))
-                }
-            }
-
-            if (!tier.isSoldOut) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .background(EventCardLight, RoundedCornerShape(10.dp))
-                        .padding(4.dp)
-                ) {
-                    IconButton(
-                        onClick = { if (quantity > 0) onQuantityChange(quantity - 1) },
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(Icons.Default.Remove, null, tint = if (quantity > 0) EventOrange else EventGray, modifier = Modifier.size(18.dp))
-                    }
-                    
                     Text(
-                        text = quantity.toString(),
-                        color = EventWhite,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 12.dp)
+                        text = tier.name,
+                        color = if (tier.isSoldOut) BookingMutedText else BookingPrimaryText,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
                     )
-
-                    IconButton(
-                        onClick = { if (quantity < tier.available) onQuantityChange(quantity + 1) },
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(Icons.Default.Add, null, tint = if (quantity < tier.available) EventOrange else EventGray, modifier = Modifier.size(18.dp))
+                    if (tier.isSoldOut) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "SOLD OUT",
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(BookingMutedText.copy(alpha = 0.14f))
+                                .border(
+                                    width = 1.dp,
+                                    color = BookingMutedText.copy(alpha = 0.28f),
+                                    shape = RoundedCornerShape(6.dp)
+                                )
+                                .padding(horizontal = 7.dp, vertical = 3.dp),
+                            color = BookingSecondaryText,
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.7.sp
+                        )
                     }
                 }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "₹${tier.price} / ticket",
+                    color = if (tier.isSoldOut) BookingMutedText else BookingAccent,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
+
+            if (isSelected) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(BookingAccent.copy(alpha = 0.16f))
+                        .padding(horizontal = 8.dp, vertical = 5.dp)
+                ) {
+                    Text(
+                        text = "SELECTED",
+                        color = BookingAccent,
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.7.sp
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = tier.description,
+            color = if (tier.isSoldOut) {
+                BookingMutedText.copy(alpha = 0.72f)
+            } else {
+                BookingSecondaryText
+            },
+            fontSize = 12.sp,
+            lineHeight = 17.sp
+        )
+
+        Spacer(modifier = Modifier.height(13.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (tier.isSoldOut) {
+                Text(
+                    text = "Currently unavailable",
+                    color = BookingMutedText,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            } else {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.ConfirmationNumber,
+                        contentDescription = null,
+                        tint = BookingAccent,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(5.dp))
+                    Text(
+                        text = "Only ${tier.available} tickets left",
+                        color = BookingSecondaryText,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                QuantitySelector(
+                    quantity = quantity,
+                    canDecrease = quantity > 0,
+                    canIncrease = quantity < tier.available,
+                    onDecrease = { onQuantityChange(quantity - 1) },
+                    onIncrease = { onQuantityChange(quantity + 1) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuantitySelector(
+    quantity: Int,
+    canDecrease: Boolean,
+    canIncrease: Boolean,
+    onDecrease: () -> Unit,
+    onIncrease: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(BookingSurfaceRaised)
+            .border(
+                BorderStroke(1.dp, BookingBorder.copy(alpha = 0.72f)),
+                RoundedCornerShape(12.dp)
+            )
+            .padding(horizontal = 2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IconButton(
+            onClick = onDecrease,
+            enabled = canDecrease,
+            modifier = Modifier.size(38.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Remove,
+                contentDescription = "Decrease ticket quantity",
+                tint = if (canDecrease) BookingAccent else BookingMutedText,
+                modifier = Modifier.size(17.dp)
+            )
+        }
+
+        Box(
+            modifier = Modifier.width(30.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            AnimatedContent(
+                targetState = quantity,
+                label = "ticketQuantity"
+            ) { displayedQuantity ->
+                Text(
+                    text = displayedQuantity.toString(),
+                    color = BookingPrimaryText,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
+        }
+
+        IconButton(
+            onClick = onIncrease,
+            enabled = canIncrease,
+            modifier = Modifier.size(38.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = "Increase ticket quantity",
+                tint = if (canIncrease) BookingAccent else BookingMutedText,
+                modifier = Modifier.size(17.dp)
+            )
         }
     }
 }
@@ -350,107 +636,228 @@ private fun BookingSummary(
     taxes: Int,
     total: Int
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(18.dp)
-    ) {
-        Text("Booking Summary", color = EventWhite, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 16.dp))
+    Column(modifier = Modifier.padding(top = 8.dp)) {
+        Text(
+            text = "Booking Summary",
+            color = BookingPrimaryText,
+            fontSize = 19.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(12.dp))
 
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = EventCard),
-            border = BorderStroke(1.dp, Color(0xFF1648D5).copy(alpha = .38f))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(18.dp))
+                .background(BookingSurface)
+                .border(
+                    BorderStroke(1.dp, BookingBorder.copy(alpha = 0.82f)),
+                    RoundedCornerShape(18.dp)
+                )
+                .padding(17.dp)
         ) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                tiers.forEach { tier ->
-                    val qty = selectedQuantities[tier.id] ?: 0
-                    if (qty > 0) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column {
-                                Text(tier.name, color = EventWhite, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                                Text("$qty × ₹${tier.price}", color = EventGray, fontSize = 12.sp)
-                            }
-                            Text("₹${qty * tier.price}", color = EventWhite, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            tiers.forEach { tier ->
+                val quantity = selectedQuantities[tier.id] ?: 0
+                if (quantity > 0) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text(
+                                text = tier.name,
+                                color = BookingPrimaryText,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "$quantity × ₹${tier.price}",
+                                color = BookingSecondaryText,
+                                fontSize = 11.sp
+                            )
                         }
+                        Text(
+                            text = "₹${quantity * tier.price}",
+                            color = BookingPrimaryText,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
                 }
+            }
 
-                Spacer(modifier = Modifier.height(12.dp))
-                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFF1648D5).copy(alpha = .30f)))
-                Spacer(modifier = Modifier.height(12.dp))
+            SummaryDivider()
+            SummaryPriceRow(label = "Subtotal", value = "₹$subtotal")
+            SummaryPriceRow(label = "Convenience Fee", value = "₹$fee")
+            SummaryPriceRow(label = "Taxes", value = "₹$taxes")
+            SummaryDivider()
 
-                SummaryPriceRow("Subtotal", "₹$subtotal")
-                SummaryPriceRow("Convenience Fee", "₹$fee")
-                SummaryPriceRow("Taxes", "₹$taxes")
-
-                Spacer(modifier = Modifier.height(12.dp))
-                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFF1648D5).copy(alpha = .30f)))
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Total", color = EventWhite, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                    Text("₹$total", color = EventOrange, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
-                }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Total",
+                    color = BookingPrimaryText,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "₹$total",
+                    color = BookingAccent,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
             }
         }
     }
 }
 
 @Composable
+private fun SummaryDivider() {
+    Spacer(modifier = Modifier.height(11.dp))
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(1.dp)
+            .background(BookingBorder.copy(alpha = 0.46f))
+    )
+    Spacer(modifier = Modifier.height(11.dp))
+}
+
+@Composable
 private fun SummaryPriceRow(label: String, value: String) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(label, color = EventGray, fontSize = 13.sp)
-        Text(value, color = EventWhite, fontSize = 13.sp)
+        Text(
+            text = label,
+            color = BookingSecondaryText,
+            fontSize = 12.sp
+        )
+        Text(
+            text = value,
+            color = BookingPrimaryText,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium
+        )
     }
 }
 
 @Composable
-private fun BottomBookingBar(
+private fun BookingPolicyNote() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(BookingSurface.copy(alpha = 0.62f))
+            .padding(13.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.ConfirmationNumber,
+            contentDescription = null,
+            tint = BookingAccent,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(modifier = Modifier.width(9.dp))
+        Text(
+            text = "Terms and booking policy will be shown before payment.",
+            modifier = Modifier.weight(1f),
+            color = BookingSecondaryText,
+            fontSize = 11.sp,
+            lineHeight = 16.sp
+        )
+    }
+}
+
+@Composable
+private fun EventBookingBottomBar(
     count: Int,
     total: Int,
-    onContinueClick: (Map<String, Int>) -> Unit,
-    quantities: Map<String, Int>
+    onContinueClick: () -> Unit
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = Color(0xFF0E0B38).copy(alpha = .92f),
-        tonalElevation = 8.dp
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(if (count == 0) "Select tickets" else "$count Tickets", color = EventGray, fontSize = 12.sp)
-                Text("₹$total", color = EventWhite, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
-            }
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val buttonScale by animateFloatAsState(
+        targetValue = if (isPressed && count > 0) 0.975f else 1f,
+        animationSpec = tween(durationMillis = 120),
+        label = "continueButtonScale"
+    )
 
-            Button(
-                onClick = { onContinueClick(quantities) },
-                enabled = count > 0,
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = EventOrange,
-                    disabledContainerColor = Color(0xFF082A82).copy(alpha = .55f)
-                ),
-                modifier = Modifier.height(52.dp).padding(start = 16.dp)
-            ) {
-                Text("Continue", color = EventWhite, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+            .background(BookingBackground.copy(alpha = 0.98f))
+            .border(
+                width = 1.dp,
+                color = BookingBorder.copy(alpha = 0.58f),
+                shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+            )
+            .navigationBarsPadding()
+            .padding(horizontal = 18.dp, vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = if (count == 0) "Select tickets" else "$count Tickets",
+                color = BookingSecondaryText,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                text = "₹$total",
+                color = BookingPrimaryText,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.ExtraBold
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .graphicsLayer {
+                    scaleX = buttonScale
+                    scaleY = buttonScale
+                }
+                .clip(RoundedCornerShape(13.dp))
+                .background(
+                    if (count > 0) BookingAccent else BookingSurfaceRaised
+                )
+                .border(
+                    BorderStroke(
+                        1.dp,
+                        if (count > 0) {
+                            BookingAccent
+                        } else {
+                            BookingBorder.copy(alpha = 0.68f)
+                        }
+                    ),
+                    RoundedCornerShape(13.dp)
+                )
+                .clickable(
+                    enabled = count > 0,
+                    interactionSource = interactionSource,
+                    indication = null,
+                    role = Role.Button,
+                    onClickLabel = "Continue",
+                    onClick = onContinueClick
+                )
+                .padding(horizontal = 29.dp, vertical = 15.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "Continue",
+                color = if (count > 0) Color.White else BookingMutedText,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }

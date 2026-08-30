@@ -1,65 +1,119 @@
 package com.entrymyslot.app.screens.turf
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.outlined.LocationOn
-import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.SportsSoccer
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Star
-import androidx.compose.material3.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import com.entrymyslot.app.screens.home.PopularEvent
-import com.entrymyslot.app.screens.home.GlowBackground
-import com.entrymyslot.app.core.components.ElevatedCardSubtitle
-import com.entrymyslot.app.core.components.ElevatedCardTitle
-import com.entrymyslot.app.core.components.ElevatedContrastCard
-import com.entrymyslot.app.core.components.EntryCardAccent
 
-@OptIn(ExperimentalMaterial3Api::class)
+private val SportsBackground = Color(0xFF061A38)
+private val SportsSurface = Color(0xFF0B274F)
+private val SportsSurfacePressed = Color(0xFF0D2D5A)
+private val SportsBorder = Color(0xFF24527D)
+private val SportsBorderPressed = Color(0xFFFA580B)
+private val SportsAccent = Color(0xFFFA580B)
+private val SportsPrimaryText = Color(0xFFF8FAFF)
+private val SportsSecondaryText = Color(0xFFA8B8CF)
+private val SportsMutedText = Color(0xFF7185A1)
+
 @Composable
 fun SportsListScreen(
     sports: List<PopularEvent>,
     onBackClick: () -> Unit,
     onSportClick: (PopularEvent) -> Unit
 ) {
-    Box(modifier = Modifier.fillMaxSize()) {
-        GlowBackground()
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(SportsBackground)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(260.dp)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFF0C3B78),
+                            SportsBackground.copy(alpha = 0.22f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
 
-        Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
-            TopAppBar(
-                title = { Text("Sports", color = Color.White, fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back", tint = Color.White)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
-            )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+        ) {
+            SportsHeader(onBackClick = onBackClick)
 
-            LazyColumn(
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxSize()
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    top = 10.dp,
+                    end = 16.dp,
+                    bottom = 28.dp
+                ),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(sports, key = { it.id }) { sport ->
+                items(
+                    items = sports,
+                    key = { sport -> sport.id }
+                ) { sport ->
                     SportListItem(
                         sport = sport,
                         onClick = { onSportClick(sport) }
@@ -71,63 +125,254 @@ fun SportsListScreen(
 }
 
 @Composable
+private fun SportsHeader(onBackClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(82.dp)
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        PremiumBackButton(onClick = onBackClick)
+
+        Spacer(modifier = Modifier.width(14.dp))
+
+        Column(verticalArrangement = Arrangement.Center) {
+            Text(
+                text = "Sports",
+                color = SportsPrimaryText,
+                fontSize = 23.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = (-0.3).sp
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = "Find a venue near you",
+                color = SportsSecondaryText,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+@Composable
+private fun PremiumBackButton(onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.92f else 1f,
+        animationSpec = tween(durationMillis = 120),
+        label = "sportsBackScale"
+    )
+
+    Box(
+        modifier = Modifier
+            .size(42.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(CircleShape)
+            .background(SportsSurface.copy(alpha = 0.94f))
+            .border(BorderStroke(1.dp, SportsBorder), CircleShape)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                role = Role.Button,
+                onClickLabel = "Go back",
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+            contentDescription = "Back",
+            tint = SportsPrimaryText,
+            modifier = Modifier.size(22.dp)
+        )
+    }
+}
+
+@Composable
 fun SportListItem(
     sport: PopularEvent,
     onClick: () -> Unit
 ) {
-    ElevatedContrastCard(
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.975f else 1f,
+        animationSpec = tween(durationMillis = 120),
+        label = "sportCardScale"
+    )
+    val borderColor by animateColorAsState(
+        targetValue = if (isPressed) SportsBorderPressed else SportsBorder,
+        animationSpec = tween(durationMillis = 120),
+        label = "sportCardBorder"
+    )
+    val cardColor by animateColorAsState(
+        targetValue = if (isPressed) SportsSurfacePressed else SportsSurface,
+        animationSpec = tween(durationMillis = 120),
+        label = "sportCardColor"
+    )
+    val cardShape = RoundedCornerShape(18.dp)
+
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .shadow(
+                elevation = if (isPressed) 2.dp else 7.dp,
+                shape = cardShape,
+                ambientColor = Color.Black.copy(alpha = 0.22f),
+                spotColor = Color.Black.copy(alpha = 0.32f)
+            )
+            .clip(cardShape)
+            .background(cardColor)
+            .border(BorderStroke(1.dp, borderColor), cardShape)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                role = Role.Button,
+                onClickLabel = "Open ${sport.title}",
+                onClick = onClick
+            )
     ) {
-        Row(
+        SportImage(sport = sport)
+
+        Column(
             modifier = Modifier
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 11.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(100.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFF1648D5).copy(alpha = 0.18f)),
-                contentAlignment = Alignment.Center
+            Text(
+                text = sport.title,
+                modifier = Modifier.heightIn(min = 40.dp),
+                color = SportsPrimaryText,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                lineHeight = 19.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Spacer(modifier = Modifier.height(7.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                if (sport.imageUrl != null) {
-                    coil3.compose.AsyncImage(
-                        model = sport.imageUrl,
-                        contentDescription = sport.title,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
+                Icon(
+                    imageVector = Icons.Rounded.LocationOn,
+                    contentDescription = null,
+                    tint = SportsAccent,
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = sport.location,
+                    modifier = Modifier.weight(1f),
+                    color = SportsSecondaryText,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            Spacer(modifier = Modifier.height(9.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Rounded.Star,
+                    contentDescription = null,
+                    tint = SportsAccent,
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(3.dp))
+                Text(
+                    text = "4.5",
+                    color = SportsPrimaryText,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.width(5.dp))
+                Text(
+                    text = "RATING",
+                    color = SportsMutedText,
+                    fontSize = 8.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.7.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(7.dp))
+
+            Text(
+                text = sport.price,
+                color = SportsAccent,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.ExtraBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun SportImage(sport: PopularEvent) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(1.52f)
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(Color(0xFF123E70), Color(0xFF081F42))
+                )
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        if (!sport.imageUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = sport.imageUrl,
+                contentDescription = "${sport.title} venue",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clip(CircleShape)
+                        .background(SportsAccent.copy(alpha = 0.14f))
+                        .border(
+                            width = 1.dp,
+                            color = SportsAccent.copy(alpha = 0.38f),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.SportsSoccer,
+                        contentDescription = null,
+                        tint = SportsAccent,
+                        modifier = Modifier.size(25.dp)
                     )
-                } else {
-                    Text("TURF", color = Color.White.copy(alpha = 0.3f), fontWeight = FontWeight.Bold)
                 }
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                ElevatedCardTitle(sport.title)
-                Spacer(modifier = Modifier.height(2.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.LocationOn, null, tint = EntryCardAccent, modifier = Modifier.size(14.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    ElevatedCardSubtitle(sport.location, Modifier.weight(1f))
-                }
-                Spacer(modifier = Modifier.height(10.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = "Starting from", color = Color(0xFF98A2B3), fontSize = 11.sp)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = sport.price.split("/").first().trim(), color = EntryCardAccent, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-
-            Column(horizontalAlignment = Alignment.End) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.Star, null, tint = EntryCardAccent, modifier = Modifier.size(14.dp))
-                    Spacer(modifier = Modifier.width(2.dp))
-                    Text("4.5", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                }
+                Spacer(modifier = Modifier.height(7.dp))
+                Text(
+                    text = "ENTRYMYSLOT SPORTS",
+                    color = SportsSecondaryText,
+                    fontSize = 8.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.8.sp
+                )
             }
         }
     }
