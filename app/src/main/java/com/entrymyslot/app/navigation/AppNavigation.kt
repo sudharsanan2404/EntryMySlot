@@ -23,6 +23,7 @@ import com.entrymyslot.app.screens.payment.BookingCategory
 import com.entrymyslot.app.screens.payment.BookingDetails
 import com.entrymyslot.app.screens.payment.PaymentScreen
 import com.entrymyslot.app.screens.turf.TurfScreen
+import com.entrymyslot.app.screens.turf.TurfDetailScreen
 import com.entrymyslot.app.screens.turf.TurfBookingScreen
 import com.entrymyslot.app.screens.turf.SportsListScreen
 import com.entrymyslot.app.screens.events.EventsListScreen
@@ -75,8 +76,8 @@ fun AppNavigation(
                 onSportClick = { sport ->
                     navController.navigate("turf_details/${sport.id}")
                 },
-                onMovieBookClick = {
-                    navController.navigate("cinema_selection")
+                onMovieBookClick = { movie ->
+                    navController.navigate("cinema_selection/${movie.id}")
                 },
                 onCategoryClick = { category ->
                     when (category) {
@@ -100,7 +101,7 @@ fun AppNavigation(
                 movies = homeState.movies.map { it.toPopularEvent() }.ifEmpty { latestMovies },
                 onBackClick = { navController.popBackStack() },
                 onMovieClick = { movie ->
-                    navController.navigate("cinema_selection")
+                    navController.navigate("cinema_selection/${movie.id}")
                 }
             )
         }
@@ -196,10 +197,10 @@ fun AppNavigation(
 
         composable("turf_details/{sportId}") { backStackEntry ->
             val sportId = backStackEntry.arguments?.getString("sportId") ?: "sport_1"
-            TurfScreen(
-                sportId = sportId,
+            TurfDetailScreen(
+                venueId = sportId,
                 onBackClick = { navController.popBackStack() },
-                onBookNowClick = {
+                onBookNowClick = { _ ->
                     navController.navigate("turf_booking/$sportId")
                 }
             )
@@ -215,11 +216,16 @@ fun AppNavigation(
             )
         }
 
-        composable("cinema_selection") {
+        composable("cinema_selection/{movieId}") { backStackEntry ->
+            val movieId = backStackEntry.arguments?.getString("movieId") ?: ""
             CinemaSelectionScreen(
+                movieId = movieId,
                 onBackClick = { navController.popBackStack() },
-                onTimeSelected = { cinema, time, _ ->
-                    navController.navigate("movie_booking/${cinema.id}/$time")
+                onCinemaClick = { showtimeId ->
+                    // Navigate to movie booking with a default cinema from sample data
+                    // since we don't have the cinema object here.
+                    val cinema = sampleCinemas[0]
+                    navController.navigate("movie_booking/${cinema.id}/$showtimeId")
                 }
             )
         }

@@ -47,10 +47,16 @@ class BookingViewModel(
 }
 
 private fun EventBookingListItem.toBookingItem() = BookingItem(
-    id = bookingId,
-    type = "Event",
+    id = bookingId.toString(),
+    type = BookingType.EVENT,
     title = eventTitle,
-    date = createdAt,
-    status = status,
-    amount = totalAmount
+    location = "Chennai", // Fallback location
+    dateTime = createdAt,
+    details = "Tickets Booked",
+    price = "₹$totalAmount",
+    status = when (status.lowercase()) {
+        "completed", "confirmed" -> BookingStatus.COMPLETED
+        "cancelled" -> BookingStatus.CANCELLED
+        else -> BookingStatus.UPCOMING
+    }
 )
