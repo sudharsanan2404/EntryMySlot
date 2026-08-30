@@ -3,7 +3,11 @@ package com.entrymyslot.app.core.network
 import android.content.Context
 import com.entrymyslot.app.core.storage.AuthTokenStore
 import com.entrymyslot.app.data.auth.AuthApi
+import com.entrymyslot.app.data.booking.BookingApi
+import com.entrymyslot.app.data.event.EventApi
 import com.entrymyslot.app.data.home.HomeApi
+import com.entrymyslot.app.data.movie.MovieApi
+import com.entrymyslot.app.data.turf.TurfApi
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
@@ -15,7 +19,7 @@ import kotlin.jvm.java
 object RetrofitClient {
 
     private const val BASE_URL =
-        "http://192.168.1.36:4000/api/v1/"
+        "http://98.130.20.52:4000/api/v1/"
 
     private lateinit var authTokenStore: AuthTokenStore
 
@@ -58,4 +62,16 @@ object RetrofitClient {
 
     val homeApi: HomeApi
         get() = retrofit.create(HomeApi::class.java)
+
+    val eventApi: EventApi
+        get() = retrofit.create(EventApi::class.java)
+
+    val movieApi: MovieApi
+        get() = retrofit.create(MovieApi::class.java)
+
+    val turfApi: TurfApi
+        get() = retrofit.create(TurfApi::class.java)
+
+    val bookingApi: BookingApi
+        get() = retrofit.create(BookingApi::class.java)
 }

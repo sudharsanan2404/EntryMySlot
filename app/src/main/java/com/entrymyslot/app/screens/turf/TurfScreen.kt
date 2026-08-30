@@ -1,36 +1,30 @@
 package com.entrymyslot.app.screens.turf
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.LightMode
-import androidx.compose.material.icons.outlined.LocalParking
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.LocationOn
-import androidx.compose.material.icons.outlined.Shower
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.SportsSoccer
-import androidx.compose.material.icons.outlined.WaterDrop
-import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -44,67 +38,36 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
-
-// ------------------------------------------------------------
-// COLORS
-// ------------------------------------------------------------
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.entrymyslot.app.EntryMySlotApp
+import com.entrymyslot.app.data.model.SportsVenueDto
 
 private val TurfBlueTop = Color(0xFF063DB5)
 private val TurfBlueBottom = Color(0xFF041F5D)
-
-private val TurfCard = Color(0xFF111D32)
-private val TurfCardLight = Color(0xFF142B58)
-
 private val TurfOrange = Color(0xFFFF8A00)
 private val TurfWhite = Color.White
 private val TurfGray = Color(0xFFB8C0D0)
-
-
-// ------------------------------------------------------------
-// TURF SCREEN
-// ------------------------------------------------------------
+private val TurfCard = Color(0xFF111D32)
 
 @Composable
 fun TurfScreen(
+    venues: List<SportsVenueDto> = emptyList(),
+    isLoading: Boolean = false,
+    error: String? = null,
     onBackClick: () -> Unit = {},
-    onBookNowClick: () -> Unit = {},
-    sportId: String = "sport_1"
+    onVenueClick: (String) -> Unit = {}
 ) {
+    var searchQuery by remember { mutableStateOf("") }
 
-    val title = when(sportId) {
-        "sport_1" -> "Green Arena Turf"
-        "sport_2" -> "Blue Wave Pool"
-        "sport_3" -> "Elite Badminton Club"
-        else -> "Sports Venue"
-    }
-
-    val type = when(sportId) {
-        "sport_1" -> "Football • 5v5"
-        "sport_2" -> "Swimming • Olympic Size"
-        "sport_3" -> "Badminton • 4 Courts"
-        else -> "Sports"
-    }
-
-    val price = when(sportId) {
-        "sport_1" -> "₹800 / hour"
-        "sport_2" -> "₹200 / hour"
-        "sport_3" -> "₹400 / hour"
-        else -> "Contact for Price"
-    }
-
-    val about = when(sportId) {
-        "sport_1" -> "Premium 5-a-side football turf with professional artificial grass, floodlights and comfortable facilities. Perfect for casual games and tournaments."
-        "sport_2" -> "Pristine Olympic-sized swimming pool with temperature control and dedicated lanes for professional training and recreational swimming."
-        "sport_3" -> "State-of-the-art indoor badminton facility featuring 4 professional wooden courts with synthetic mats and excellent LED lighting."
-        else -> "Premium sports facility with modern amenities and professional standards."
-    }
-
-    var isFavorite by remember {
-        mutableStateOf(false)
+    val filteredVenues = remember(venues, searchQuery) {
+        if (searchQuery.isBlank()) venues
+        else venues.filter {
+            it.name.contains(searchQuery, true) ||
+            (it.city?.contains(searchQuery, true) == true) ||
+            it.venueType.contains(searchQuery, true)
+        }
     }
 
     Box(
@@ -112,602 +75,139 @@ fun TurfScreen(
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    colors = listOf(
-                        TurfBlueTop,
-                        Color(0xFF0737A4),
-                        Color(0xFF062E88),
-                        TurfBlueBottom
-                    )
+                    colors = listOf(TurfBlueTop, Color(0xFF0737A4), Color(0xFF062E88), TurfBlueBottom)
                 )
             )
     ) {
-
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding(),
-            contentPadding = PaddingValues(
-                bottom = 110.dp
-            )
+            modifier = Modifier.fillMaxSize().statusBarsPadding(),
+            contentPadding = PaddingValues(bottom = 20.dp)
         ) {
-
-            // ------------------------------------------------
-            // TOP BAR
-            // ------------------------------------------------
-
             item {
-
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(
-                            horizontal = 16.dp,
-                            vertical = 12.dp
-                        ),
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-
                     Icon(
-                        imageVector = Icons.Outlined.ArrowBack,
+                        imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                         contentDescription = "Back",
                         tint = TurfWhite,
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clickable {
-                                onBackClick()
-                            }
+                        modifier = Modifier.size(28.dp).clickable { onBackClick() }
                     )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text(text = "Sports Venues", color = TurfWhite, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                }
+            }
 
-                    Spacer(
-                        modifier = Modifier.weight(1f)
-                    )
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFF12152E))
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Outlined.Search, contentDescription = null, tint = TurfGray, modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(text = "Search venues...", color = TurfGray, fontSize = 14.sp)
+                }
+            }
 
-                    Box(
-                        modifier = Modifier
-                            .size(42.dp)
-                            .clip(CircleShape)
-                            .background(
-                                Color.Black.copy(alpha = 0.15f)
-                            )
-                            .clickable {
-                                isFavorite = !isFavorite
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-
-                        Icon(
-                            imageVector =
-                                if (isFavorite) {
-                                    Icons.Rounded.Favorite
-                                } else {
-                                    Icons.Outlined.FavoriteBorder
-                                },
-                            contentDescription = "Favorite",
-                            tint =
-                                if (isFavorite) {
-                                    Color.Red
-                                } else {
-                                    TurfWhite
-                                },
-                            modifier = Modifier.size(25.dp)
-                        )
+            if (error != null) {
+                item {
+                    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+                        Text(text = error, color = Color(0xFFFF5252), fontSize = 13.sp)
                     }
                 }
             }
 
-            // ------------------------------------------------
-            // TURF IMAGE
-            // ------------------------------------------------
-
-            item {
-
-                TurfImagePlaceholder(sportId = sportId)
-
-                Spacer(
-                    modifier = Modifier.height(18.dp)
-                )
-            }
-
-            // ------------------------------------------------
-            // TURF DETAILS
-            // ------------------------------------------------
-
-            item {
-
-                Column(
-                    modifier = Modifier.padding(
-                        horizontal = 18.dp
-                    )
-                ) {
-
-                    Text(
-                        text = title,
-                        color = TurfWhite,
-                        fontSize = 25.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Spacer(
-                        modifier = Modifier.height(8.dp)
-                    )
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-
-                        Text(
-                            text = "★ 4.7",
-                            color = TurfOrange,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        Text(
-                            text = "  •  $type",
-                            color = TurfGray,
-                            fontSize = 15.sp
-                        )
+            if (isLoading) {
+                item {
+                    Box(modifier = Modifier.fillMaxWidth().padding(top = 60.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = TurfOrange)
                     }
-
-                    Spacer(
-                        modifier = Modifier.height(14.dp)
+                }
+            } else {
+                items(filteredVenues) { venue ->
+                    TurfVenueCard(
+                        venue = venue,
+                        onClick = { onVenueClick(venue.id.toString()) }
                     )
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-
-                        Icon(
-                            imageVector = Icons.Outlined.LocationOn,
-                            contentDescription = null,
-                            tint = TurfOrange,
-                            modifier = Modifier.size(21.dp)
-                        )
-
-                        Spacer(
-                            modifier = Modifier.width(5.dp)
-                        )
-
-                        Column {
-
-                            Text(
-                                text = "2.4 km away",
-                                color = TurfWhite,
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-
-                            Text(
-                                text = "Chennai, Tamil Nadu",
-                                color = TurfGray,
-                                fontSize = 13.sp
-                            )
+                }
+                if (filteredVenues.isEmpty() && !isLoading) {
+                    item {
+                        Box(modifier = Modifier.fillMaxWidth().padding(top = 60.dp), contentAlignment = Alignment.Center) {
+                            Text("No venues found", color = TurfGray, fontSize = 15.sp)
                         }
                     }
                 }
-
-                Spacer(
-                    modifier = Modifier.height(25.dp)
-                )
-            }
-
-            // ------------------------------------------------
-            // ABOUT
-            // ------------------------------------------------
-
-            item {
-
-                SectionHeading(
-                    title = "About this Venue"
-                )
-
-                Text(
-                    text = about,
-                    color = TurfGray,
-                    fontSize = 14.sp,
-                    lineHeight = 21.sp,
-                    modifier = Modifier.padding(
-                        horizontal = 18.dp,
-                        vertical = 8.dp
-                    )
-                )
-
-                Spacer(
-                    modifier = Modifier.height(22.dp)
-                )
-            }
-
-            // ------------------------------------------------
-            // FACILITIES
-            // ------------------------------------------------
-
-            item {
-
-                SectionHeading(
-                    title = "Facilities"
-                )
-
-                Spacer(
-                    modifier = Modifier.height(10.dp)
-                )
-
-                FacilitiesGrid(sportId = sportId)
-
-                Spacer(
-                    modifier = Modifier.height(24.dp)
-                )
-            }
-
-            // ------------------------------------------------
-            // SPORTS
-            // ------------------------------------------------
-
-            item {
-
-                SectionHeading(
-                    title = "Available Sports"
-                )
-
-                Spacer(
-                    modifier = Modifier.height(12.dp)
-                )
-
-                val sports = when(sportId) {
-                    "sport_1" -> listOf("Football", "Cricket")
-                    "sport_2" -> listOf("Swimming", "Diving")
-                    "sport_3" -> listOf("Badminton", "Table Tennis")
-                    else -> listOf("Sports")
-                }
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 18.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-
-                    sports.forEachIndexed { index, sport ->
-                        SportChip(
-                            name = sport,
-                            selected = index == 0
-                        )
-                    }
-                }
-
-                Spacer(
-                    modifier = Modifier.height(25.dp)
-                )
             }
         }
-
-        // ----------------------------------------------------
-        // BOOK NOW BAR
-        // ----------------------------------------------------
-
-        TurfBookingBar(
-            price = price,
-            onBookNowClick = onBookNowClick,
-            modifier = Modifier.align(Alignment.BottomCenter)
-        )
     }
 }
 
-
-// ------------------------------------------------------------
-// IMAGE PLACEHOLDER
-// ------------------------------------------------------------
-
 @Composable
-private fun TurfImagePlaceholder(sportId: String) {
-
-    val icon = when(sportId) {
-        "sport_1" -> Icons.Outlined.SportsSoccer
-        "sport_2" -> Icons.Outlined.WaterDrop
-        "sport_3" -> Icons.Outlined.SportsSoccer // Should be badminton, but let's use something generic or just keep it
-        else -> Icons.Outlined.SportsSoccer
-    }
-
-    val label = when(sportId) {
-        "sport_1" -> "TURF IMAGE"
-        "sport_2" -> "POOL IMAGE"
-        "sport_3" -> "CLUB IMAGE"
-        else -> "VENUE IMAGE"
-    }
-
-    Box(
+private fun TurfVenueCard(venue: SportsVenueDto, onClick: () -> Unit) {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .height(215.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .background(
-                Color(0xFF172B4A)
-            )
-            .border(
-                width = 1.dp,
-                color = Color(0xFF31528A),
-                shape = RoundedCornerShape(18.dp)
-            ),
-        contentAlignment = Alignment.Center
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(TurfCard)
+            .clickable { onClick() }
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
+        Box(
+            modifier = Modifier
+                .size(width = 90.dp, height = 80.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(Color(0xFF172B4A)),
+            contentAlignment = Alignment.Center
         ) {
-
             Icon(
-                imageVector = icon,
+                imageVector = Icons.Outlined.SportsSoccer,
                 contentDescription = null,
-                tint = Color(0xFF667085),
-                modifier = Modifier.size(55.dp)
-            )
-
-            Spacer(
-                modifier = Modifier.height(8.dp)
-            )
-
-            Text(
-                text = label,
-                color = Color(0xFF78849A),
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold
-            )
-
-            Text(
-                text = "Replace with actual image",
-                color = Color(0xFF667085),
-                fontSize = 12.sp
+                tint = TurfOrange.copy(alpha = 0.6f),
+                modifier = Modifier.size(28.dp)
             )
         }
-    }
-}
-
-
-// ------------------------------------------------------------
-// SECTION HEADING
-// ------------------------------------------------------------
-
-@Composable
-private fun SectionHeading(
-    title: String
-) {
-
-    Text(
-        text = title,
-        color = TurfWhite,
-        fontSize = 20.sp,
-        fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.padding(
-            horizontal = 18.dp
-        )
-    )
-}
-
-
-// ------------------------------------------------------------
-// FACILITIES
-// ------------------------------------------------------------
-
-@Composable
-private fun FacilitiesGrid(sportId: String) {
-
-    val mainIcon = when(sportId) {
-        "sport_1" -> Icons.Outlined.SportsSoccer
-        "sport_2" -> Icons.Outlined.WaterDrop
-        "sport_3" -> Icons.Outlined.SportsSoccer
-        else -> Icons.Outlined.SportsSoccer
-    }
-
-    val mainLabel = when(sportId) {
-        "sport_1" -> "Football"
-        "sport_2" -> "Swimming"
-        "sport_3" -> "Badminton"
-        else -> "Sports"
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 18.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-
-            FacilityItem(
-                icon = mainIcon,
-                title = mainLabel
-            )
-
-            FacilityItem(
-                icon = Icons.Outlined.LightMode,
-                title = "Floodlights"
-            )
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-
-            FacilityItem(
-                icon = Icons.Outlined.Shower,
-                title = "Changing Room"
-            )
-
-            FacilityItem(
-                icon = Icons.Outlined.LocalParking,
-                title = "Parking"
-            )
-        }
-    }
-}
-
-
-// ------------------------------------------------------------
-// FACILITY ITEM
-// ------------------------------------------------------------
-
-@Composable
-private fun RowScope.FacilityItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String
-) {
-
-    Row(
-        modifier = Modifier
-            .weight(1f)
-            .clip(RoundedCornerShape(12.dp))
-            .background(TurfCardLight)
-            .border(
-                width = 1.dp,
-                color = Color(0xFF274A86),
-                shape = RoundedCornerShape(12.dp)
-            )
-            .padding(
-                horizontal = 13.dp,
-                vertical = 13.dp
-            ),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = TurfOrange,
-            modifier = Modifier.size(23.dp)
-        )
-
-        Spacer(
-            modifier = Modifier.width(9.dp)
-        )
-
-        Text(
-            text = title,
-            color = TurfWhite,
-            fontSize = 13.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-    }
-}
-
-
-// ------------------------------------------------------------
-// SPORT CHIP
-// ------------------------------------------------------------
-
-@Composable
-private fun SportChip(
-    name: String,
-    selected: Boolean
-) {
-
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(
-                if (selected) {
-                    TurfOrange
-                } else {
-                    TurfCardLight
-                }
-            )
-            .border(
-                width = 1.dp,
-                color = if (selected) {
-                    TurfOrange
-                } else {
-                    Color(0xFF31528A)
-                },
-                shape = RoundedCornerShape(10.dp)
-            )
-            .padding(
-                horizontal = 20.dp,
-                vertical = 11.dp
-            )
-    ) {
-
-        Text(
-            text = name,
-            color = if (selected) {
-                Color.White
-            } else {
-                TurfGray
-            },
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium
-        )
-    }
-}
-
-
-// ------------------------------------------------------------
-// BOOKING BAR
-// ------------------------------------------------------------
-
-@Composable
-private fun TurfBookingBar(
-    price: String,
-    onBookNowClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(
-                Color(0xFF061F58)
-            )
-            .navigationBarsPadding()
-            .padding(
-                horizontal = 18.dp,
-                vertical = 13.dp
-            ),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
-
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "Starting from",
+                text = venue.name,
+                color = TurfWhite,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "${venue.venueType}${venue.city?.let { " • $it" } ?: ""}",
                 color = TurfGray,
                 fontSize = 12.sp
             )
-
-            Text(
-                text = price,
-                color = TurfWhite,
-                fontSize = 19.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(11.dp))
-                .background(TurfOrange)
-                .clickable {
-                    onBookNowClick()
+            Spacer(modifier = Modifier.height(2.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.Star, contentDescription = null, tint = TurfOrange, modifier = Modifier.size(12.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(text = "4.5", color = TurfGray, fontSize = 12.sp)
+                if (venue.description?.isNotBlank() == true) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = venue.description!!.take(30) + if (venue.description!!.length > 30) "..." else "",
+                        color = TurfGray.copy(alpha = 0.7f),
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    )
                 }
-                .padding(
-                    horizontal = 27.dp,
-                    vertical = 13.dp
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-
-            Text(
-                text = "Book Now",
-                color = Color.White,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-            )
+            }
         }
     }
 }

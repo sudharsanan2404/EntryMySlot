@@ -3,7 +3,19 @@ package com.entrymyslot.app.screens.movies
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -12,10 +24,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.LocationOn
-import androidx.compose.material.icons.outlined.Theaters
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,6 +39,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.entrymyslot.app.data.model.CinemaDto
+import com.entrymyslot.app.data.model.ShowtimeDto
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -34,26 +52,22 @@ private val MovieWhite = Color.White
 private val MovieGray = Color(0xFFB8C0D0)
 private val MovieCardLight = Color(0xFF142B58)
 
-data class Cinema(
-    val id: String,
-    val name: String,
-    val location: String,
-    val showTimes: List<String>
-)
-
-val sampleCinemas = listOf(
-    Cinema("c1", "PVR Cinemas", "Phoenix Marketcity, Chennai", listOf("10:30 AM", "01:45 PM", "04:30 PM", "07:15 PM", "10:30 PM")),
-    Cinema("c2", "INOX", "VR Mall, Chennai", listOf("11:00 AM", "02:30 PM", "05:00 PM", "08:15 PM", "11:00 PM")),
-    Cinema("c3", "AGS Cinemas", "T. Nagar, Chennai", listOf("10:00 AM", "01:00 PM", "04:00 PM", "07:00 PM", "10:00 PM")),
-    Cinema("c4", "Sathyam Cinemas", "Royapettah, Chennai", listOf("10:45 AM", "02:00 PM", "05:15 PM", "08:30 PM", "11:15 PM"))
-)
-
 @Composable
 fun CinemaSelectionScreen(
-    onBackClick: () -> Unit,
-    onTimeSelected: (Cinema, String, Calendar) -> Unit
+    movieId: String,
+    onCinemaClick: (String) -> Unit,
+    onBackClick: () -> Unit
 ) {
+    val viewModel = remember { CinemaSelectionViewModel() }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
     var selectedDate by remember { mutableStateOf(Calendar.getInstance()) }
+
+    val movieIdLong = movieId.toLongOrNull()
+
+    if (uiState.cinemas.isEmpty() && !uiState.isLoading && uiState.error == null && movieIdLong != null) {
+        viewModel.loadCinemasAndShowtimes(movieIdLong)
+    }
 
     Box(
         modifier = Modifier
@@ -65,7 +79,6 @@ fun CinemaSelectionScreen(
                 .fillMaxSize()
                 .statusBarsPadding()
         ) {
-            // Top Bar
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -76,24 +89,22 @@ fun CinemaSelectionScreen(
                     imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                     contentDescription = "Back",
                     tint = MovieWhite,
-                    modifier = Modifier
-                        .size(28.dp)
-                        .clickable { onBackClick() }
+                    modifier = Modifier.size(28.dp).clickable { onBackClick() }
                 )
                 Spacer(modifier = Modifier.width(16.dp))
-                Text(
-                    text = "Select Cinema & Time",
-                    color = MovieWhite,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Text(text = "Select Cinema & Time", color = MovieWhite, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            }
+
+            if (uiState.error != null) {
+                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    Text(text = uiState.error!!, color = Color(0xFFFF5252), fontSize = 13.sp)
+                }
             }
 
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = 24.dp)
             ) {
-                // Date Selector
                 item {
                     Column(modifier = Modifier.padding(vertical = 16.dp)) {
                         Row(
@@ -109,10 +120,33 @@ fun CinemaSelectionScreen(
                     }
                 }
 
-                // Cinema List
-                items(sampleCinemas) { cinema ->
-                    CinemaRow(cinema) { time ->
-                        onTimeSelected(cinema, time, selectedDate)
+                if (uiState.isLoading) {
+                    item {
+                        Box(modifier = Modifier.fillMaxWidth().padding(top = 40.dp), contentAlignment = Alignment.Center) {
+                            androidx.compose.material3.CircularProgressIndicator(color = MovieOrange)
+                        }
+                    }
+                } else {
+                    val dateStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(selectedDate.time)
+
+                    items(uiState.cinemas) { cinema ->
+                        val cinemaShowtimes = uiState.showtimesByCinema[cinema.id]
+                            ?.filter { it.showDate == dateStr } ?: emptyList()
+                        CinemaRow(
+                            cinema = cinema,
+                            showtimes = cinemaShowtimes,
+                            onTimeClick = { showtimeId ->
+                                onCinemaClick(showtimeId.toString())
+                            }
+                        )
+                    }
+
+                    if (uiState.cinemas.isEmpty() && !uiState.isLoading) {
+                        item {
+                            Box(modifier = Modifier.fillMaxWidth().padding(top = 40.dp), contentAlignment = Alignment.Center) {
+                                Text("No cinemas found", color = MovieGray, fontSize = 14.sp)
+                            }
+                        }
                     }
                 }
             }
@@ -130,7 +164,7 @@ private fun DateSelector(selectedDate: Calendar, onDateSelected: (Calendar) -> U
         items(7) { i ->
             val date = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, i) }
             val isSelected = date.get(Calendar.DAY_OF_YEAR) == selectedDate.get(Calendar.DAY_OF_YEAR)
-            
+
             val day = SimpleDateFormat("EEE", locale).format(date.time)
             val num = SimpleDateFormat("dd", locale).format(date.time)
 
@@ -151,7 +185,11 @@ private fun DateSelector(selectedDate: Calendar, onDateSelected: (Calendar) -> U
 }
 
 @Composable
-private fun CinemaRow(cinema: Cinema, onTimeClick: (String) -> Unit) {
+private fun CinemaRow(
+    cinema: CinemaDto,
+    showtimes: List<ShowtimeDto>,
+    onTimeClick: (Long) -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -163,35 +201,36 @@ private fun CinemaRow(cinema: Cinema, onTimeClick: (String) -> Unit) {
     ) {
         Text(cinema.name, color = MovieWhite, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(4.dp))
+        val location = listOfNotNull(cinema.address, cinema.city).filter { it.isNotBlank() }.joinToString(", ")
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Outlined.LocationOn, null, tint = MovieGray, modifier = Modifier.size(14.dp))
             Spacer(modifier = Modifier.width(4.dp))
-            Text(cinema.location, color = MovieGray, fontSize = 12.sp)
+            Text(location.ifBlank { "Location TBA" }, color = MovieGray, fontSize = 12.sp)
         }
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            cinema.showTimes.forEach { time ->
+            showtimes.forEach { st ->
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
                         .border(1.dp, MovieOrange.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
-                        .clickable { onTimeClick(time) }
+                        .clickable { onTimeClick(st.id) }
                         .padding(horizontal = 12.dp, vertical = 8.dp)
                 ) {
-                    Text(time, color = MovieOrange, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                    Text(st.showTime, color = MovieOrange, fontSize = 13.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium)
                 }
             }
         }
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun FlowRow(
     modifier: Modifier = Modifier,

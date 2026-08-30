@@ -5,7 +5,7 @@ import kotlinx.coroutines.flow.firstOrNull
 
 class AuthRepository(
     private val authApi: AuthApi,
-    private val tokenStore: AuthTokenStore
+    private val tokenStore: AuthTokenStore,
 ) {
 
     // ------------------------------------------------------------
@@ -117,7 +117,6 @@ class AuthRepository(
     suspend fun verifyRegistrationOtp(
         email: String,
         otp: String,
-        deviceInfo: String? = null
     ): Result<VerifyOtpData> {
 
         return try {

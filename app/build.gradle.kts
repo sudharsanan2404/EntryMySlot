@@ -73,16 +73,12 @@ dependencies {
     // Material Extended Icons (Lock, Visibility, Person, Email icons-kaga)
     implementation("androidx.compose.material:material-icons-extended")
 
-    // Image loading (Coil - future screens-kum theva padum)
-    implementation("io.coil-kt:coil-compose:2.7.0")
-
-    // Tooling & Debugging
-    debugImplementation("androidx.compose.ui:ui-tooling")
-    debugImplementation("androidx.compose.ui:ui-test-manifest")
-
+    // Image loading (Coil v3 for Kotlin 2.0 / OkHttp 5.x)
     implementation("io.coil-kt.coil3:coil-compose:3.5.0")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.5.0")
 
     implementation("com.google.accompanist:accompanist-systemuicontroller:0.36.0")
     implementation("com.google.android.gms:play-services-location:21.3.0")
+
+    implementation("com.google.zxing:core:3.5.2")
 }

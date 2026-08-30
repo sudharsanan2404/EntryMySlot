@@ -1,7 +1,6 @@
 package com.entrymyslot.app.screens.home
 
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -12,7 +11,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.GridView
@@ -47,23 +45,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.entrymyslot.app.R
-import com.entrymyslot.app.screens.movies.MovieOverviewContent
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 
 // ------------------------------------------------------------
@@ -447,6 +435,33 @@ private fun MovieOverviewBottomSheet(
             movie = movie,
             onBookClick = onBookClick
         )
+    }
+}
+
+@Composable
+private fun MovieOverviewContent(
+    movie: PopularEvent,
+    onBookClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(text = movie.title, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(text = movie.date, color = EntryGray, fontSize = 14.sp)
+        Spacer(modifier = Modifier.height(24.dp))
+        Button(
+            onClick = onBookClick,
+            modifier = Modifier.fillMaxWidth().height(50.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = EntryOrange),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text(text = "Book Now", color = Color.White, fontWeight = FontWeight.Bold)
+        }
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
@@ -1349,7 +1364,7 @@ fun ProfessionalLocationPicker(onDismiss: () -> Unit, onCitySelected: (String) -
             Column(
                 modifier = Modifier.fillMaxWidth().padding(20.dp)
             ) {
-                // Header Row with Close Button (Fixed Error Here)
+                // Header Row with Close Button
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -1390,7 +1405,7 @@ fun ProfessionalLocationPicker(onDismiss: () -> Unit, onCitySelected: (String) -
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Divider(modifier = Modifier.weight(1f), color = borderColor)
+                    HorizontalDivider(modifier = Modifier.weight(1f), color = borderColor)
                     Text(
                         text = "OR PICK MANUALLY",
                         color = textGray,
@@ -1398,7 +1413,7 @@ fun ProfessionalLocationPicker(onDismiss: () -> Unit, onCitySelected: (String) -
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(horizontal = 12.dp)
                     )
-                    Divider(modifier = Modifier.weight(1f), color = borderColor)
+                    HorizontalDivider(modifier = Modifier.weight(1f), color = borderColor)
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -1433,7 +1448,6 @@ fun ProfessionalLocationPicker(onDismiss: () -> Unit, onCitySelected: (String) -
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    // FIXED ERROR HERE
                                     .clickable { onCitySelected(district) }
                                     .padding(horizontal = 16.dp, vertical = 14.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween
@@ -1446,7 +1460,7 @@ fun ProfessionalLocationPicker(onDismiss: () -> Unit, onCitySelected: (String) -
                                     fontWeight = FontWeight.Bold
                                 )
                             }
-                            Divider(color = borderColor)
+                            HorizontalDivider(color = borderColor)
                         }
                     }
                 }

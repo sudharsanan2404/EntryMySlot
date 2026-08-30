@@ -3,7 +3,6 @@ package com.entrymyslot.app.data.auth
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
-import retrofit2.http.PATCH
 import retrofit2.http.POST
 
 interface AuthApi {
@@ -15,7 +14,7 @@ interface AuthApi {
 
     @POST("auth/login-enhanced")
     suspend fun login(
-        @Body request: LoginRequest
+        @Body request: LoginRequest,
     ): Response<LoginResponse>
 
 
@@ -26,7 +25,7 @@ interface AuthApi {
 
     @POST("auth/register-otp")
     suspend fun register(
-        @Body request: RegisterRequest
+        @Body request: RegisterRequest,
     ): Response<RegisterOtpResponse>
 
 
@@ -37,7 +36,7 @@ interface AuthApi {
 
     @POST("auth/verify-registration-otp")
     suspend fun verifyRegistrationOtp(
-        @Body request: VerifyOtpRequest
+        @Body request: VerifyOtpRequest,
     ): Response<VerifyOtpResponse>
 
 
@@ -48,7 +47,7 @@ interface AuthApi {
 
     @POST("auth/resend-registration-otp")
     suspend fun resendRegistrationOtp(
-        @Body request: ResendOtpRequest
+        @Body request: ResendOtpRequest,
     ): Response<ResendOtpResponse>
 
 
@@ -59,7 +58,7 @@ interface AuthApi {
 
     @POST("auth/refresh-token")
     suspend fun refreshToken(
-        @Body request: RefreshTokenRequest
+        @Body request: RefreshTokenRequest,
     ): Response<RefreshTokenResponse>
 
 
@@ -70,7 +69,7 @@ interface AuthApi {
 
     @POST("auth/logout")
     suspend fun logout(
-        @Body request: LogoutRequest
+        @Body request: LogoutRequest,
     ): Response<LogoutResponse>
 
 
@@ -90,7 +89,7 @@ interface AuthApi {
 
     @POST("auth/forgot-password")
     suspend fun forgotPassword(
-        @Body request: ForgotPasswordRequest
+        @Body request: ForgotPasswordRequest,
     ): Response<ApiMessageResponse>
 
 
@@ -101,7 +100,7 @@ interface AuthApi {
 
     @POST("auth/reset-password")
     suspend fun resetPassword(
-        @Body request: ResetPasswordRequest
+        @Body request: ResetPasswordRequest,
     ): Response<ApiMessageResponse>
 
 
