@@ -3,37 +3,16 @@ package com.entrymyslot.app.screens.movies
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,16 +21,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.entrymyslot.app.data.model.SeatDto
-import java.util.*
+import java.util.Calendar
 
 private val MovieBlueTop = Color(0xFF063DB5)
 private val MovieBlueBottom = Color(0xFF041F5D)
 private val MovieOrange = Color(0xFFFF8A00)
 private val MovieWhite = Color.White
 private val MovieGray = Color(0xFFB8C0D0)
-private val MovieCard = Color(0xFF111D32)
 private val MovieCardLight = Color(0xFF142B58)
 private val SeatAvailable = Color(0xFF183E65)
 private val SeatSelected = Color(0xFFFF8A00)
@@ -59,30 +35,18 @@ private val SeatBooked = Color(0xFF3A404B)
 
 @Composable
 fun MovieBookingScreen(
-    showtimeId: String,
+    cinema: Cinema,
+    initialTime: String,
+    selectedDate: Calendar,
     onBackClick: () -> Unit = {},
-    onBookingSuccess: () -> Unit = {}
+    onContinueClick: () -> Unit = {}
 ) {
-    val viewModel = remember { MovieBookingViewModel() }
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
-    val showtimeIdLong = showtimeId.toLongOrNull()
-
-    var selectedSeats by remember { mutableStateOf(setOf<String>()) }
+    var selectedTime by remember { mutableStateOf(initialTime) }
     var seatCountToBook by remember { mutableIntStateOf(1) }
+    var selectedSeats by remember { mutableStateOf(setOf<String>()) }
 
-    if (uiState.seatData == null && !uiState.isLoading && uiState.error == null && showtimeIdLong != null) {
-        viewModel.loadSeats(showtimeIdLong)
-    }
-
-    val ticketPrice = uiState.seatData?.seats?.firstOrNull()?.let {
-        try { (it.priceMultiplier * (uiState.basePrice.toDoubleOrNull() ?: 180.0)).toInt() } catch (e: Exception) { 180 }
-    } ?: 180
-
+    val ticketPrice = 180
     val totalPrice = selectedSeats.size * ticketPrice
-
-    val cinemaName = uiState.seatData?.cinemaName ?: "Cinema"
-    val showTime = uiState.seatData?.showTime ?: ""
 
     Box(
         modifier = Modifier
@@ -94,6 +58,7 @@ fun MovieBookingScreen(
                 .fillMaxSize()
                 .statusBarsPadding()
         ) {
+            // Top Bar
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -104,101 +69,100 @@ fun MovieBookingScreen(
                     imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                     contentDescription = "Back",
                     tint = MovieWhite,
-                    modifier = Modifier.size(28.dp).clickable { onBackClick() }
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clickable { onBackClick() }
                 )
                 Spacer(modifier = Modifier.width(16.dp))
                 Text("Select Seats", color = MovieWhite, fontSize = 21.sp, fontWeight = FontWeight.Bold)
-            }
-
-            if (uiState.error != null) {
-                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
-                    Text(uiState.error!!, color = Color(0xFFFF5252), fontSize = 13.sp)
-                }
             }
 
             LazyColumn(
                 modifier = Modifier.weight(1f),
                 contentPadding = PaddingValues(bottom = 20.dp)
             ) {
+                // Selected Cinema info
                 item {
                     Column(modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp)) {
-                        Text(cinemaName, color = MovieWhite, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                        if (showTime.isNotBlank()) {
-                            Text("$showTime", color = MovieGray, fontSize = 13.sp)
-                        }
+                        Text(cinema.name, color = MovieWhite, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                        Text(cinema.location, color = MovieGray, fontSize = 13.sp)
                     }
                 }
 
-                if (uiState.isLoading) {
-                    item {
-                        Box(modifier = Modifier.fillMaxWidth().padding(top = 40.dp), contentAlignment = Alignment.Center) {
-                            androidx.compose.material3.CircularProgressIndicator(color = MovieOrange)
-                        }
-                    }
-                } else {
-                    val allSeats = uiState.seatData?.seats ?: emptyList()
-                    val rows = allSeats.groupBy { it.row }.toSortedMap()
-
-                    item {
-                        Column(modifier = Modifier.padding(vertical = 12.dp)) {
-                            Text("How many seats?", color = MovieWhite, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 18.dp))
-                            Spacer(modifier = Modifier.height(12.dp))
-                            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(horizontal = 18.dp)) {
-                                items(8) { i ->
-                                    val count = i + 1
-                                    val isSelected = count == seatCountToBook
-                                    Box(
-                                        modifier = Modifier
-                                            .size(40.dp)
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .background(if (isSelected) MovieOrange else MovieCardLight)
-                                            .clickable {
-                                                seatCountToBook = count
-                                                selectedSeats = emptySet()
-                                            },
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(count.toString(), color = MovieWhite, fontWeight = FontWeight.Bold)
-                                    }
+                // Show Times in horizontal
+                item {
+                    Column(modifier = Modifier.padding(vertical = 12.dp)) {
+                        Text("Show Times", color = MovieWhite, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 18.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            items(cinema.showTimes) { time ->
+                                val isSelected = time == selectedTime
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(if (isSelected) MovieOrange else MovieCardLight)
+                                        .clickable { 
+                                            selectedTime = time
+                                            selectedSeats = emptySet()
+                                        }
+                                        .padding(horizontal = 16.dp, vertical = 10.dp)
+                                ) {
+                                    Text(time, color = MovieWhite, fontSize = 13.sp, fontWeight = FontWeight.Medium)
                                 }
                             }
                         }
                     }
+                }
 
-                    item {
-                        Spacer(modifier = Modifier.height(20.dp))
-                        SeatLegend()
-                        Spacer(modifier = Modifier.height(30.dp))
-                        CinemaScreen()
-                        Spacer(modifier = Modifier.height(30.dp))
-                    }
-
-                    rows.forEach { (row, seatsInRow) ->
-                        item {
-                            SeatRow(
-                                row = row,
-                                seats = seatsInRow,
-                                selectedSeats = selectedSeats,
-                                countToBook = seatCountToBook,
-                                onSeatClick = { newSelection -> selectedSeats = newSelection }
-                            )
-                            Spacer(modifier = Modifier.height(10.dp))
-                        }
-                    }
-
-                    item {
-                        Spacer(modifier = Modifier.height(20.dp))
-                    }
-
-                    if (selectedSeats.isNotEmpty()) {
-                        item {
-                            MovieBookingSummary(selectedSeats.size, ticketPrice, totalPrice)
+                // Seat Count Selector
+                item {
+                    Column(modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
+                        Text("How many seats?", color = MovieWhite, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            items(8) { i ->
+                                val count = i + 1
+                                val isSelected = count == seatCountToBook
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isSelected) MovieOrange else MovieCardLight)
+                                        .clickable { 
+                                            seatCountToBook = count
+                                            selectedSeats = emptySet()
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(count.toString(), color = MovieWhite, fontWeight = FontWeight.Bold)
+                                }
+                            }
                         }
                     }
                 }
+
+                // Screen & Seats
+                item {
+                    Spacer(modifier = Modifier.height(20.dp))
+                    SeatLegend()
+                    Spacer(modifier = Modifier.height(30.dp))
+                    CinemaScreen()
+                    Spacer(modifier = Modifier.height(30.dp))
+                    SeatLayout(
+                        selectedSeats = selectedSeats,
+                        countToBook = seatCountToBook,
+                        onSeatClick = { newSelection ->
+                            selectedSeats = newSelection
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(30.dp))
+                }
             }
 
-            MovieBottomBar(selectedSeats.size, totalPrice, onContinueClick = onBookingSuccess)
+            MovieBottomBar(selectedSeats.size, totalPrice, onContinueClick)
         }
     }
 }
@@ -233,53 +197,56 @@ private fun CinemaScreen() {
 }
 
 @Composable
-private fun SeatRow(
-    row: String,
-    seats: List<SeatDto>,
+private fun SeatLayout(
     selectedSeats: Set<String>,
     countToBook: Int,
     onSeatClick: (Set<String>) -> Unit
 ) {
-    val bookedIds = seats.filter { it.status.equals("booked", true) || it.status.equals("sold", true) }.map { it.id }.toSet()
+    val rows = listOf("A", "B", "C", "D", "E", "F", "G")
+    val bookedSeats = setOf("A2", "B4", "C1", "D3", "E2", "F4", "A6", "B7", "C5", "E8")
 
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(row, color = MovieGray, fontSize = 12.sp, modifier = Modifier.width(20.dp))
-        Spacer(modifier = Modifier.width(10.dp))
+    Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        rows.forEach { row ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(row, color = MovieGray, fontSize = 12.sp, modifier = Modifier.width(20.dp))
+                Spacer(modifier = Modifier.width(10.dp))
+                
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    for (seatNum in 1..8) {
+                        val seatId = "$row$seatNum"
+                        val isBooked = seatId in bookedSeats
+                        val isSelected = seatId in selectedSeats
 
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            seats.forEach { seat ->
-                val seatId = seat.id
-                val isBooked = seatId in bookedIds
-                val isSelected = seatId in selectedSeats
-
-                SeatItem(
-                    isSelected = isSelected,
-                    isBooked = isBooked,
-                    onClick = {
-                        if (!isBooked) {
-                            val seatIndex = seats.indexOf(seat)
-                            val newSelection = mutableSetOf<String>()
-                            var possible = true
-                            for (i in 0 until countToBook) {
-                                val nextIdx = seatIndex + i
-                                if (nextIdx >= seats.size) {
-                                    possible = false
-                                    break
+                        SeatItem(
+                            isSelected = isSelected,
+                            isBooked = isBooked,
+                            onClick = {
+                                if (!isBooked) {
+                                    // Sequential Selection Logic
+                                    val newSelection = mutableSetOf<String>()
+                                    var possible = true
+                                    for (i in 0 until countToBook) {
+                                        val nextSeatNum = seatNum + i
+                                        if (nextSeatNum > 8) {
+                                            possible = false
+                                            break
+                                        }
+                                        val nextSeatId = "$row$nextSeatNum"
+                                        if (nextSeatId in bookedSeats) {
+                                            possible = false
+                                            break
+                                        }
+                                        newSelection.add(nextSeatId)
+                                    }
+                                    if (possible) {
+                                        onSeatClick(newSelection)
+                                    }
                                 }
-                                val nextSeat = seats[nextIdx]
-                                if (nextSeat.id in bookedIds) {
-                                    possible = false
-                                    break
-                                }
-                                newSelection.add(nextSeat.id)
                             }
-                            if (possible) {
-                                onSeatClick(newSelection)
-                            }
-                        }
+                        )
+                        if (seatNum == 2 || seatNum == 6) Spacer(modifier = Modifier.width(12.dp))
                     }
-                )
-                if (seats.indexOf(seat) == 2 || seats.indexOf(seat) == 6) Spacer(modifier = Modifier.width(12.dp))
+                }
             }
         }
     }
@@ -306,39 +273,6 @@ private fun SeatItem(isSelected: Boolean, isBooked: Boolean, onClick: () -> Unit
 }
 
 @Composable
-private fun MovieBookingSummary(count: Int, price: Int, total: Int) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 18.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(MovieCard)
-            .border(1.dp, Color(0xFF2A426B), RoundedCornerShape(16.dp))
-            .padding(20.dp)
-    ) {
-        Text("Booking Summary", color = MovieWhite, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(16.dp))
-        SummaryRow("Tickets", "$count seat(s)")
-        SummaryRow("Price", "$price x $count")
-        Spacer(modifier = Modifier.height(12.dp))
-        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFF293A59)))
-        Spacer(modifier = Modifier.height(12.dp))
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Total", color = MovieWhite, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            Text("$total", color = MovieOrange, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-        }
-    }
-}
-
-@Composable
-private fun SummaryRow(label: String, value: String) {
-    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, color = MovieGray, fontSize = 14.sp)
-        Text(value, color = MovieWhite, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-    }
-}
-
-@Composable
 private fun MovieBottomBar(count: Int, total: Int, onContinueClick: () -> Unit) {
     Row(
         modifier = Modifier
@@ -350,7 +284,7 @@ private fun MovieBottomBar(count: Int, total: Int, onContinueClick: () -> Unit) 
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(if (count == 0) "Select seats" else "$count seat(s) selected", color = MovieGray, fontSize = 12.sp)
-            Text("$total", color = MovieWhite, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text("₹$total", color = MovieWhite, fontSize = 20.sp, fontWeight = FontWeight.Bold)
         }
         Button(
             onClick = onContinueClick,

@@ -1,255 +1,409 @@
 package com.entrymyslot.app.screens.profile
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.*
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.ChevronRight
-import androidx.compose.material.icons.outlined.ConfirmationNumber
-import androidx.compose.material.icons.outlined.Event
-import androidx.compose.material.icons.outlined.HelpOutline
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.outlined.Payment
-import androidx.compose.material.icons.outlined.SportsSoccer
-import androidx.compose.material.icons.outlined.Storefront
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.entrymyslot.app.EntryMySlotApp
+import com.entrymyslot.app.R
 
-private val BgDark = Color(0xFF080B1A)
-private val CardBg = Color(0xFF0D1025)
-private val AccentOrange = Color(0xFFFF7A00)
-private val White = Color.White
-private val Gray = Color(0xFF8A8FA8)
+// ------------------------------------------------------------
+// COLORS & STYLES (Matching EntryMySlot Identity)
+// ------------------------------------------------------------
+private val EntryBlueTop = Color(0xFF092E9A)
+private val EntryBlueBottom = Color(0xFF061A3D)
+private val EntryDarkBlue = Color(0xFF0A1D4D)
+private val EntryOrange = Color(0xFFFF8A00)
+private val EntryWhite = Color.White
+private val EntryGray = Color(0xFF98A2B3)
+private val EntryCardBg = Color(0xFF111D32)
+private val EntryBorder = Color(0xFF1E3A8A).copy(alpha = 0.4f)
 
-data class ProfileMenuItem(
-    val title: String,
-    val icon: androidx.compose.ui.graphics.vector.ImageVector,
-    val onClick: () -> Unit
-)
-
+// ------------------------------------------------------------
+// PROFILE SCREEN
+// ------------------------------------------------------------
 @Composable
 fun ProfileScreen(
-    showListYourVenue: Boolean = false,
-    onNavigateToMyBookings: () -> Unit = {},
-    onLogout: () -> Unit = {},
-    onBackClick: () -> Unit = {},
-    onListYourVenueClick: () -> Unit = {},
-    onDebugClick: () -> Unit = {}
+    onBottomNavigationClick: (String) -> Unit = {},
+    onBookingClick: () -> Unit = {},
+    onActivityClick: () -> Unit = {},
+    onLogoutClick: () -> Unit = {}
 ) {
-    val viewModel = remember { ProfileViewModel(EntryMySlotApp.instance.appContainer.authRepository) }
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Gradient Background
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Brush.verticalGradient(listOf(EntryBlueTop, EntryBlueBottom)))
+        )
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(BgDark)
-    ) {
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
         ) {
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (showListYourVenue) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = "Back",
-                            tint = White,
-                            modifier = Modifier.size(28.dp).clickable { onBackClick() }
-                        )
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Text("List Your Venue", color = White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    } else {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = "Back",
-                            tint = White,
-                            modifier = Modifier.size(28.dp).clickable { onBackClick() }
-                        )
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Text("Profile", color = White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clickable { onDebugClick() })
-                    }
-                }
-            }
-            if (!showListYourVenue) {
-                item { ProfileHeader(name = uiState.userName, email = uiState.userEmail) }
-                item { Spacer(modifier = Modifier.height(16.dp)) }
-                item { ProfileMenuSection(onMyBookings = onNavigateToMyBookings, onListVenue = onListYourVenueClick) }
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentPadding = PaddingValues(bottom = 24.dp)
+            ) {
+                // 1. Profile Header
                 item {
-                    Button(
-                        onClick = { viewModel.logout(onComplete = onLogout) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                            .height(48.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF4444)),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Logout", color = White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                    }
+                    ProfileHeaderSection()
                 }
-            } else {
-                item { ListYourVenueContent(onBack = onBackClick) }
+
+                // 2. Statistics Row
+                item {
+                    StatisticsRow()
+                }
+
+                // 3. Quick Actions (My Bookings & Activity)
+                item {
+                    QuickActionsSection(onBookingClick, onActivityClick)
+                }
+
+                // 4. Account Settings
+                item {
+                    AccountSettingsSection()
+                }
+
+                // 5. Logout Button
+                item {
+                    LogoutButton(onLogoutClick)
+                }
             }
-            item { Spacer(modifier = Modifier.height(20.dp)) }
+
+            // Bottom Navigation
+            ProfileBottomNavigation(
+                selectedItem = "Profile",
+                onItemSelected = onBottomNavigationClick
+            )
         }
     }
 }
 
 @Composable
-private fun ProfileHeader(name: String, email: String) {
+private fun ProfileHeaderSection() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Profile Picture Placeholder
+        Box(
+            modifier = Modifier
+                .size(100.dp)
+                .clip(CircleShape)
+                .background(EntryDarkBlue)
+                .border(2.dp, EntryOrange, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Person,
+                contentDescription = null,
+                tint = EntryWhite.copy(alpha = 0.6f),
+                modifier = Modifier.size(60.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "Navaneethan",
+            color = EntryWhite,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = "navaneethan@email.com",
+            color = EntryGray,
+            fontSize = 14.sp
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            onClick = { /* Edit Profile */ },
+            shape = RoundedCornerShape(8.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = EntryOrange),
+            modifier = Modifier.height(36.dp),
+            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 0.dp)
+        ) {
+            Text("Edit Profile", color = EntryWhite, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun StatisticsRow() {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = 24.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(CardBg)
+            .background(EntryCardBg.copy(alpha = 0.5f))
+            .border(1.dp, EntryBorder, RoundedCornerShape(16.dp))
+            .padding(vertical = 16.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        StatItem("Bookings", "12")
+        StatDivider()
+        StatItem("Upcoming", "3", isHighlight = true)
+        StatDivider()
+        StatItem("Completed", "9")
+    }
+}
+
+@Composable
+private fun StatItem(label: String, value: String, isHighlight: Boolean = false) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = value,
+            color = if (isHighlight) EntryOrange else EntryWhite,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = label,
+            color = EntryGray,
+            fontSize = 12.sp
+        )
+    }
+}
+
+@Composable
+private fun StatDivider() {
+    Box(
+        modifier = Modifier
+            .width(1.dp)
+            .height(30.dp)
+            .background(EntryBorder)
+    )
+}
+
+@Composable
+private fun QuickActionsSection(onBookingClick: () -> Unit, onActivityClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(24.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        QuickActionCard(
+            title = "My Bookings",
+            icon = Icons.Outlined.ConfirmationNumber,
+            modifier = Modifier.weight(1f),
+            onClick = onBookingClick
+        )
+        QuickActionCard(
+            title = "Activity",
+            icon = Icons.Outlined.History,
+            modifier = Modifier.weight(1f),
+            onClick = onActivityClick
+        )
+    }
+}
+
+@Composable
+private fun QuickActionCard(
+    title: String,
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.height(100.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = EntryCardBg,
+        border = BorderStroke(1.dp, EntryBorder)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = EntryOrange,
+                modifier = Modifier.size(28.dp)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = title,
+                color = EntryWhite,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+@Composable
+private fun AccountSettingsSection() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
+    ) {
+        Text(
+            text = "Account",
+            color = EntryWhite,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = EntryCardBg),
+            border = BorderStroke(1.dp, EntryBorder)
+        ) {
+            Column {
+                SettingsItem(Icons.Outlined.Person, "Personal Information")
+                SettingsDivider()
+                SettingsItem(Icons.Outlined.Payment, "Saved Payments")
+                SettingsDivider()
+                SettingsItem(Icons.Outlined.Notifications, "Notifications")
+                SettingsDivider()
+                SettingsItem(Icons.Outlined.HelpOutline, "Help & Support")
+                SettingsDivider()
+                SettingsItem(Icons.Outlined.Description, "Terms & Conditions")
+                SettingsDivider()
+                SettingsItem(Icons.Outlined.PrivacyTip, "Privacy Policy")
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsItem(icon: ImageVector, title: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { }
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(60.dp)
-                .clip(CircleShape)
-                .background(AccentOrange),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = name.take(2).uppercase(),
-                color = White,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-        Spacer(modifier = Modifier.width(14.dp))
-        Column {
-            Text(name, color = White, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-            Text(email, color = Gray, fontSize = 13.sp)
-        }
+        Icon(icon, null, tint = EntryOrange, modifier = Modifier.size(20.dp))
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(title, color = EntryWhite, fontSize = 14.sp, modifier = Modifier.weight(1f))
+        Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, null, tint = EntryGray, modifier = Modifier.size(14.dp))
     }
 }
 
 @Composable
-private fun ProfileMenuSection(
-    onMyBookings: () -> Unit,
-    onListVenue: () -> Unit
+private fun SettingsDivider() {
+    Box(modifier = Modifier.fillMaxWidth().height(1.dp).padding(horizontal = 16.dp).background(EntryBorder.copy(alpha = 0.2f)))
+}
+
+@Composable
+private fun LogoutButton(onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(24.dp)
+            .height(54.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = EntryCardBg),
+        border = BorderStroke(1.dp, Color.Red.copy(alpha = 0.3f))
+    ) {
+        Text(
+            text = "Log Out",
+            color = Color.Red.copy(alpha = 0.8f),
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
+private fun ProfileBottomNavigation(
+    selectedItem: String,
+    onItemSelected: (String) -> Unit
 ) {
     val items = listOf(
-        ProfileMenuItem("My Bookings", Icons.Outlined.ConfirmationNumber) { onMyBookings() },
-        ProfileMenuItem("Payment Methods", Icons.Outlined.Payment) {},
-        ProfileMenuItem("Notifications", Icons.Outlined.Notifications) {},
-        ProfileMenuItem("Help & Support", Icons.Outlined.HelpOutline) {},
-        ProfileMenuItem("About", Icons.Outlined.Info) {},
-        ProfileMenuItem("List Your Venue", Icons.Outlined.Storefront) { onListVenue() }
+        Triple("Home", Icons.Outlined.Home, Icons.Rounded.Home),
+        Triple("My Bookings", Icons.Outlined.ConfirmationNumber, Icons.Outlined.ConfirmationNumber),
+        Triple("Profile", Icons.Outlined.AccountCircle, Icons.Outlined.AccountCircle)
     )
-    Column(
-        modifier = Modifier.padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF00227A).copy(alpha = 0.8f),
+                        Color(0xFF001242)
+                    )
+                )
+            )
     ) {
-        items.forEach { item ->
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = Color.Transparent,
+            tonalElevation = 0.dp
+        ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(CardBg)
-                    .clickable { item.onClick() }
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(
+                        top = 12.dp,
+                        bottom = WindowInsets.navigationBars
+                            .asPaddingValues()
+                            .calculateBottomPadding() + 8.dp
+                    ),
+                horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                Icon(item.icon, contentDescription = null, tint = AccentOrange, modifier = Modifier.size(22.dp))
-                Spacer(modifier = Modifier.width(14.dp))
-                Text(item.title, color = White, fontSize = 15.sp, modifier = Modifier.weight(1f))
-                Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Gray, modifier = Modifier.size(18.dp))
-            }
-        }
-    }
-}
-
-@Composable
-private fun ListYourVenueContent(onBack: () -> Unit) {
-    Column(
-        modifier = Modifier.padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Text("Register your venue on EntryMySlot", color = White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-        Text("Reach more customers and manage bookings online.", color = Gray, fontSize = 14.sp)
-        Spacer(modifier = Modifier.height(8.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(CardBg)
-                    .padding(vertical = 20.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Outlined.SportsSoccer, contentDescription = null, tint = AccentOrange, modifier = Modifier.size(28.dp))
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text("Turf", color = White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                items.forEach { item ->
+                    val selected = selectedItem == item.first
+                    Column(
+                        modifier = Modifier
+                            .width(75.dp)
+                            .clickable { onItemSelected(item.first) },
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = if (selected) item.third else item.second,
+                            contentDescription = item.first,
+                            tint = if (selected) EntryWhite else EntryGray,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = item.first,
+                            color = if (selected) EntryWhite else EntryGray,
+                            fontSize = 10.sp,
+                            fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
+                            maxLines = 1
+                        )
+                    }
                 }
             }
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(CardBg)
-                    .padding(vertical = 20.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Outlined.Event, contentDescription = null, tint = AccentOrange, modifier = Modifier.size(28.dp))
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text("Event Hall", color = White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                }
-            }
-        }
-        Button(
-            onClick = { },
-            modifier = Modifier.fillMaxWidth().height(48.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = AccentOrange),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Text("Get Started", color = White, fontWeight = FontWeight.Bold)
         }
     }
 }

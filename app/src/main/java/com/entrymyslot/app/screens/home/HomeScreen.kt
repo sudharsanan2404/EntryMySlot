@@ -1,6 +1,7 @@
 package com.entrymyslot.app.screens.home
 
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -11,9 +12,9 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.outlined.ConfirmationNumber
 import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.FavoriteBorder
@@ -45,14 +46,26 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.entrymyslot.app.R
+import com.entrymyslot.app.screens.movies.MovieOverviewContent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.entrymyslot.app.core.components.*
+import com.entrymyslot.app.core.utils.LocationHelper
 
 // ------------------------------------------------------------
 // COLORS
@@ -65,6 +78,47 @@ private val EntryWhite = Color(0xFFFFFFFF)
 private val EntryGray = Color(0xFF98A2B3)
 private val EntryDark = Color(0xFF0A1D4D)
 
+
+private fun getShortCityName(city: String): String = when (city) {
+    "Chennai" -> "CHN"
+    "Coimbatore" -> "CBE"
+    "Madurai" -> "MDU"
+    "Tiruchirappalli", "Trichy" -> "TRY"
+    "Salem" -> "SLM"
+    "Erode" -> "ERD"
+    "Vellore" -> "VEL"
+    "Tirunelveli" -> "TNV"
+    "Thoothukudi" -> "TUT"
+    "Ariyalur" -> "ALU"
+    "Chengalpattu" -> "CGL"
+    "Cuddalore" -> "CUD"
+    "Dharmapuri" -> "DPI"
+    "Dindigul" -> "DGL"
+    "Kallakurichi" -> "KKI"
+    "Kancheepuram" -> "KPM"
+    "Kanniyakumari" -> "KK"
+    "Karur" -> "KRR"
+    "Krishnagiri" -> "KGI"
+    "Nagapattinam" -> "NGT"
+    "Namakkal" -> "NKL"
+    "Nilgiris" -> "NIL"
+    "Perambalur" -> "PBL"
+    "Pudukkottai" -> "PDK"
+    "Ramanathapuram" -> "RAM"
+    "Ranipet" -> "RPT"
+    "Sivaganga" -> "SVG"
+    "Tenkasi" -> "TKS"
+    "Thanjavur" -> "TNJ"
+    "Theni" -> "TNI"
+    "Tirupathur" -> "TPT"
+    "Tiruppur" -> "TPR"
+    "Tiruvallur" -> "TLR"
+    "Tiruvannamalai" -> "TVM"
+    "Tiruvarur" -> "TVR"
+    "Viluppuram" -> "VPM"
+    "Virudhunagar" -> "VNR"
+    else -> if (city.length > 3) city.take(3).uppercase() else city.uppercase()
+}
 
 // ------------------------------------------------------------
 // DATA
@@ -96,11 +150,10 @@ private val categories = listOf(
     CategoryItem("Movies", Icons.Outlined.ConfirmationNumber),
     CategoryItem("Sports", Icons.Outlined.SportsSoccer),
     CategoryItem("Events", Icons.Outlined.Event),
-    CategoryItem("Concerts", Icons.Outlined.MusicNote),
-    CategoryItem("More", Icons.Filled.GridView)
+    CategoryItem("Concerts", Icons.Outlined.MusicNote)
 )
 
-private val popularEvents = listOf(
+val popularEvents = listOf(
     PopularEvent(
         id = "pop_1",
         title = "IND vs AUS - 2nd ODI",
@@ -121,16 +174,37 @@ private val popularEvents = listOf(
         date = "12 Dec 2024 | 8:00 PM",
         location = "Chennai",
         price = "From ₹499"
+    ),
+    PopularEvent(
+        id = "pop_4",
+        title = "Tech Summit 2024",
+        date = "15 Jan 2025 | 10:00 AM",
+        location = "Trade Center, Bangalore",
+        price = "Free Entry"
+    ),
+    PopularEvent(
+        id = "pop_5",
+        title = "Stand-up Comedy",
+        date = "05 Dec 2024 | 9:00 PM",
+        location = "The Laugh Club, Chennai",
+        price = "From ₹350"
+    ),
+    PopularEvent(
+        id = "pop_6",
+        title = "Food Festival",
+        date = "10 Nov 2024 | 11:00 AM",
+        location = "Island Ground, Chennai",
+        price = "From ₹100"
     )
 )
 
-private val latestMovies = listOf(
+val latestMovies = listOf(
     PopularEvent(
         id = "mov_1",
         title = "The Dark Knight",
         date = "In Cinemas Now",
         location = "IMAX, Chennai",
-        price = "From ₹199"
+        price = "From ₹190"
     ),
     PopularEvent(
         id = "mov_2",
@@ -145,10 +219,31 @@ private val latestMovies = listOf(
         date = "15 Oct 2024",
         location = "Luxe, Mumbai",
         price = "From ₹300"
+    ),
+    PopularEvent(
+        id = "mov_4",
+        title = "Avatar: Way of Water",
+        date = "In Cinemas Now",
+        location = "PVR, Chennai",
+        price = "From ₹220"
+    ),
+    PopularEvent(
+        id = "mov_5",
+        title = "The Matrix",
+        date = "Next Week",
+        location = "Sathyam, Chennai",
+        price = "From ₹180"
+    ),
+    PopularEvent(
+        id = "mov_6",
+        title = "Avengers: Endgame",
+        date = "20 Oct 2024",
+        location = "INOX, Madurai",
+        price = "From ₹150"
     )
 )
 
-private val sportsNearYou = listOf(
+val sportsNearYou = listOf(
     PopularEvent(
         id = "sport_1",
         title = "Green Arena Turf",
@@ -169,6 +264,27 @@ private val sportsNearYou = listOf(
         date = "Available Today",
         location = "T. Nagar, Chennai",
         price = "From ₹400"
+    ),
+    PopularEvent(
+        id = "sport_4",
+        title = "Victory Cricket Ground",
+        date = "Slots Available",
+        location = "OMR, Chennai",
+        price = "From ₹1500"
+    ),
+    PopularEvent(
+        id = "sport_5",
+        title = "Smash Tennis Court",
+        date = "Open 24/7",
+        location = "Anna Nagar, Chennai",
+        price = "From ₹600"
+    ),
+    PopularEvent(
+        id = "sport_6",
+        title = "Dunk Basket Court",
+        date = "Available Now",
+        location = "Porur, Chennai",
+        price = "From ₹300"
     )
 )
 
@@ -376,6 +492,8 @@ fun HomeScreen(
                 nearbySports = homeState.sports.map { it.toPopularEvent() }.ifEmpty { sportsNearYou },
                 isLoading = homeState.isLoading,
                 loadError = homeState.error,
+                selectedCity = homeState.selectedCity,
+                onCityChanged = { homeViewModel.updateCity(it) },
                 onRetry = homeViewModel::refresh,
                 modifier = Modifier.weight(1f)
             )
@@ -438,33 +556,6 @@ private fun MovieOverviewBottomSheet(
     }
 }
 
-@Composable
-private fun MovieOverviewContent(
-    movie: PopularEvent,
-    onBookClick: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(text = movie.title, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(text = movie.date, color = EntryGray, fontSize = 14.sp)
-        Spacer(modifier = Modifier.height(24.dp))
-        Button(
-            onClick = onBookClick,
-            modifier = Modifier.fillMaxWidth().height(50.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = EntryOrange),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Text(text = "Book Now", color = Color.White, fontWeight = FontWeight.Bold)
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-    }
-}
-
 
 // ------------------------------------------------------------
 // HOME CONTENT
@@ -482,13 +573,25 @@ private fun HomeContent(
     nearbySports: List<PopularEvent>,
     isLoading: Boolean,
     loadError: String?,
+    selectedCity: String,
+    onCityChanged: (String) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier
 ) {
 
     var showLocationPicker by remember { mutableStateOf(false) }
-    var selectedCity by remember { mutableStateOf("Chennai") }
-    var isLocationLoading by remember { mutableStateOf(false) }
+
+    val locationFetcher = rememberLocationFetcher { city ->
+        onCityChanged(city)
+        showLocationPicker = false // Auto-close when detected
+    }
+
+    if (locationFetcher.showGpsDialog) {
+        GpsDisabledDialog(
+            onConfirm = locationFetcher.onOpenLocationSettings,
+            onDismiss = locationFetcher.onDismissGpsDialog
+        )
+    }
 
     androidx.compose.foundation.lazy.LazyColumn(
         modifier = modifier.fillMaxWidth(),
@@ -533,7 +636,7 @@ private fun HomeContent(
                         .padding(end = 12.dp)
                         .height(40.dp)
                         .clickable {
-                            //
+                            showLocationPicker = true
                         },
                     contentAlignment = Alignment.Center
                 ) {
@@ -546,17 +649,19 @@ private fun HomeContent(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        if (isLocationLoading) {
+                        if (locationFetcher.state is LocationFetchState.Loading) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(16.dp),
-                                strokeWidth = 2.dp
+                                strokeWidth = 2.dp,
+                                color = Color.White
                             )
                         } else {
                             Text(
-                                text = selectedCity,
+                                text = getShortCityName(selectedCity),
                                 style = MaterialTheme.typography.labelMedium,
                                 maxLines = 1,
-                                color = Color.White
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
                             )
 
                             Icon(
@@ -713,9 +818,10 @@ private fun HomeContent(
     // Dialog-ah open panra logic
     if (showLocationPicker) {
         ProfessionalLocationPicker(
+            locationFetcher = locationFetcher,
             onDismiss = { showLocationPicker = false },
             onCitySelected = { city ->
-                selectedCity = city
+                onCityChanged(city)
                 showLocationPicker = false
             }
         )
@@ -1056,11 +1162,7 @@ private fun CategoryCard(
             Icon(
                 imageVector = category.icon,
                 contentDescription = category.title,
-                tint = if (category.title == "More") {
-                    EntryWhite
-                } else {
-                    EntryOrange
-                },
+                tint = EntryOrange,
                 modifier = Modifier.size(28.dp)
             )
         }
@@ -1237,7 +1339,7 @@ private fun PopularEventCard(
     }
 }
 
-private fun com.entrymyslot.app.data.model.HomeContent.toPopularEvent() = PopularEvent(
+fun com.entrymyslot.app.data.model.HomeContent.toPopularEvent() = PopularEvent(
     id = id,
     title = title,
     date = date,
@@ -1260,7 +1362,6 @@ private fun HomeBottomNavigation(
     val items = listOf(
         Triple("Home", Icons.Outlined.Home, Icons.Rounded.Home),
         Triple("My Bookings", Icons.Outlined.ConfirmationNumber, Icons.Outlined.ConfirmationNumber),
-        Triple("Wallet", Icons.Outlined.Wallet, Icons.Outlined.Wallet),
         Triple("Profile", Icons.Outlined.AccountCircle, Icons.Outlined.AccountCircle)
     )
 
@@ -1345,26 +1446,49 @@ private fun HomeBottomNavigation(
 }
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfessionalLocationPicker(onDismiss: () -> Unit, onCitySelected: (String) -> Unit) {
-    val darkBlueBg = Color(0xFF051336)
-    val cardBlue = Color(0xFF0A1C47)
-    val primaryBlue = Color(0xFF0057FF)
-    val textGray = Color(0xFFA0AABF)
-    val borderColor = Color(0xFF1A2C5B)
+fun ProfessionalLocationPicker(
+    locationFetcher: LocationFetcherController,
+    onDismiss: () -> Unit,
+    onCitySelected: (String) -> Unit
+) {
+    val darkBlueBg = Color(0xFF0A1D4D) // EntryDark
+    val cardBlue = Color(0xFF102868) // Darker variant for internal boxes
+    val primaryOrange = Color(0xFFFF8A00) // EntryOrange
+    val textGray = Color(0xFF98A2B3) // EntryGray
+    val borderColor = Color(0xFF1E3A8A).copy(alpha = 0.5f)
 
     var searchQuery by remember { mutableStateOf("") }
-    val districts = listOf("Ariyalur", "Chengalpattu", "Chennai", "Coimbatore", "Cuddalore", "Dharmapuri")
+    val districts = listOf(
+        "Ariyalur", "Chengalpattu", "Chennai", "Coimbatore", "Cuddalore",
+        "Dharmapuri", "Dindigul", "Erode", "Kallakurichi", "Kancheepuram",
+        "Kanniyakumari", "Karur", "Krishnagiri", "Madurai", "Mayiladuthurai",
+        "Nagapattinam", "Namakkal", "Nilgiris", "Perambalur", "Pudukkottai",
+        "Ramanathapuram", "Ranipet", "Salem", "Sivaganga", "Tenkasi",
+        "Thanjavur", "Theni", "Thoothukudi", "Tiruchirappalli", "Tirunelveli",
+        "Tirupathur", "Tiruppur", "Tiruvallur", "Tiruvannamalai", "Tiruvarur",
+        "Vellore", "Viluppuram", "Virudhunagar"
+    )
+
+    val filteredDistricts = districts.filter {
+        it.contains(searchQuery, ignoreCase = true)
+    }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(containerColor = darkBlueBg),
-            modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp)
+            border = BorderStroke(1.dp, borderColor),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp)
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(20.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp)
             ) {
-                // Header Row with Close Button
+                // Header Row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -1372,48 +1496,111 @@ fun ProfessionalLocationPicker(onDismiss: () -> Unit, onCitySelected: (String) -
                 ) {
                     Column {
                         Text(
-                            text = "Choose your district",
+                            text = "Select Location",
                             color = Color.White,
-                            fontSize = 20.sp,
+                            fontSize = 22.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "To show venues, events, and movies near you.",
+                            text = "Find events and venues near you",
                             color = textGray,
                             fontSize = 12.sp
                         )
                     }
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.Rounded.Close, contentDescription = "Close", tint = textGray)
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.White.copy(alpha = 0.05f))
+                    ) {
+                        Icon(Icons.Rounded.Close, contentDescription = "Close", tint = Color.White, modifier = Modifier.size(18.dp))
                     }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(28.dp))
 
-                Button(
-                    onClick = { /* TODO */ },
-                    modifier = Modifier.fillMaxWidth().height(50.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = primaryBlue)
-                ) {
-                    Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color.White)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = "Use my current location", color = Color.White, fontWeight = FontWeight.SemiBold)
+                // Detection UI
+                val fetchState = locationFetcher.state
+                if (fetchState is LocationFetchState.Success) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(54.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFF0056FF).copy(alpha = 0.15f))
+                            .border(1.dp, Color(0xFF0056FF).copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 16.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.LocationOn, null, tint = Color(0xFF0056FF), modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "Current location identified",
+                                    color = Color.White.copy(alpha = 0.7f),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = fetchState.cityName,
+                                    color = Color(0xFF0056FF),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Spacer(Modifier.weight(1f))
+                            Text(
+                                text = "IN USE",
+                                color = Color(0xFF0056FF),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                } else {
+                    Button(
+                        onClick = { locationFetcher.onStart() },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(54.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = primaryOrange),
+                        enabled = fetchState !is LocationFetchState.Loading
+                    ) {
+                        if (fetchState is LocationFetchState.Loading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color.White)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Use my current location",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp
+                            )
+                        }
+                    }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(28.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    HorizontalDivider(modifier = Modifier.weight(1f), color = borderColor)
+                    Box(modifier = Modifier.weight(1f).height(1.dp).background(borderColor))
                     Text(
-                        text = "OR PICK MANUALLY",
+                        text = "CHOOSE MANUALLY",
                         color = textGray,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(horizontal = 12.dp)
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 16.dp)
                     )
-                    HorizontalDivider(modifier = Modifier.weight(1f), color = borderColor)
+                    Box(modifier = Modifier.weight(1f).height(1.dp).background(borderColor))
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -1421,59 +1608,100 @@ fun ProfessionalLocationPicker(onDismiss: () -> Unit, onCitySelected: (String) -
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    placeholder = { Text("Search Tamil Nadu districts...", color = textGray) },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = textGray) },
+                    placeholder = {
+                        Text(
+                            "Search city or district...",
+                            color = textGray.copy(alpha = 0.5f),
+                            fontSize = 14.sp
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.Search,
+                            contentDescription = null,
+                            tint = textGray,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp),
+                    shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = primaryBlue,
+                        focusedBorderColor = primaryOrange,
                         unfocusedBorderColor = borderColor,
-                        cursorColor = primaryBlue,
+                        cursorColor = primaryOrange,
                         focusedContainerColor = cardBlue,
-                        unfocusedContainerColor = cardBlue
+                        unfocusedContainerColor = cardBlue,
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
                     ),
                     singleLine = true
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f, fill = false)
-                        .border(1.dp, borderColor, RoundedCornerShape(8.dp))
+                        .heightIn(max = 220.dp) // Reduced height
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(cardBlue)
+                        .border(1.dp, borderColor, RoundedCornerShape(12.dp))
                 ) {
                     LazyColumn {
-                        items(districts) { district ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { onCitySelected(district) }
-                                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(text = district, color = Color.White, fontSize = 14.sp)
-                                Text(
-                                    text = district.take(3).uppercase(),
-                                    color = textGray,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
+                        items(filteredDistricts) { district ->
+                            Column {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { onCitySelected(district) }
+                                        .padding(horizontal = 20.dp, vertical = 15.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = district,
+                                        color = Color.White,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        text = getShortCityName(district),
+                                        color = textGray,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                if (district != filteredDistricts.last()) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(1.dp)
+                                            .background(borderColor.copy(alpha = 0.2f))
+                                    )
+                                }
                             }
-                            HorizontalDivider(color = borderColor)
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Info, contentDescription = null, tint = textGray, modifier = Modifier.size(14.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        Icons.Default.Info,
+                        contentDescription = null,
+                        tint = textGray,
+                        modifier = Modifier.size(12.dp)
+                    )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Your selection is stored on this device only. We don't track your GPS.",
+                        text = "Manual selection is stored on device.",
                         color = textGray,
-                        fontSize = 11.sp
+                        fontSize = 10.sp
                     )
                 }
             }
