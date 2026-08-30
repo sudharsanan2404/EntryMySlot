@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+.env.*
+
+# Logs
+*.log
+
+# Build
+dist/
+build/
+.test-build/
+.next/
+
+# OS files
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
