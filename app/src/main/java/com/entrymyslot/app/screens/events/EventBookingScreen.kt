@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.entrymyslot.app.core.components.TermsAndPolicyBottomSheet
+import com.entrymyslot.app.screens.home.GlowBackground
 import com.entrymyslot.app.screens.home.PopularEvent
 
 private val BookingBackground = Color(0xFF061A38)
@@ -113,24 +114,9 @@ fun EventBookingScreen(
     val totalAmount = subtotal + convenienceFee + taxes
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(BookingBackground)
+        modifier = Modifier.fillMaxSize()
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(250.dp)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF0C3B78),
-                            BookingBackground.copy(alpha = 0.24f),
-                            Color.Transparent
-                        )
-                    )
-                )
-        )
+        GlowBackground()
 
         Column(modifier = Modifier.fillMaxSize()) {
             BookingHeader(
@@ -146,7 +132,7 @@ fun EventBookingScreen(
                     end = 16.dp,
                     bottom = 24.dp
                 ),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                verticalArrangement = Arrangement.spacedBy(11.dp)
             ) {
                 item(key = "event_summary") {
                     BookingEventSummary(event = event)
@@ -302,19 +288,13 @@ private fun BookingEventSummary(event: PopularEvent) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(BookingSurface)
-            .border(
-                BorderStroke(1.dp, BookingBorder.copy(alpha = 0.82f)),
-                RoundedCornerShape(18.dp)
-            )
-            .padding(12.dp),
+            .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .size(width = 92.dp, height = 104.dp)
-                .clip(RoundedCornerShape(13.dp))
+                .size(width = 72.dp, height = 78.dp)
+                .clip(RoundedCornerShape(11.dp))
                 .background(
                     Brush.linearGradient(
                         colors = listOf(Color(0xFF123E70), Color(0xFF081F42))
@@ -339,24 +319,24 @@ private fun BookingEventSummary(event: PopularEvent) {
             }
         }
 
-        Spacer(modifier = Modifier.width(13.dp))
+        Spacer(modifier = Modifier.width(11.dp))
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = event.title,
                 color = BookingPrimaryText,
-                fontSize = 17.sp,
+                fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 lineHeight = 21.sp,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.height(9.dp))
+            Spacer(modifier = Modifier.height(6.dp))
             CompactMetadataRow(
                 icon = Icons.Rounded.CalendarToday,
                 text = event.date
             )
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             CompactMetadataRow(
                 icon = Icons.Rounded.LocationOn,
                 text = event.location
@@ -416,7 +396,7 @@ private fun TicketTierCard(
         label = "ticketTierBorder"
     )
     val elevation by animateDpAsState(
-        targetValue = if (isSelected) 7.dp else 3.dp,
+        targetValue = if (isSelected) 5.dp else 2.dp,
         animationSpec = tween(durationMillis = 160),
         label = "ticketTierElevation"
     )
@@ -426,15 +406,15 @@ private fun TicketTierCard(
             .fillMaxWidth()
             .shadow(
                 elevation = elevation,
-                shape = RoundedCornerShape(18.dp),
+                shape = RoundedCornerShape(14.dp),
                 ambientColor = Color.Black.copy(alpha = 0.16f),
                 spotColor = Color.Black.copy(alpha = 0.24f)
             )
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(14.dp))
             .background(containerColor)
             .border(
                 BorderStroke(if (isSelected) 1.5.dp else 1.dp, borderColor),
-                RoundedCornerShape(18.dp)
+                RoundedCornerShape(14.dp)
             )
             .semantics {
                 selected = isSelected
@@ -444,7 +424,7 @@ private fun TicketTierCard(
                     else -> "$quantity tickets selected"
                 }
             }
-            .padding(16.dp)
+            .padding(13.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -455,7 +435,7 @@ private fun TicketTierCard(
                     Text(
                         text = tier.name,
                         color = if (tier.isSoldOut) BookingMutedText else BookingPrimaryText,
-                        fontSize = 18.sp,
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )
                     if (tier.isSoldOut) {
@@ -505,7 +485,7 @@ private fun TicketTierCard(
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(6.dp))
 
         Text(
             text = tier.description,
@@ -518,7 +498,7 @@ private fun TicketTierCard(
             lineHeight = 17.sp
         )
 
-        Spacer(modifier = Modifier.height(13.dp))
+        Spacer(modifier = Modifier.height(9.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),

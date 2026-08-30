@@ -65,6 +65,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.entrymyslot.app.screens.home.GlowBackground
 import com.entrymyslot.app.screens.home.PopularEvent
 
 private val MovieOrange = Color(0xFFFA580B)
@@ -84,23 +85,9 @@ fun MoviesListScreen(
     var favoriteMovies by remember { mutableStateOf(setOf<String>()) }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MovieBackground)
+        modifier = Modifier.fillMaxSize()
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(260.dp)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF0B4DA5).copy(alpha = 0.38f),
-                            MovieBackground.copy(alpha = 0f)
-                        )
-                    )
-                )
-        )
+        GlowBackground()
 
         Column(
             modifier = Modifier
@@ -113,12 +100,12 @@ fun MoviesListScreen(
                 columns = GridCells.Fixed(2),
                 contentPadding = PaddingValues(
                     start = 16.dp,
-                    top = 12.dp,
+                    top = 10.dp,
                     end = 16.dp,
-                    bottom = 28.dp
+                    bottom = 24.dp
                 ),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
                 items(

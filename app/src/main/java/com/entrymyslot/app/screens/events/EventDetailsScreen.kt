@@ -58,6 +58,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.entrymyslot.app.screens.home.GlowBackground
 import com.entrymyslot.app.screens.home.PopularEvent
 
 private val DetailsBackground = Color(0xFF061A38)
@@ -78,10 +79,10 @@ fun EventDetailsScreen(
     val context = LocalContext.current
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(DetailsBackground)
+        modifier = Modifier.fillMaxSize()
     ) {
+        GlowBackground()
+
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 118.dp)
@@ -138,7 +139,7 @@ private fun EventHero(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(352.dp)
+            .height(320.dp)
             .background(
                 Brush.linearGradient(
                     colors = listOf(Color(0xFF123E70), Color(0xFF081F42))
@@ -560,7 +561,7 @@ private fun DetailsSection(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 18.dp, vertical = 12.dp)
+            .padding(horizontal = 18.dp, vertical = 10.dp)
     ) {
         Text(
             text = title,

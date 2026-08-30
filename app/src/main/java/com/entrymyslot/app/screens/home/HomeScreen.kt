@@ -1375,7 +1375,7 @@ fun ProfessionalLocationPicker(
 ) {
     val darkBlueBg = Color(0xFF0A1D4D) // EntryDark
     val cardBlue = Color(0xFF102868) // Darker variant for internal boxes
-    val primaryOrange = Color(0xFFFF8A00) // EntryOrange
+    val primaryOrange = EntryOrange
     val textGray = Color(0xFF98A2B3) // EntryGray
     val borderColor = Color(0xFF1E3A8A).copy(alpha = 0.5f)
 

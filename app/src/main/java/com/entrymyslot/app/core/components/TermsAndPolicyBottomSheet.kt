@@ -121,7 +121,7 @@ fun TermsAndPolicyBottomSheet(
                     .fillMaxWidth()
                     .height(54.dp),
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF8A3D))
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFA580B))
             ) {
                 Text(
                     text = "Accept & Continue",
@@ -147,7 +147,7 @@ private fun PolicyItem(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = Color(0xFFFF8A3D),
+            tint = Color(0xFFFA580B),
             modifier = Modifier.size(20.dp)
         )
         Spacer(modifier = Modifier.width(12.dp))

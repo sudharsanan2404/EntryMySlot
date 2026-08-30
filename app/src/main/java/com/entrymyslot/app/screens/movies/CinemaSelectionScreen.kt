@@ -62,6 +62,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.entrymyslot.app.screens.home.GlowBackground
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -98,23 +99,9 @@ fun CinemaSelectionScreen(
     var selectedDate by remember { mutableStateOf(Calendar.getInstance()) }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MovieBackground)
+        modifier = Modifier.fillMaxSize()
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(280.dp)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF0B4DA5).copy(alpha = 0.38f),
-                            MovieBackground.copy(alpha = 0f)
-                        )
-                    )
-                )
-        )
+        GlowBackground()
 
         Column(
             modifier = Modifier

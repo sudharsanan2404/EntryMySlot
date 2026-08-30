@@ -19,14 +19,12 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -53,6 +51,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.entrymyslot.app.screens.home.GlowBackground
 import com.entrymyslot.app.screens.home.PopularEvent
 
 private val SportsBackground = Color(0xFF061A38)
@@ -72,24 +71,9 @@ fun SportsListScreen(
     onSportClick: (PopularEvent) -> Unit
 ) {
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(SportsBackground)
+        modifier = Modifier.fillMaxSize()
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(260.dp)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF0C3B78),
-                            SportsBackground.copy(alpha = 0.22f),
-                            Color.Transparent
-                        )
-                    )
-                )
-        )
+        GlowBackground()
 
         Column(
             modifier = Modifier
@@ -98,8 +82,7 @@ fun SportsListScreen(
         ) {
             SportsHeader(onBackClick = onBackClick)
 
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
+            LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
                     start = 16.dp,
@@ -107,8 +90,7 @@ fun SportsListScreen(
                     end = 16.dp,
                     bottom = 28.dp
                 ),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(
                     items = sports,
@@ -129,7 +111,7 @@ private fun SportsHeader(onBackClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(82.dp)
+            .height(68.dp)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -216,7 +198,7 @@ fun SportListItem(
         animationSpec = tween(durationMillis = 120),
         label = "sportCardColor"
     )
-    val cardShape = RoundedCornerShape(18.dp)
+    val cardShape = RoundedCornerShape(16.dp)
 
     Column(
         modifier = Modifier
@@ -226,7 +208,7 @@ fun SportListItem(
                 scaleY = scale
             }
             .shadow(
-                elevation = if (isPressed) 2.dp else 7.dp,
+                elevation = if (isPressed) 2.dp else 5.dp,
                 shape = cardShape,
                 ambientColor = Color.Black.copy(alpha = 0.22f),
                 spotColor = Color.Black.copy(alpha = 0.32f)
@@ -247,20 +229,19 @@ fun SportListItem(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 11.dp)
+                .padding(horizontal = 13.dp, vertical = 12.dp)
         ) {
             Text(
                 text = sport.title,
-                modifier = Modifier.heightIn(min = 40.dp),
                 color = SportsPrimaryText,
-                fontSize = 15.sp,
+                fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                lineHeight = 19.sp,
+                lineHeight = 20.sp,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
 
-            Spacer(modifier = Modifier.height(7.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -286,7 +267,10 @@ fun SportListItem(
 
             Spacer(modifier = Modifier.height(9.dp))
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Icon(
                     imageVector = Icons.Rounded.Star,
                     contentDescription = null,
@@ -308,18 +292,16 @@ fun SportListItem(
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.7.sp
                 )
+                Spacer(modifier = Modifier.weight(1f))
+                Text(
+                    text = sport.price,
+                    color = SportsAccent,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
-
-            Spacer(modifier = Modifier.height(7.dp))
-
-            Text(
-                text = sport.price,
-                color = SportsAccent,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.ExtraBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
         }
     }
 }
@@ -329,7 +311,7 @@ private fun SportImage(sport: PopularEvent) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(1.52f)
+            .aspectRatio(16f / 9f)
             .background(
                 Brush.linearGradient(
                     colors = listOf(Color(0xFF123E70), Color(0xFF081F42))

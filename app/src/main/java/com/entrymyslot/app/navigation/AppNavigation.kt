@@ -143,6 +143,13 @@ fun AppNavigation(
                         SearchResultType.SPORT -> navController.navigate("turf_details/${result.item.id}")
                         SearchResultType.EVENT -> navController.navigate("event_details/${result.item.id}")
                     }
+                },
+                onBottomNavigationClick = { item ->
+                    when (item) {
+                        "Home" -> navController.navigate("home")
+                        "My Bookings" -> navController.navigate("bookings")
+                        "Profile" -> navController.navigate("profile")
+                    }
                 }
             )
         }

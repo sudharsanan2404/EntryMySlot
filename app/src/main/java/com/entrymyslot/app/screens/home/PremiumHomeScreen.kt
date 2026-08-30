@@ -105,6 +105,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.entrymyslot.app.R
 import com.entrymyslot.app.core.components.GpsDisabledDialog
+import com.entrymyslot.app.core.components.EntryBottomNavigation
 import com.entrymyslot.app.core.components.LocationFetchState
 import com.entrymyslot.app.core.components.rememberLocationFetcher
 import kotlinx.coroutines.delay
@@ -232,7 +233,7 @@ internal fun PremiumHomeScreen(
                     modifier = Modifier.weight(1f)
                 )
 
-                PremiumBottomNavigation(
+                EntryBottomNavigation(
                     selectedItem = selectedBottomItem,
                     onItemSelected = { item ->
                         selectedBottomItem = item

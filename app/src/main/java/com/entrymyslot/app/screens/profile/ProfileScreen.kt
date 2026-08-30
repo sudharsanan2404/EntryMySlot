@@ -63,6 +63,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.entrymyslot.app.core.components.EntryBottomNavigation
+import com.entrymyslot.app.screens.home.GlowBackground
 
 private val ProfileBackground = Color(0xFF061A38)
 private val ProfileSurface = Color(0xFF0B274F)
@@ -81,24 +83,9 @@ fun ProfileScreen(
     onLogoutClick: () -> Unit = {}
 ) {
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(ProfileBackground)
+        modifier = Modifier.fillMaxSize()
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(260.dp)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF0C3B78),
-                            ProfileBackground.copy(alpha = 0.28f),
-                            Color.Transparent
-                        )
-                    )
-                )
-        )
+        GlowBackground()
 
         Column(
             modifier = Modifier
@@ -119,7 +106,7 @@ fun ProfileScreen(
                 item { LogoutButton(onClick = onLogoutClick) }
             }
 
-            ProfileBottomNavigation(
+            EntryBottomNavigation(
                 selectedItem = "Profile",
                 onItemSelected = onBottomNavigationClick
             )

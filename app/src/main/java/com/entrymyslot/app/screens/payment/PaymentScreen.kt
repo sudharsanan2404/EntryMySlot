@@ -31,7 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.entrymyslot.app.screens.home.GlowBackground
 
-private val PaymentOrange = Color(0xFFFF8A3D)
+private val PaymentOrange = Color(0xFFFA580B)
 private val PaymentWhite = Color.White
 private val PaymentGray = Color(0xFF98A2B3)
 private val PaymentCard = Color(0xFF0E1739).copy(alpha = .94f)

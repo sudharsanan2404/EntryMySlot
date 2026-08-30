@@ -1,5 +1,8 @@
 package com.entrymyslot.app.screens.turf
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -11,24 +14,28 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.LightMode
@@ -52,6 +59,8 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
@@ -60,6 +69,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
+import com.entrymyslot.app.screens.home.GlowBackground
 
 private val TurfBackground = Color(0xFF061A38)
 private val TurfSurface = Color(0xFF0B274F)
@@ -82,11 +93,11 @@ fun TurfScreen(
         "sport_3" -> "Elite Badminton Club"
         else -> "Sports Venue"
     }
-    val type = when (sportId) {
-        "sport_1" -> "Football • 5v5"
-        "sport_2" -> "Swimming • Olympic Size"
-        "sport_3" -> "Badminton • 4 Courts"
-        else -> "Sports"
+    val venueType = when (sportId) {
+        "sport_1" -> "5-a-side Turf"
+        "sport_2" -> "Aquatic Centre"
+        "sport_3" -> "Indoor Court"
+        else -> "Sports Venue"
     }
     val price = when (sportId) {
         "sport_1" -> "₹800 / hour"
@@ -106,28 +117,18 @@ fun TurfScreen(
         "sport_3" -> listOf("Badminton", "Table Tennis")
         else -> listOf("Sports")
     }
+    val venueImages = emptyList<String>()
+    val venueSpecifications = emptyList<Pair<String, String>>()
+    val venueRules = emptyList<String>()
+    val venueLocation = "Chennai, Tamil Nadu"
+    val context = LocalContext.current
 
     var isFavorite by remember { mutableStateOf(false) }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(TurfBackground)
+        modifier = Modifier.fillMaxSize()
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(250.dp)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF0C3B78),
-                            TurfBackground.copy(alpha = 0.22f),
-                            Color.Transparent
-                        )
-                    )
-                )
-        )
+        GlowBackground()
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -142,9 +143,10 @@ fun TurfScreen(
             }
 
             item(key = "venue_hero") {
-                VenueHero(
+                VenueImageCarousel(
                     sportId = sportId,
-                    venueTitle = title
+                    venueTitle = title,
+                    imageUrls = venueImages
                 )
                 Spacer(modifier = Modifier.height(16.dp))
             }
@@ -152,7 +154,9 @@ fun TurfScreen(
             item(key = "venue_identity") {
                 VenueIdentity(
                     title = title,
-                    type = type
+                    venueType = venueType,
+                    location = venueLocation,
+                    onDirectionsClick = { context.openVenueLocation(venueLocation) }
                 )
                 Spacer(modifier = Modifier.height(20.dp))
             }
@@ -177,22 +181,30 @@ fun TurfScreen(
                 Spacer(modifier = Modifier.height(20.dp))
             }
 
+            item(key = "venue_specifications") {
+                VenueSpecifications(specifications = venueSpecifications)
+                Spacer(modifier = Modifier.height(20.dp))
+            }
+
             item(key = "available_sports") {
                 SectionHeading(title = "Available Sports")
                 Spacer(modifier = Modifier.height(10.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 18.dp),
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 18.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    sports.forEachIndexed { index, sport ->
+                    itemsIndexed(sports, key = { _, sport -> sport }) { index, sport ->
                         SportChip(
                             name = sport,
                             selected = index == 0
                         )
                     }
                 }
+                Spacer(modifier = Modifier.height(20.dp))
+            }
+
+            item(key = "rules") {
+                RulesAndGuidelines(rules = venueRules)
                 Spacer(modifier = Modifier.height(20.dp))
             }
         }
@@ -345,59 +357,124 @@ private fun FavoriteButton(
 }
 
 @Composable
-private fun VenueHero(
+private fun VenueImageCarousel(
     sportId: String,
-    venueTitle: String
+    venueTitle: String,
+    imageUrls: List<String>
 ) {
     val icon = when (sportId) {
         "sport_2" -> Icons.Outlined.WaterDrop
         else -> Icons.Outlined.SportsSoccer
     }
+    val pages: List<String?> = if (imageUrls.isEmpty()) listOf(null) else imageUrls
+    val listState = rememberLazyListState()
 
-    Box(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .height(184.dp)
+    ) {
+        val pageWidth = maxWidth
+        LazyRow(
+            state = listState,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            itemsIndexed(pages) { index, imageUrl ->
+                VenueImagePage(
+                    imageUrl = imageUrl,
+                    venueTitle = venueTitle,
+                    icon = icon,
+                    modifier = Modifier.width(pageWidth),
+                    page = index + 1
+                )
+            }
+        }
+
+        if (pages.size > 1) {
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 10.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(TurfBackground.copy(alpha = 0.72f))
+                    .padding(horizontal = 8.dp, vertical = 5.dp),
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                pages.indices.forEach { index ->
+                    Box(
+                        modifier = Modifier
+                            .size(if (listState.firstVisibleItemIndex == index) 7.dp else 5.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (listState.firstVisibleItemIndex == index) {
+                                    TurfAccent
+                                } else {
+                                    TurfSecondaryText.copy(alpha = 0.52f)
+                                }
+                            )
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun VenueImagePage(
+    imageUrl: String?,
+    venueTitle: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    modifier: Modifier = Modifier,
+    page: Int
+) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
             .shadow(
-                elevation = 6.dp,
-                shape = RoundedCornerShape(18.dp),
+                elevation = 5.dp,
+                shape = RoundedCornerShape(17.dp),
                 ambientColor = Color.Black.copy(alpha = 0.18f),
-                spotColor = Color.Black.copy(alpha = 0.26f)
+                spotColor = Color.Black.copy(alpha = 0.24f)
             )
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(17.dp))
             .background(
                 Brush.linearGradient(
-                    colors = listOf(Color(0xFF123E70), Color(0xFF081F42))
+                    colors = listOf(Color(0xFF102B50), Color(0xFF07162C))
                 )
             )
             .border(
-                BorderStroke(1.dp, TurfBorder.copy(alpha = 0.82f)),
-                RoundedCornerShape(18.dp)
+                BorderStroke(1.dp, TurfBorder.copy(alpha = 0.72f)),
+                RoundedCornerShape(17.dp)
             )
             .semantics {
-                contentDescription = "$venueTitle venue image"
+                contentDescription = "$venueTitle venue image $page"
             },
         contentAlignment = Alignment.Center
     ) {
-        Box(
-            modifier = Modifier
-                .size(68.dp)
-                .clip(CircleShape)
-                .background(TurfAccent.copy(alpha = 0.13f))
-                .border(
-                    width = 1.dp,
-                    color = TurfAccent.copy(alpha = 0.36f),
-                    shape = CircleShape
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
+        if (!imageUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = imageUrl,
                 contentDescription = null,
-                tint = TurfAccent,
-                modifier = Modifier.size(34.dp)
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
             )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(62.dp)
+                    .clip(CircleShape)
+                    .background(TurfAccent.copy(alpha = 0.13f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = TurfAccent,
+                    modifier = Modifier.size(31.dp)
+                )
+            }
         }
 
         Text(
@@ -416,7 +493,9 @@ private fun VenueHero(
 @Composable
 private fun VenueIdentity(
     title: String,
-    type: String
+    venueType: String,
+    location: String,
+    onDirectionsClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -441,7 +520,7 @@ private fun VenueIdentity(
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "  •  $type",
+                text = "  •  $venueType",
                 modifier = Modifier.weight(1f),
                 color = TurfSecondaryText,
                 fontSize = 14.sp,
@@ -468,13 +547,59 @@ private fun VenueIdentity(
                 )
                 Spacer(modifier = Modifier.height(1.dp))
                 Text(
-                    text = "Chennai, Tamil Nadu",
+                    text = location,
                     color = TurfSecondaryText,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium
                 )
             }
+            Spacer(modifier = Modifier.weight(1f))
+            DirectionsAction(onClick = onDirectionsClick)
         }
+    }
+}
+
+@Composable
+private fun DirectionsAction(onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val color by animateColorAsState(
+        targetValue = if (isPressed) TurfAccent.copy(alpha = 0.22f) else TurfAccent.copy(alpha = 0.12f),
+        animationSpec = tween(durationMillis = 110),
+        label = "directionsColor"
+    )
+
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(color)
+            .border(
+                BorderStroke(1.dp, TurfAccent.copy(alpha = 0.34f)),
+                RoundedCornerShape(10.dp)
+            )
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                role = Role.Button,
+                onClickLabel = "Get Directions",
+                onClick = onClick
+            )
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "Directions",
+            color = TurfAccent,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Icon(
+            imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+            contentDescription = null,
+            tint = TurfAccent,
+            modifier = Modifier.size(14.dp)
+        )
     }
 }
 
@@ -502,63 +627,134 @@ private fun FacilitiesGrid(sportId: String) {
         else -> "Sports"
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 18.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+    val facilities = listOf(
+        mainIcon to mainLabel,
+        Icons.Outlined.LightMode to "Floodlights",
+        Icons.Outlined.Shower to "Changing Room",
+        Icons.Outlined.LocalParking to "Parking"
+    )
+
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 18.dp),
+        horizontalArrangement = Arrangement.spacedBy(18.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            FacilityItem(icon = mainIcon, title = mainLabel)
-            FacilityItem(icon = Icons.Outlined.LightMode, title = "Floodlights")
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            FacilityItem(icon = Icons.Outlined.Shower, title = "Changing Room")
-            FacilityItem(icon = Icons.Outlined.LocalParking, title = "Parking")
+        items(facilities, key = { it.second }) { facility ->
+            FacilityItem(icon = facility.first, title = facility.second)
         }
     }
 }
 
 @Composable
-private fun RowScope.FacilityItem(
+private fun FacilityItem(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String
 ) {
-    Row(
+    Column(
         modifier = Modifier
-            .weight(1f)
-            .heightIn(min = 48.dp)
-            .clip(RoundedCornerShape(11.dp))
-            .background(TurfSurfaceRaised.copy(alpha = 0.88f))
-            .border(
-                BorderStroke(1.dp, TurfBorder.copy(alpha = 0.70f)),
-                RoundedCornerShape(11.dp)
-            )
-            .padding(horizontal = 11.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .width(74.dp)
+            .semantics { contentDescription = title },
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = TurfAccent,
-            modifier = Modifier.size(19.dp)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
+        Box(
+            modifier = Modifier
+                .size(38.dp)
+                .clip(CircleShape)
+                .background(TurfAccent.copy(alpha = 0.11f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = TurfAccent,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+        Spacer(modifier = Modifier.height(6.dp))
         Text(
             text = title,
-            modifier = Modifier.weight(1f),
-            color = TurfPrimaryText,
-            fontSize = 12.sp,
+            color = TurfSecondaryText,
+            fontSize = 10.sp,
             fontWeight = FontWeight.Medium,
-            maxLines = 1,
+            maxLines = 2,
+            lineHeight = 13.sp,
             overflow = TextOverflow.Ellipsis
         )
+    }
+}
+
+@Composable
+private fun VenueSpecifications(specifications: List<Pair<String, String>>) {
+    SectionHeading(title = "Venue Specifications")
+    Spacer(modifier = Modifier.height(8.dp))
+    if (specifications.isEmpty()) {
+        Text(
+            text = "Venue dimensions will be shown when provided.",
+            modifier = Modifier.padding(horizontal = 18.dp),
+            color = TurfMutedText,
+            fontSize = 12.sp,
+            lineHeight = 17.sp
+        )
+    } else {
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 18.dp),
+            horizontalArrangement = Arrangement.spacedBy(18.dp)
+        ) {
+            items(specifications, key = { it.first }) { specification ->
+                Column {
+                    Text(
+                        text = specification.first.uppercase(),
+                        color = TurfMutedText,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.7.sp
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = specification.second,
+                        color = TurfPrimaryText,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RulesAndGuidelines(rules: List<String>) {
+    SectionHeading(title = "Rules & Guidelines")
+    Spacer(modifier = Modifier.height(8.dp))
+    Column(
+        modifier = Modifier.padding(horizontal = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        if (rules.isEmpty()) {
+            Text(
+                text = "Venue-specific rules will be available before booking.",
+                color = TurfMutedText,
+                fontSize = 12.sp,
+                lineHeight = 17.sp
+            )
+        } else {
+            rules.forEach { rule ->
+                Row(verticalAlignment = Alignment.Top) {
+                    Text(
+                        text = "•",
+                        color = TurfAccent,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = rule,
+                        color = TurfSecondaryText,
+                        fontSize = 12.sp,
+                        lineHeight = 17.sp
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -660,5 +856,31 @@ private fun TurfBookingBar(
                 fontWeight = FontWeight.Bold
             )
         }
+    }
+}
+
+private fun Context.openVenueLocation(location: String) {
+    val encodedLocation = Uri.encode(location)
+    val googleMapsIntent = Intent(
+        Intent.ACTION_VIEW,
+        Uri.parse("geo:0,0?q=$encodedLocation")
+    ).apply {
+        setPackage("com.google.android.apps.maps")
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    val browserFallbackIntent = Intent(
+        Intent.ACTION_VIEW,
+        Uri.parse("https://www.google.com/maps/search/?api=1&query=$encodedLocation")
+    ).apply {
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+
+    val openedGoogleMaps = runCatching {
+        startActivity(googleMapsIntent)
+        true
+    }.getOrDefault(false)
+
+    if (!openedGoogleMaps) {
+        runCatching { startActivity(browserFallbackIntent) }
     }
 }

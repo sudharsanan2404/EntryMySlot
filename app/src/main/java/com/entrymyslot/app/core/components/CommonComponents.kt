@@ -19,7 +19,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-val EntryCardAccent = Color(0xFFFF8A3D)
+val EntryCardAccent = Color(0xFFFA580B)
 val EntryCardSubtitle = Color(0xFF9AA3C7)
 
 private val ElevatedCardShape = RoundedCornerShape(14.dp)

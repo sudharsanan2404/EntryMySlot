@@ -57,6 +57,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.entrymyslot.app.core.components.TermsAndPolicyBottomSheet
+import com.entrymyslot.app.screens.home.GlowBackground
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.util.Calendar
@@ -92,28 +94,15 @@ fun MovieBookingScreen(
     var selectedTime by remember { mutableStateOf(initialTime) }
     var seatCountToBook by remember { mutableIntStateOf(1) }
     var selectedSeats by remember { mutableStateOf(setOf<String>()) }
+    var showTerms by remember { mutableStateOf(false) }
 
     val ticketPrice = 180
     val totalPrice = selectedSeats.size * ticketPrice
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MovieBackground)
+        modifier = Modifier.fillMaxSize()
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.34f)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF0B4DA5).copy(alpha = 0.38f),
-                            MovieBackground.copy(alpha = 0f)
-                        )
-                    )
-                )
-        )
+        GlowBackground()
 
         Column(
             modifier = Modifier
@@ -149,7 +138,18 @@ fun MovieBookingScreen(
             MovieBottomBar(
                 count = selectedSeats.size,
                 total = totalPrice,
-                onContinueClick = onContinueClick
+                onContinueClick = { showTerms = true }
+            )
+        }
+
+        if (showTerms) {
+            TermsAndPolicyBottomSheet(
+                category = "MOVIE",
+                onDismiss = { showTerms = false },
+                onAccept = {
+                    showTerms = false
+                    onContinueClick()
+                }
             )
         }
     }
@@ -692,7 +692,7 @@ private fun SeatSilhouette(
     }
     val targetEdge = when (state) {
         SeatVisualState.Available -> SeatAvailableEdge
-        SeatVisualState.Selected -> Color(0xFFFFA06C)
+        SeatVisualState.Selected -> MovieOrange
         SeatVisualState.Booked -> SeatBookedEdge
     }
     val fill by animateColorAsState(targetFill, tween(170), label = "seatFill")

@@ -70,6 +70,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.entrymyslot.app.core.components.EntryBottomNavigation
+import com.entrymyslot.app.screens.home.GlowBackground
 
 private val BookingBackground = Color(0xFF061A38)
 private val BookingSurface = Color(0xFF0B274F)
@@ -120,24 +122,9 @@ fun BookingScreen(
     val filters = listOf("All", "Movies", "Turf", "Events", "Concerts")
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(BookingBackground)
+        modifier = Modifier.fillMaxSize()
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(248.dp)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF0C3B78),
-                            BookingBackground.copy(alpha = 0.22f),
-                            Color.Transparent
-                        )
-                    )
-                )
-        )
+        GlowBackground()
 
         Column(
             modifier = Modifier
@@ -225,7 +212,7 @@ fun BookingScreen(
                 }
             }
 
-            BookingBottomNavigation(
+            EntryBottomNavigation(
                 selectedItem = "My Bookings",
                 onItemSelected = onBottomNavigationClick
             )

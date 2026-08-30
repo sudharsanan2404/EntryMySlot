@@ -52,6 +52,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.entrymyslot.app.screens.home.GlowBackground
 import com.entrymyslot.app.screens.home.PopularEvent
 
 private val EventsBackground = Color(0xFF061A38)
@@ -71,24 +72,9 @@ fun EventsListScreen(
     onEventClick: (PopularEvent) -> Unit
 ) {
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(EventsBackground)
+        modifier = Modifier.fillMaxSize()
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(260.dp)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF0C3B78),
-                            EventsBackground.copy(alpha = 0.22f),
-                            Color.Transparent
-                        )
-                    )
-                )
-        )
+        GlowBackground()
 
         Column(
             modifier = Modifier
@@ -106,9 +92,9 @@ fun EventsListScreen(
                     start = 16.dp,
                     top = 10.dp,
                     end = 16.dp,
-                    bottom = 28.dp
+                    bottom = 24.dp
                 ),
-                verticalArrangement = Arrangement.spacedBy(18.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(
                     items = events,
@@ -132,7 +118,7 @@ private fun EventsHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(76.dp)
+            .height(68.dp)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -233,7 +219,7 @@ fun EventListItem(
         animationSpec = tween(durationMillis = 120),
         label = "eventCardSurface"
     )
-    val cardShape = RoundedCornerShape(20.dp)
+    val cardShape = RoundedCornerShape(16.dp)
 
     Column(
         modifier = Modifier
@@ -263,25 +249,25 @@ fun EventListItem(
             event = event,
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(16f / 9f)
+                .aspectRatio(2f)
         )
 
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 15.dp)
+                .padding(horizontal = 13.dp, vertical = 12.dp)
         ) {
             Text(
                 text = event.title,
                 color = EventsPrimaryText,
-                fontSize = 18.sp,
+                fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                lineHeight = 23.sp,
+                lineHeight = 20.sp,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             EventMetadataRow(
                 icon = {
@@ -295,7 +281,7 @@ fun EventListItem(
                 text = event.date
             )
 
-            Spacer(modifier = Modifier.height(9.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
             EventMetadataRow(
                 icon = {

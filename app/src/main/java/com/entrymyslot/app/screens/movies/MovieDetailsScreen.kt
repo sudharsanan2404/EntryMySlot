@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.entrymyslot.app.R
+import com.entrymyslot.app.screens.home.GlowBackground
 import com.entrymyslot.app.screens.home.PopularEvent
 
 private val MovieOrange = Color(0xFFFA580B)
@@ -80,10 +81,10 @@ fun MovieDetailsScreen(
     onBookClick: () -> Unit
 ) {
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MovieBackground)
+        modifier = Modifier.fillMaxSize()
     ) {
+        GlowBackground()
+
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 112.dp)
@@ -126,7 +127,7 @@ private fun MovieHero(
     onBackClick: () -> Unit
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-        val heroHeight = (maxWidth * 1.12f).coerceIn(390.dp, 470.dp)
+        val heroHeight = (maxWidth * 1.02f).coerceIn(350.dp, 420.dp)
 
         Box(
             modifier = Modifier
@@ -293,27 +294,14 @@ private fun AboutMovieSection() {
             .padding(horizontal = 20.dp, vertical = 22.dp)
     ) {
         SectionHeading(text = "About the Movie")
-        Spacer(modifier = Modifier.height(12.dp))
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(18.dp))
-                .background(MovieBlueRaised.copy(alpha = 0.82f))
-                .border(
-                    width = 1.dp,
-                    color = MovieBlueEdge.copy(alpha = 0.24f),
-                    shape = RoundedCornerShape(18.dp)
-                )
-                .padding(16.dp)
-        ) {
-            Text(
-                text = "A spectacular big-screen experience packed with action, heart and unforgettable moments. Reserve the best seats at a cinema near you.",
-                color = MovieSecondary,
-                fontSize = 14.sp,
-                lineHeight = 22.sp,
-                fontWeight = FontWeight.Normal
-            )
-        }
+        Spacer(modifier = Modifier.height(9.dp))
+        Text(
+            text = "A spectacular big-screen experience packed with action, heart and unforgettable moments. Reserve the best seats at a cinema near you.",
+            color = MovieSecondary,
+            fontSize = 14.sp,
+            lineHeight = 21.sp,
+            fontWeight = FontWeight.Normal
+        )
     }
 }
 
@@ -350,7 +338,7 @@ private fun CastRow() {
 
     LazyRow(
         contentPadding = PaddingValues(horizontal = 20.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         items(items = castRoles, key = { role -> role }) { role ->
             CastMember(name = role)
@@ -363,23 +351,23 @@ private fun CastMember(name: String) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .width(86.dp)
+            .width(76.dp)
             .semantics {
                 contentDescription = "$name profile placeholder"
             }
     ) {
         Box(
             modifier = Modifier
-                .size(width = 76.dp, height = 88.dp)
+                .size(64.dp)
                 .shadow(
-                    elevation = 4.dp,
-                    shape = RoundedCornerShape(24.dp),
+                    elevation = 3.dp,
+                    shape = CircleShape,
                     ambientColor = Color.Black.copy(alpha = 0.18f),
                     spotColor = Color.Black.copy(alpha = 0.2f)
                 )
-                .clip(RoundedCornerShape(24.dp))
+                .clip(CircleShape)
                 .background(
-                    Brush.verticalGradient(
+                    Brush.radialGradient(
                         colors = listOf(
                             MovieBlue.copy(alpha = 0.96f),
                             MovieBlueRaised
@@ -388,32 +376,19 @@ private fun CastMember(name: String) {
                 )
                 .border(
                     width = 1.dp,
-                    color = MovieBlueEdge.copy(alpha = 0.3f),
-                    shape = RoundedCornerShape(24.dp)
+                    color = MovieOrange.copy(alpha = 0.48f),
+                    shape = CircleShape
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(MovieBlueEdge.copy(alpha = 0.13f))
-                    .border(
-                        1.dp,
-                        MovieBlueEdge.copy(alpha = 0.24f),
-                        CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = name.take(1),
-                    color = MovieWhite,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+            Text(
+                text = name.take(1),
+                color = MovieWhite,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(7.dp))
         Text(
             text = name,
             color = MovieSecondary,
@@ -431,7 +406,7 @@ private fun TrailerSection() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 28.dp)
+            .padding(horizontal = 20.dp, vertical = 24.dp)
     ) {
         SectionHeading(text = "Trailer")
         Spacer(modifier = Modifier.height(12.dp))
@@ -511,13 +486,13 @@ private fun BookingBottomBar(
                 )
             }
             .navigationBarsPadding()
-            .padding(horizontal = 20.dp, vertical = 12.dp)
+            .padding(horizontal = 20.dp, vertical = 10.dp)
     ) {
         Button(
             onClick = onBookClick,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(54.dp)
+                .height(48.dp)
                 .graphicsLayer {
                     scaleX = buttonScale
                     scaleY = buttonScale

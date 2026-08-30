@@ -156,7 +156,7 @@ fun GpsDisabledDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        icon = { Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color(0xFFFF8A00)) },
+        icon = { Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color(0xFFFA580B)) },
         title = { Text("Turn on location", color = Color.White, fontWeight = FontWeight.Bold) },
         text = {
             Text("Your device location is off. Turn it on to detect your city automatically.", color = Color.White.copy(alpha = 0.7f))
@@ -165,7 +165,7 @@ fun GpsDisabledDialog(
         confirmButton = {
             Button(
                 onClick = onConfirm,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF8A00))
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFA580B))
             ) { Text("Turn on", color = Color.White) }
         },
         dismissButton = {

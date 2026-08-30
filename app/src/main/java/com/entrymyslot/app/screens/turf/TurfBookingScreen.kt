@@ -68,6 +68,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.entrymyslot.app.core.components.TermsAndPolicyBottomSheet
+import com.entrymyslot.app.screens.home.GlowBackground
 import java.text.SimpleDateFormat
 import java.util.Calendar
 
@@ -134,24 +135,9 @@ fun TurfBookingScreen(
     val totalPrice = selectedSlots.size * pricePerHour
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(TurfBookingBackground)
+        modifier = Modifier.fillMaxSize()
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(260.dp)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF0C3B78),
-                            TurfBookingBackground.copy(alpha = 0.22f),
-                            Color.Transparent
-                        )
-                    )
-                )
-        )
+        GlowBackground()
 
         Column(modifier = Modifier.fillMaxSize()) {
             TurfBookingTopBar(
@@ -165,7 +151,7 @@ fun TurfBookingScreen(
             ) {
                 item(key = "venue_summary") {
                     VenueSummary()
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
 
                 item(key = "date_selector") {
@@ -173,7 +159,7 @@ fun TurfBookingScreen(
                         icon = Icons.Outlined.CalendarMonth,
                         title = "Select Date"
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     DateSelector(
                         selectedDate = selectedDate,
                         onDateSelected = {
@@ -181,7 +167,7 @@ fun TurfBookingScreen(
                             selectedSlots = emptySet()
                         }
                     )
-                    Spacer(modifier = Modifier.height(26.dp))
+                    Spacer(modifier = Modifier.height(18.dp))
                 }
 
                 item(key = "slot_header") {
@@ -190,9 +176,9 @@ fun TurfBookingScreen(
                         title = "Select Time Slot",
                         trailingText = "24 Slots"
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     SlotLegend()
-                    Spacer(modifier = Modifier.height(15.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
                 }
 
                 item(key = "slot_grid") {
@@ -208,7 +194,7 @@ fun TurfBookingScreen(
                             }
                         }
                     )
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
                     BookingNote()
                 }
             }
@@ -241,7 +227,7 @@ private fun TurfBookingTopBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(76.dp)
+            .height(68.dp)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -309,19 +295,7 @@ private fun VenueSummary() {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .shadow(
-                elevation = 6.dp,
-                shape = RoundedCornerShape(18.dp),
-                ambientColor = Color.Black.copy(alpha = 0.18f),
-                spotColor = Color.Black.copy(alpha = 0.26f)
-            )
-            .clip(RoundedCornerShape(18.dp))
-            .background(TurfBookingSurface)
-            .border(
-                BorderStroke(1.dp, TurfBookingBorder.copy(alpha = 0.82f)),
-                RoundedCornerShape(18.dp)
-            )
-            .padding(16.dp)
+            .padding(vertical = 4.dp)
     ) {
         Text(
             text = "Green Arena Turf",
@@ -329,7 +303,7 @@ private fun VenueSummary() {
             fontSize = 21.sp,
             fontWeight = FontWeight.ExtraBold
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(6.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = "★ 4.7",
@@ -344,23 +318,15 @@ private fun VenueSummary() {
                 fontWeight = FontWeight.Medium
             )
         }
-        Spacer(modifier = Modifier.height(11.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(28.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(TurfBookingAccent.copy(alpha = 0.13f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.LocationOn,
-                    contentDescription = null,
-                    tint = TurfBookingAccent,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-            Spacer(modifier = Modifier.width(8.dp))
+            Icon(
+                imageVector = Icons.Outlined.LocationOn,
+                contentDescription = null,
+                tint = TurfBookingAccent,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = "Chennai, Tamil Nadu",
                 color = TurfBookingSecondaryText,
@@ -431,14 +397,7 @@ private fun DateSelector(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(TurfBookingSurface.copy(alpha = 0.78f))
-            .border(
-                BorderStroke(1.dp, TurfBookingBorder.copy(alpha = 0.68f)),
-                RoundedCornerShape(16.dp)
-            )
-            .padding(5.dp),
+            .padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         for (i in 0..6) {
@@ -519,7 +478,7 @@ private fun DateItem(
                 onClickLabel = "Select $spokenDate",
                 onClick = onClick
             )
-            .padding(vertical = 9.dp),
+            .padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
@@ -559,9 +518,7 @@ private fun SlotLegend() {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(TurfBookingSurface.copy(alpha = 0.66f))
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(horizontal = 2.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -616,12 +573,12 @@ private fun SlotGrid(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(7.dp)
     ) {
         turfSlots.chunked(3).forEach { rowSlots ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(7.dp)
             ) {
                 rowSlots.forEach { slot ->
                     TurfSlotItem(
@@ -701,7 +658,7 @@ private fun TurfSlotItem(
 
     Box(
         modifier = modifier
-            .height(72.dp)
+            .height(58.dp)
             .graphicsLayer {
                 val combinedScale = selectionScale.value * pressScale
                 scaleX = combinedScale
@@ -709,7 +666,7 @@ private fun TurfSlotItem(
             }
             .shadow(
                 elevation = elevation,
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(11.dp),
                 ambientColor = if (selected) {
                     TurfBookingAccent.copy(alpha = 0.20f)
                 } else {
@@ -721,9 +678,9 @@ private fun TurfSlotItem(
                     Color.Black.copy(alpha = 0.18f)
                 }
             )
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(11.dp))
             .background(containerColor)
-            .border(BorderStroke(1.dp, borderColor), RoundedCornerShape(14.dp))
+            .border(BorderStroke(1.dp, borderColor), RoundedCornerShape(11.dp))
             .clickable(
                 enabled = !slot.booked,
                 interactionSource = interactionSource,
@@ -745,10 +702,10 @@ private fun TurfSlotItem(
             Text(
                 text = slot.time,
                 color = if (slot.booked) TurfBookingMutedText else TurfBookingPrimaryText,
-                fontSize = 15.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.ExtraBold
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = status,
                 color = when {
@@ -756,7 +713,7 @@ private fun TurfSlotItem(
                     selected -> Color.White.copy(alpha = 0.90f)
                     else -> TurfBookingSecondaryText
                 },
-                fontSize = 9.sp,
+                fontSize = 8.sp,
                 fontWeight = FontWeight.Medium
             )
         }
@@ -765,13 +722,13 @@ private fun TurfSlotItem(
             visible = selected,
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(7.dp),
+                .padding(5.dp),
             enter = fadeIn(tween(120)) + scaleIn(tween(150), initialScale = 0.72f),
             exit = fadeOut(tween(90)) + scaleOut(tween(100), targetScale = 0.72f)
         ) {
             Box(
                 modifier = Modifier
-                    .size(17.dp)
+                    .size(15.dp)
                     .clip(CircleShape)
                     .background(Color.White.copy(alpha = 0.20f)),
                 contentAlignment = Alignment.Center
@@ -780,7 +737,7 @@ private fun TurfSlotItem(
                     imageVector = Icons.Rounded.Check,
                     contentDescription = null,
                     tint = Color.White,
-                    modifier = Modifier.size(12.dp)
+                    modifier = Modifier.size(10.dp)
                 )
             }
         }
@@ -844,7 +801,7 @@ private fun TurfBottomBookingBar(
                 RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
             )
             .navigationBarsPadding()
-            .padding(horizontal = 18.dp, vertical = 13.dp),
+            .padding(horizontal = 18.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
@@ -899,7 +856,7 @@ private fun TurfBottomBookingBar(
                     onClickLabel = "Continue",
                     onClick = onContinueClick
                 )
-                .padding(horizontal = 29.dp, vertical = 15.dp),
+                .padding(horizontal = 27.dp, vertical = 12.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(

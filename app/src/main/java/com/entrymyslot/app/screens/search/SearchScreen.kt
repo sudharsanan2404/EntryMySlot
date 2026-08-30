@@ -86,7 +86,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.entrymyslot.app.core.components.EntryBottomNavigation
 import com.entrymyslot.app.screens.home.PopularEvent
+import com.entrymyslot.app.screens.home.GlowBackground
 
 enum class SearchResultType { MOVIE, SPORT, EVENT }
 
@@ -123,7 +125,8 @@ fun SearchScreen(
     sports: List<PopularEvent>,
     events: List<PopularEvent>,
     onBackClick: () -> Unit,
-    onResultClick: (SearchResult) -> Unit
+    onResultClick: (SearchResult) -> Unit,
+    onBottomNavigationClick: (String) -> Unit = {}
 ) {
     var query by remember { mutableStateOf("") }
     var showFilters by remember { mutableStateOf(false) }
@@ -175,24 +178,9 @@ fun SearchScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(SearchBackground)
-            .navigationBarsPadding()
             .imePadding()
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(248.dp)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF0C3B78),
-                            SearchBackground.copy(alpha = 0.22f),
-                            Color.Transparent
-                        )
-                    )
-                )
-        )
+        GlowBackground()
 
         Column(
             modifier = Modifier
@@ -280,6 +268,11 @@ fun SearchScreen(
                     }
                 }
             }
+
+            EntryBottomNavigation(
+                selectedItem = "Search",
+                onItemSelected = onBottomNavigationClick
+            )
         }
     }
 }
