@@ -30,7 +30,10 @@ import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Shower
 import androidx.compose.material.icons.outlined.SportsSoccer
 import androidx.compose.material.icons.outlined.WaterDrop
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.LocationOn
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -47,21 +50,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.entrymyslot.app.screens.home.GlowBackground
 
 
 // ------------------------------------------------------------
 // COLORS
 // ------------------------------------------------------------
 
-private val TurfBlueTop = Color(0xFF063DB5)
-private val TurfBlueBottom = Color(0xFF041F5D)
+private val TurfBlueTop = Color(0xFF0B3A82)
+private val TurfBlueBottom = Color(0xFF061A33)
 
-private val TurfCard = Color(0xFF111D32)
-private val TurfCardLight = Color(0xFF142B58)
+private val TurfCard = Color(0xFF0E0B38).copy(alpha = .68f)
+private val TurfCardLight = Color(0xFF1648D5).copy(alpha = .18f)
 
-private val TurfOrange = Color(0xFFFF8A00)
+private val TurfOrange = Color(0xFFFF8A3D)
 private val TurfWhite = Color.White
-private val TurfGray = Color(0xFFB8C0D0)
+private val TurfGray = Color(0xFF98A2B3)
 
 
 // ------------------------------------------------------------
@@ -108,19 +112,9 @@ fun TurfScreen(
     }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        TurfBlueTop,
-                        Color(0xFF0737A4),
-                        Color(0xFF062E88),
-                        TurfBlueBottom
-                    )
-                )
-            )
+        modifier = Modifier.fillMaxSize()
     ) {
+        GlowBackground()
 
         LazyColumn(
             modifier = Modifier
@@ -148,7 +142,7 @@ fun TurfScreen(
                 ) {
 
                     Icon(
-                        imageVector = Icons.Outlined.ArrowBack,
+                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                         contentDescription = "Back",
                         tint = TurfWhite,
                         modifier = Modifier
@@ -258,7 +252,7 @@ fun TurfScreen(
                     ) {
 
                         Icon(
-                            imageVector = Icons.Outlined.LocationOn,
+                            imageVector = Icons.Rounded.LocationOn,
                             contentDescription = null,
                             tint = TurfOrange,
                             modifier = Modifier.size(21.dp)
@@ -421,11 +415,11 @@ private fun TurfImagePlaceholder(sportId: String) {
             .height(215.dp)
             .clip(RoundedCornerShape(18.dp))
             .background(
-                Color(0xFF172B4A)
+                Color(0xFF1648D5).copy(alpha = .18f)
             )
             .border(
                 width = 1.dp,
-                color = Color(0xFF31528A),
+                color = Color(0xFF1648D5).copy(alpha = .38f),
                 shape = RoundedCornerShape(18.dp)
             ),
         contentAlignment = Alignment.Center
@@ -564,7 +558,7 @@ private fun RowScope.FacilityItem(
             .background(TurfCardLight)
             .border(
                 width = 1.dp,
-                color = Color(0xFF274A86),
+                color = Color(0xFF1648D5).copy(alpha = .38f),
                 shape = RoundedCornerShape(12.dp)
             )
             .padding(
@@ -621,7 +615,7 @@ private fun SportChip(
                 color = if (selected) {
                     TurfOrange
                 } else {
-                    Color(0xFF31528A)
+                    Color(0xFF1648D5).copy(alpha = .38f)
                 },
                 shape = RoundedCornerShape(10.dp)
             )
@@ -660,7 +654,7 @@ private fun TurfBookingBar(
         modifier = modifier
             .fillMaxWidth()
             .background(
-                Color(0xFF061F58)
+                Color(0xFF0E0B38).copy(alpha = .92f)
             )
             .navigationBarsPadding()
             .padding(

@@ -10,9 +10,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Theaters
+import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -26,13 +29,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.text.SimpleDateFormat
 import java.util.*
+import com.entrymyslot.app.screens.home.GlowBackground
+import com.entrymyslot.app.core.components.ElevatedCardSubtitle
+import com.entrymyslot.app.core.components.ElevatedCardTitle
+import com.entrymyslot.app.core.components.ElevatedContrastCard
+import com.entrymyslot.app.core.components.EntryCardAccent
 
-private val MovieBlueTop = Color(0xFF063DB5)
-private val MovieBlueBottom = Color(0xFF041F5D)
-private val MovieOrange = Color(0xFFFF8A00)
+private val MovieBlueTop = Color(0xFF0B3A82)
+private val MovieBlueBottom = Color(0xFF061A33)
+private val MovieOrange = EntryCardAccent
 private val MovieWhite = Color.White
-private val MovieGray = Color(0xFFB8C0D0)
-private val MovieCardLight = Color(0xFF142B58)
+private val MovieGray = Color(0xFF98A2B3)
+private val MovieCardLight = Color(0xFF0E0B38).copy(alpha = .68f)
 
 data class Cinema(
     val id: String,
@@ -56,10 +64,9 @@ fun CinemaSelectionScreen(
     var selectedDate by remember { mutableStateOf(Calendar.getInstance()) }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(MovieBlueTop, MovieBlueBottom)))
+        modifier = Modifier.fillMaxSize()
     ) {
+        GlowBackground()
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -73,7 +80,7 @@ fun CinemaSelectionScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                     contentDescription = "Back",
                     tint = MovieWhite,
                     modifier = Modifier
@@ -100,7 +107,7 @@ fun CinemaSelectionScreen(
                             modifier = Modifier.padding(horizontal = 18.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Outlined.CalendarMonth, null, tint = MovieOrange, modifier = Modifier.size(20.dp))
+                            Icon(Icons.Rounded.CalendarMonth, null, tint = MovieOrange, modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Select Date", color = MovieWhite, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                         }
@@ -152,39 +159,36 @@ private fun DateSelector(selectedDate: Calendar, onDateSelected: (Calendar) -> U
 
 @Composable
 private fun CinemaRow(cinema: Cinema, onTimeClick: (String) -> Unit) {
-    Column(
+    ElevatedContrastCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFF101A2C))
-            .border(1.dp, Color(0xFF1E293B), RoundedCornerShape(16.dp))
-            .padding(16.dp)
     ) {
-        Text(cinema.name, color = MovieWhite, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(4.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Outlined.LocationOn, null, tint = MovieGray, modifier = Modifier.size(14.dp))
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(cinema.location, color = MovieGray, fontSize = 12.sp)
-        }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            cinema.showTimes.forEach { time ->
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .border(1.dp, MovieOrange.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
-                        .clickable { onTimeClick(time) }
-                        .padding(horizontal = 12.dp, vertical = 8.dp)
-                ) {
-                    Text(time, color = MovieOrange, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+        Column(Modifier.fillMaxWidth()) {
+            ElevatedCardTitle(cinema.name)
+            Spacer(Modifier.height(2.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.LocationOn, null, tint = MovieGray, modifier = Modifier.size(14.dp))
+                Spacer(Modifier.width(4.dp))
+                ElevatedCardSubtitle(cinema.location, Modifier.weight(1f))
+            }
+            Spacer(Modifier.height(10.dp))
+
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                cinema.showTimes.forEach { time ->
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .border(1.dp, MovieOrange, RoundedCornerShape(8.dp))
+                            .clickable { onTimeClick(time) }
+                            .padding(horizontal = 10.dp, vertical = 5.dp)
+                    ) {
+                        Text(time, color = MovieOrange, fontSize = 12.sp)
+                    }
                 }
             }
         }

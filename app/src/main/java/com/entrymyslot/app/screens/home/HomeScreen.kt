@@ -19,10 +19,12 @@ import androidx.compose.material.icons.outlined.ConfirmationNumber
 import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.MusicNote
-import androidx.compose.material.icons.outlined.NotificationsNone
+import androidx.compose.material.icons.outlined.Menu
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SportsSoccer
+import kotlinx.coroutines.launch
 import androidx.compose.material.icons.outlined.Wallet
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.rounded.Favorite
@@ -32,6 +34,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -72,12 +75,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 // COLORS
 // ------------------------------------------------------------
 
-private val EntryBlueCard = Color(0xFF0A1D4D)
-private val EntryBlueLight = Color(0xFF0056FF)
-private val EntryOrange = Color(0xFFFF8A00)
+private val EntryBlueCard = Color(0xFF1648D5).copy(alpha = 0.18f)
+private val EntryBlueLight = Color(0xFF1648D5)
+private val EntryOrange = EntryCardAccent
 private val EntryWhite = Color(0xFFFFFFFF)
 private val EntryGray = Color(0xFF98A2B3)
-private val EntryDark = Color(0xFF0A1D4D)
+private val EntryDark = Color(0xFF0E0B38).copy(alpha = 0.68f)
 
 
 private fun getShortCityName(city: String): String = when (city) {
@@ -150,8 +153,7 @@ data class PopularEvent(
 private val categories = listOf(
     CategoryItem("Movies", Icons.Outlined.ConfirmationNumber),
     CategoryItem("Sports", Icons.Outlined.SportsSoccer),
-    CategoryItem("Events", Icons.Outlined.Event),
-    CategoryItem("Concerts", Icons.Outlined.MusicNote)
+    CategoryItem("Events", Icons.Outlined.Event)
 )
 
 val popularEvents = listOf(
@@ -449,6 +451,8 @@ fun HomeScreen(
     homeViewModel: HomeViewModel = viewModel()
 ) {
     val homeState by homeViewModel.uiState.collectAsStateWithLifecycle()
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
 
     var selectedBottomItem by remember {
         mutableStateOf("Home")
@@ -458,53 +462,118 @@ fun HomeScreen(
         mutableStateOf(setOf<String>())
     }
 
-    Box(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        GlowBackground()
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-        ) {
-            // Actual content
-            HomeContent(
-                favoriteEvents = favoriteEvents,
-                onFavoriteClick = { id ->
-                    favoriteEvents =
-                        if (favoriteEvents.contains(id)) {
-                            favoriteEvents - id
-                        } else {
-                            favoriteEvents + id
-                        }
-                },
-                onCategoryClick = onCategoryClick,
-                onEventClick = onMovieBookClick,
-                onSportClick = onSportClick,
-                featuredEvents = homeState.events.map { it.toPopularEvent() }.ifEmpty { popularEvents },
-                featuredMovies = homeState.movies.map { it.toPopularEvent() }.ifEmpty { latestMovies },
-                nearbySports = homeState.sports.map { it.toPopularEvent() }.ifEmpty { sportsNearYou },
-                isLoading = homeState.isLoading,
-                loadError = homeState.error,
-                selectedCity = homeState.selectedCity,
-                onCityChanged = { homeViewModel.updateCity(it) },
-                onRetry = homeViewModel::refresh,
-                onSearchClick = onSearchClick,
-                modifier = Modifier.weight(1f)
-            )
-
-            // ------------------------------------------------
-            // BOTTOM NAVIGATION
-            // ------------------------------------------------
-
-            HomeBottomNavigation(
-                selectedItem = selectedBottomItem,
-                onItemSelected = {
-                    selectedBottomItem = it
-                    onBottomNavigationClick(it)
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet(
+                drawerContainerColor = Color(0xFF0E0B38),
+                drawerShape = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp)
+            ) {
+                Spacer(Modifier.height(48.dp))
+                Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+                    Text(
+                        "EntryMySlot",
+                        color = EntryWhite,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        "Your ultimate booking companion",
+                        color = EntryGray,
+                        fontSize = 12.sp
+                    )
                 }
-            )
+                Spacer(Modifier.height(32.dp))
+
+                NavigationDrawerItem(
+                    label = { Text("Profile", color = EntryWhite) },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onBottomNavigationClick("Profile")
+                    },
+                    icon = { Icon(Icons.Outlined.AccountCircle, null, tint = EntryOrange) },
+                    colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent)
+                )
+                NavigationDrawerItem(
+                    label = { Text("My Bookings", color = EntryWhite) },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onBottomNavigationClick("My Bookings")
+                    },
+                    icon = { Icon(Icons.Outlined.ConfirmationNumber, null, tint = EntryOrange) },
+                    colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent)
+                )
+                NavigationDrawerItem(
+                    label = { Text("Notifications", color = EntryWhite) },
+                    selected = false,
+                    onClick = { scope.launch { drawerState.close() } },
+                    icon = { Icon(Icons.Outlined.Notifications, null, tint = EntryOrange) },
+                    colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent)
+                )
+                NavigationDrawerItem(
+                    label = { Text("Settings", color = EntryWhite) },
+                    selected = false,
+                    onClick = { scope.launch { drawerState.close() } },
+                    icon = { Icon(Icons.Outlined.Settings, null, tint = EntryOrange) },
+                    colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent)
+                )
+            }
+        }
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            GlowBackground()
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+            ) {
+                // Actual content
+                HomeContent(
+                    favoriteEvents = favoriteEvents,
+                    onFavoriteClick = { id ->
+                        favoriteEvents =
+                            if (favoriteEvents.contains(id)) {
+                                favoriteEvents - id
+                            } else {
+                                favoriteEvents + id
+                            }
+                    },
+                    onCategoryClick = onCategoryClick,
+                    onEventClick = onMovieBookClick,
+                    onSportClick = onSportClick,
+                    onMenuClick = {
+                        scope.launch { drawerState.open() }
+                    },
+                    onNotificationClick = { /* Handle notification click */ },
+                    featuredEvents = homeState.events.map { it.toPopularEvent() }.ifEmpty { popularEvents },
+                    featuredMovies = homeState.movies.map { it.toPopularEvent() }.ifEmpty { latestMovies },
+                    nearbySports = homeState.sports.map { it.toPopularEvent() }.ifEmpty { sportsNearYou },
+                    isLoading = homeState.isLoading,
+                    loadError = homeState.error,
+                    selectedCity = homeState.selectedCity,
+                    onCityChanged = { homeViewModel.updateCity(it) },
+                    onRetry = homeViewModel::refresh,
+                    onSearchClick = onSearchClick,
+                    modifier = Modifier.weight(1f)
+                )
+
+                // ------------------------------------------------
+                // BOTTOM NAVIGATION
+                // ------------------------------------------------
+
+                HomeBottomNavigation(
+                    selectedItem = selectedBottomItem,
+                    onItemSelected = {
+                        selectedBottomItem = it
+                        onBottomNavigationClick(it)
+                    }
+                )
+            }
         }
     }
 }
@@ -531,6 +600,8 @@ private fun HomeContent(
     onCityChanged: (String) -> Unit,
     onRetry: () -> Unit,
     onSearchClick: () -> Unit,
+    onMenuClick: () -> Unit,
+    onNotificationClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
 
@@ -560,7 +631,10 @@ private fun HomeContent(
         // ----------------------------------------------------
 
         item {
-            HomeHeader()
+            HomeHeader(
+                onMenuClick = onMenuClick,
+                onNotificationClick = onNotificationClick
+            )
 
             Spacer(
                 modifier = Modifier.height(12.dp)
@@ -588,7 +662,7 @@ private fun HomeContent(
                 // Location Button
                 Box(
                     modifier = Modifier
-                        .padding(end = 12.dp)
+                        .padding(end = 8.dp)
                         .height(40.dp)
                         .clickable {
                             showLocationPicker = true
@@ -628,6 +702,7 @@ private fun HomeContent(
                         }
                     }
                 }
+
             }
             Spacer(modifier = Modifier.height(18.dp))
         }
@@ -789,39 +864,45 @@ private fun HomeContent(
 // ------------------------------------------------------------
 
 @Composable
-private fun HomeHeader() {
-
+private fun HomeHeader(
+    onMenuClick: () -> Unit,
+    onNotificationClick: () -> Unit
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(
-                top = 8.dp,
-                start = 16.dp,
-                end = 16.dp
-            )
+            .padding(top = 8.dp, start = 16.dp, end = 16.dp),
     ) {
-
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally
+        IconButton(
+            onClick = onMenuClick,
+            modifier = Modifier.align(Alignment.CenterStart)
         ) {
+            Icon(
+                imageVector = Icons.Outlined.Menu,
+                contentDescription = "Menu",
+                tint = EntryWhite
+            )
+        }
 
-            Box(
-                modifier = Modifier.fillMaxWidth()
-            ) {
+        Image(
+            painter = painterResource(id = R.drawable.entrymyslotlogopcg),
+            contentDescription = "EntryMySlot",
+            modifier = Modifier
+                .width(180.dp)
+                .height(60.dp)
+                .align(Alignment.Center),
+            contentScale = ContentScale.Fit
+        )
 
-                Image(
-                    painter = painterResource(
-                        id = R.drawable.entrymyslotlogopcg
-                    ),
-                    contentDescription = "EntryMySlot",
-                    modifier = Modifier
-                        .width(180.dp)
-                        .height(60.dp)
-                        .align(Alignment.Center),
-                    contentScale = ContentScale.Fit
-                )
-            }
+        IconButton(
+            onClick = onNotificationClick,
+            modifier = Modifier.align(Alignment.CenterEnd)
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Notifications,
+                contentDescription = "Notifications",
+                tint = EntryWhite
+            )
         }
     }
 }
@@ -900,10 +981,10 @@ private fun PromotionalBanner() {
             .padding(horizontal = 16.dp)
             .height(160.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFF0A1D4D))
+            .background(Color(0xFF0E0B38).copy(alpha = .68f))
             .border(
                 width = 1.dp,
-                color = Color(0xFF1E3A8A).copy(alpha = 0.5f),
+                color = Color(0xFF1648D5).copy(alpha = 0.38f),
                 shape = RoundedCornerShape(16.dp)
             )
     ) {
@@ -984,7 +1065,7 @@ private fun PromotionalBanner() {
         ) {
             Text(
                 text = "IMAGE",
-                color = Color(0xFF1E3A8A),
+                color = Color(0xFF1648D5),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -1102,14 +1183,10 @@ private fun CategoryCard(
             modifier = Modifier
                 .size(60.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .background(
-                    Brush.verticalGradient(
-                        listOf(Color(0xFF102868), Color(0xFF0A1D4D))
-                    )
-                )
+                .background(Color(0xFF1648D5).copy(alpha = .18f))
                 .border(
                     width = 1.dp,
-                    color = Color(0xFF1E3A8A).copy(alpha = 0.6f),
+                    color = Color(0xFF1648D5).copy(alpha = 0.38f),
                     shape = RoundedCornerShape(12.dp)
                 ),
             contentAlignment = Alignment.Center
@@ -1164,18 +1241,25 @@ private fun PopularEventCard(
                 scaleX = scale
                 scaleY = scale
             }
-            .clip(RoundedCornerShape(16.dp))
-            .background(EntryDark)
+            .shadow(
+                elevation = 12.dp,
+                shape = RoundedCornerShape(14.dp),
+                ambientColor = Color.Black.copy(alpha = .35f),
+                spotColor = Color.Black.copy(alpha = .35f)
+            )
+            .clip(RoundedCornerShape(14.dp))
+            .background(Brush.linearGradient(listOf(Color(0xFF1D2550), Color(0xFF171E42))))
             .border(
                 width = 1.dp,
-                color = Color(0xFF1E3A8A).copy(alpha = 0.4f),
-                shape = RoundedCornerShape(16.dp)
+                color = Color.White.copy(alpha = .06f),
+                shape = RoundedCornerShape(14.dp)
             )
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick
             )
+            .padding(14.dp)
     ) {
 
         Box(
@@ -1189,11 +1273,11 @@ private fun PopularEventCard(
                     .fillMaxSize()
                     .clip(
                         RoundedCornerShape(
-                            topStart = 16.dp,
-                            topEnd = 16.dp
+                            topStart = 10.dp,
+                            topEnd = 10.dp
                         )
                     )
-                    .background(Color(0xFF1E3A8A).copy(alpha = 0.2f)),
+                    .background(Color(0xFF1648D5).copy(alpha = 0.18f)),
                 contentAlignment = Alignment.Center
             ) {
                 if (event.imageUrl != null) {
@@ -1245,27 +1329,25 @@ private fun PopularEventCard(
             }
         }
 
-        Column(
-            modifier = Modifier.padding(12.dp)
-        ) {
+        Column(modifier = Modifier.padding(top = 10.dp)) {
 
             Text(
                 text = event.title,
                 color = EntryWhite,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
 
             Spacer(
-                modifier = Modifier.height(4.dp)
+                modifier = Modifier.height(2.dp)
             )
 
             Text(
                 text = event.date,
                 color = EntryGray,
-                fontSize = 10.sp,
+                fontSize = 12.sp,
                 maxLines = 1
             )
 
@@ -1276,13 +1358,13 @@ private fun PopularEventCard(
             Text(
                 text = event.location,
                 color = EntryGray,
-                fontSize = 10.sp,
+                fontSize = 12.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
 
             Spacer(
-                modifier = Modifier.height(8.dp)
+                modifier = Modifier.height(10.dp)
             )
 
             Text(
@@ -1325,30 +1407,21 @@ private fun HomeBottomNavigation(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF00227A).copy(alpha = 0.8f),
-                        Color(0xFF001242)
-                    )
-                )
-            )
+            .padding(horizontal = 16.dp, vertical = 5.dp)
+            .navigationBarsPadding()
     ) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = Color.Transparent,
-            tonalElevation = 0.dp
+            color = Color(0xFF0E0B38).copy(alpha = .86f),
+            shape = RoundedCornerShape(18.dp),
+            border = BorderStroke(1.dp, Color(0xFF1648D5).copy(alpha = .38f)),
+            shadowElevation = 10.dp
         ) {
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(
-                        top = 12.dp,
-                        bottom = WindowInsets.navigationBars
-                            .asPaddingValues()
-                            .calculateBottomPadding() + 8.dp
-                    ),
+                    .padding(horizontal = 5.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
 
@@ -1358,10 +1431,13 @@ private fun HomeBottomNavigation(
 
                     Column(
                         modifier = Modifier
-                            .width(68.dp)
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (selected) EntryOrange.copy(alpha = .16f) else Color.Transparent)
                             .clickable {
                                 onItemSelected(item.first)
-                            },
+                            }
+                            .padding(vertical = 4.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
 
@@ -1369,27 +1445,27 @@ private fun HomeBottomNavigation(
                             imageVector = if (selected) item.third else item.second,
                             contentDescription = item.first,
                             tint = if (selected) {
-                                EntryWhite
+                                EntryOrange
                             } else {
                                 EntryGray
                             },
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(19.dp)
                         )
 
                         Spacer(
-                            modifier = Modifier.height(4.dp)
+                            modifier = Modifier.height(2.dp)
                         )
 
                         Text(
                             text = item.first,
                             color = if (selected) {
-                                EntryWhite
+                                EntryOrange
                             } else {
                                 EntryGray
                             },
-                            fontSize = 10.sp,
+                            fontSize = 8.sp,
                             fontWeight = if (selected) {
-                                FontWeight.Medium
+                                FontWeight.Bold
                             } else {
                                 FontWeight.Normal
                             },

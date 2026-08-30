@@ -9,21 +9,29 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.rounded.LocationOn
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.entrymyslot.app.screens.home.GlowBackground
 import com.entrymyslot.app.screens.home.PopularEvent
+import com.entrymyslot.app.screens.home.GlowBackground
+import com.entrymyslot.app.core.components.ElevatedCardSubtitle
+import com.entrymyslot.app.core.components.ElevatedCardTitle
+import com.entrymyslot.app.core.components.ElevatedContrastCard
+import com.entrymyslot.app.core.components.EntryCardAccent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,7 +48,7 @@ fun SportsListScreen(
                 title = { Text("Sports", color = Color.White, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back", tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
@@ -67,25 +75,21 @@ fun SportListItem(
     sport: PopularEvent,
     onClick: () -> Unit
 ) {
-    Card(
+    ElevatedContrastCard(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF0A1D4D)),
-        border = BorderStroke(1.dp, Color(0xFF1E3A8A).copy(alpha = 0.4f))
+            .clickable { onClick() }
     ) {
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
+                .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
                     .size(100.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFF1E3A8A).copy(alpha = 0.2f)),
+                    .background(Color(0xFF1648D5).copy(alpha = 0.18f)),
                 contentAlignment = Alignment.Center
             ) {
                 if (sport.imageUrl != null) {
@@ -103,31 +107,24 @@ fun SportListItem(
             Spacer(modifier = Modifier.width(16.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = sport.title,
-                    color = Color.White,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(4.dp))
+                ElevatedCardTitle(sport.title)
+                Spacer(modifier = Modifier.height(2.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Outlined.LocationOn, null, tint = Color(0xFFFF8A00), modifier = Modifier.size(14.dp))
+                    Icon(Icons.Rounded.LocationOn, null, tint = EntryCardAccent, modifier = Modifier.size(14.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = sport.location, color = Color(0xFF98A2B3), fontSize = 12.sp, maxLines = 1)
+                    ElevatedCardSubtitle(sport.location, Modifier.weight(1f))
                 }
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(10.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(text = "Starting from", color = Color(0xFF98A2B3), fontSize = 11.sp)
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = sport.price.split("/").first().trim(), color = Color(0xFFFF8A00), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Text(text = sport.price.split("/").first().trim(), color = EntryCardAccent, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
             }
 
             Column(horizontalAlignment = Alignment.End) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Outlined.Star, null, tint = Color(0xFFFF8A00), modifier = Modifier.size(14.dp))
+                    Icon(Icons.Rounded.Star, null, tint = EntryCardAccent, modifier = Modifier.size(14.dp))
                     Spacer(modifier = Modifier.width(2.dp))
                     Text("4.5", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }

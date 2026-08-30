@@ -20,11 +20,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -42,24 +43,25 @@ import androidx.compose.ui.unit.sp
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import com.entrymyslot.app.screens.home.GlowBackground
 
 
 // ------------------------------------------------------------
 // COLORS
 // ------------------------------------------------------------
 
-private val TurfBlueTop = Color(0xFF063DB5)
-private val TurfBlueBottom = Color(0xFF041F5D)
+private val TurfBlueTop = Color(0xFF0B3A82)
+private val TurfBlueBottom = Color(0xFF061A33)
 
-private val TurfOrange = Color(0xFFFF8A00)
+private val TurfOrange = Color(0xFFFF8A3D)
 private val TurfWhite = Color.White
-private val TurfGray = Color(0xFFB8C0D0)
+private val TurfGray = Color(0xFF98A2B3)
 
-private val TurfCardLight = Color(0xFF142B58)
+private val TurfCardLight = Color(0xFF0E0B38).copy(alpha = .68f)
 
-private val AvailableColor = Color(0xFF163D63)
-private val BookedColor = Color(0xFF242A35)
-private val SelectedColor = Color(0xFFFF8A00)
+private val AvailableColor = Color(0xFF1648D5).copy(alpha = .18f)
+private val BookedColor = Color(0xFF0E0B38).copy(alpha = .72f)
+private val SelectedColor = Color(0xFFFF8A3D)
 
 
 // ------------------------------------------------------------
@@ -135,19 +137,9 @@ fun TurfBookingScreen(
         selectedSlots.size * pricePerHour
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                androidx.compose.ui.graphics.Brush.verticalGradient(
-                    colors = listOf(
-                        TurfBlueTop,
-                        Color(0xFF0737A4),
-                        Color(0xFF062E88),
-                        TurfBlueBottom
-                    )
-                )
-            )
+        modifier = Modifier.fillMaxSize()
     ) {
+        GlowBackground()
 
         Column(
             modifier = Modifier.fillMaxSize()
@@ -179,7 +171,7 @@ fun TurfBookingScreen(
                     ) {
 
                         Icon(
-                            imageVector = Icons.Outlined.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                             contentDescription = "Back",
                             tint = TurfWhite,
                             modifier = Modifier
@@ -555,7 +547,7 @@ private fun DateItem(
                 color = if (selected) {
                     TurfOrange
                 } else {
-                    Color(0xFF31528A)
+                    Color(0xFF1648D5).copy(alpha = .38f)
                 },
                 shape = RoundedCornerShape(11.dp)
             )
@@ -698,7 +690,7 @@ private fun TurfSlotItem(
             Color(0xFF242A35)
 
         selected ->
-            Color(0xFFFF8A00)
+            Color(0xFFFF8A3D)
 
         else ->
             Color(0xFF1C5380)
@@ -725,9 +717,9 @@ private fun TurfSlotItem(
 
         Icon(
             imageVector = if (selected) {
-                Icons.Outlined.CheckCircle
+                Icons.Rounded.CheckCircle
             } else {
-                Icons.Outlined.Schedule
+                Icons.Rounded.Schedule
             },
             contentDescription = null,
             tint = if (slot.booked) {
@@ -793,7 +785,7 @@ private fun BottomBookingBar(
         modifier = Modifier
             .fillMaxWidth()
             .background(
-                Color(0xFF061F58)
+                Color(0xFF0E0B38).copy(alpha = .92f)
             )
             .navigationBarsPadding()
             .padding(
@@ -832,7 +824,7 @@ private fun BottomBookingBar(
                     if (selectedSlots > 0) {
                         TurfOrange
                     } else {
-                        Color(0xFF4A5261)
+                        Color(0xFF082A82).copy(alpha = .55f)
                     }
                 )
                 .clickable(

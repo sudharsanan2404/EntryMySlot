@@ -26,18 +26,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.entrymyslot.app.R
+import com.entrymyslot.app.screens.home.GlowBackground
 
 // ------------------------------------------------------------
 // COLORS & STYLES (Matching EntryMySlot Identity)
 // ------------------------------------------------------------
-private val EntryBlueTop = Color(0xFF0126A5)
-private val EntryBlueBottom = Color(0xFF061A3D)
-private val EntryDarkBlue = Color(0xFF0A1D4D)
-private val EntryOrange = Color(0xFFFA580B)
+private val EntryBlueTop = Color(0xFF0B3A82)
+private val EntryBlueBottom = Color(0xFF061A33)
+private val EntryDarkBlue = Color(0xFF0E0B38).copy(alpha = .68f)
+private val EntryOrange = Color(0xFFFF8A3D)
 private val EntryWhite = Color.White
 private val EntryGray = Color(0xFF98A2B3)
-private val EntryCardBg = Color(0xFF111D32)
-private val EntryBorder = Color(0xFF1E3A8A).copy(alpha = 0.4f)
+private val EntryCardBg = Color(0xFF0E0B38).copy(alpha = .68f)
+private val EntryBorder = Color(0xFF1648D5).copy(alpha = .38f)
 
 // ------------------------------------------------------------
 // PROFILE SCREEN
@@ -49,12 +50,7 @@ fun ProfileScreen(
     onLogoutClick: () -> Unit = {}
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
-        // Gradient Background
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Brush.verticalGradient(listOf(EntryBlueTop, EntryBlueBottom)))
-        )
+        GlowBackground()
 
         Column(
             modifier = Modifier
@@ -349,51 +345,45 @@ private fun ProfileBottomNavigation(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF00227A).copy(alpha = 0.8f),
-                        Color(0xFF001242)
-                    )
-                )
-            )
+            .padding(horizontal = 16.dp, vertical = 5.dp)
+            .navigationBarsPadding()
     ) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = Color.Transparent,
-            tonalElevation = 0.dp
+            color = Color(0xFF0E0B38).copy(alpha = .86f),
+            shape = RoundedCornerShape(18.dp),
+            border = BorderStroke(1.dp, Color(0xFF1648D5).copy(alpha = .38f)),
+            shadowElevation = 10.dp
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(
-                        top = 12.dp,
-                        bottom = WindowInsets.navigationBars
-                            .asPaddingValues()
-                            .calculateBottomPadding() + 8.dp
-                    ),
+                    .padding(horizontal = 5.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 items.forEach { item ->
                     val selected = selectedItem == item.first
                     Column(
                         modifier = Modifier
-                            .width(68.dp)
-                            .clickable { onItemSelected(item.first) },
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (selected) EntryOrange.copy(alpha = .16f) else Color.Transparent)
+                            .clickable { onItemSelected(item.first) }
+                            .padding(vertical = 4.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Icon(
                             imageVector = if (selected) item.third else item.second,
                             contentDescription = item.first,
-                            tint = if (selected) EntryWhite else EntryGray,
-                            modifier = Modifier.size(24.dp)
+                            tint = if (selected) EntryOrange else EntryGray,
+                            modifier = Modifier.size(19.dp)
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = item.first,
-                            color = if (selected) EntryWhite else EntryGray,
-                            fontSize = 10.sp,
-                            fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
+                            color = if (selected) EntryOrange else EntryGray,
+                            fontSize = 8.sp,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
                             maxLines = 1
                         )
                     }

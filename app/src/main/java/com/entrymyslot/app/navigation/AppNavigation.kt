@@ -92,7 +92,6 @@ fun AppNavigation(
                         "Movies" -> navController.navigate("movies_list")
                         "Sports" -> navController.navigate("sports_list")
                         "Events" -> navController.navigate("events_list")
-                        "Concerts" -> navController.navigate("concerts_list")
                     }
                 },
                 onBottomNavigationClick = { item ->
@@ -156,22 +155,6 @@ fun AppNavigation(
             EventsListScreen(
                 title = "Upcoming Events",
                 events = homeState.events.map { it.toPopularEvent() }.ifEmpty { popularEvents },
-                onBackClick = { navController.popBackStack() },
-                onEventClick = { event ->
-                    navController.navigate("event_booking/${event.id}")
-                }
-            )
-        }
-
-        composable("concerts_list") {
-            val concerts = homeState.events
-                .filter { it.title.contains("Live", ignoreCase = true) || it.title.contains("Music", ignoreCase = true) }
-                .map { it.toPopularEvent() }
-                .ifEmpty { popularEvents.filter { it.title.contains("Live", ignoreCase = true) } }
-
-            EventsListScreen(
-                title = "Music Concerts",
-                events = concerts,
                 onBackClick = { navController.popBackStack() },
                 onEventClick = { event ->
                     navController.navigate("event_booking/${event.id}")

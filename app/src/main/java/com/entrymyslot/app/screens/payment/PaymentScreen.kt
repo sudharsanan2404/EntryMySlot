@@ -10,8 +10,18 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.rounded.AccountBalance
+import androidx.compose.material.icons.rounded.AccountBalanceWallet
+import androidx.compose.material.icons.rounded.CalendarToday
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.CreditCard
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.LocalOffer
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Wallet
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,17 +36,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.entrymyslot.app.R
+import com.entrymyslot.app.screens.home.GlowBackground
 
 // ------------------------------------------------------------
 // COLORS
 // ------------------------------------------------------------
-private val PaymentBlueTop = Color(0xFF063DB5)
-private val PaymentBlueBottom = Color(0xFF041F5D)
-private val PaymentOrange = Color(0xFFFA580B)
+private val PaymentBlueTop = Color(0xFF0B3A82)
+private val PaymentBlueBottom = Color(0xFF061A33)
+private val PaymentOrange = Color(0xFFFF8A3D)
 private val PaymentWhite = Color.White
-private val PaymentGray = Color(0xFFB8C0D0)
-private val PaymentCard = Color(0xFF111D32)
-private val PaymentCardLight = Color(0xFF142B58)
+private val PaymentGray = Color(0xFF98A2B3)
+private val PaymentCard = Color(0xFF0E0B38).copy(alpha = .68f)
+private val PaymentCardLight = Color(0xFF1648D5).copy(alpha = .18f)
 private val PaymentSuccessGreen = Color(0xFF4CAF50)
 
 // ------------------------------------------------------------
@@ -81,10 +92,10 @@ fun PaymentScreen(
     val totalAmount = (ticketPrice + convenienceFee + taxes) - discount
 
     val paymentMethods = listOf(
-        PaymentMethod("upi", "UPI", Icons.Outlined.AccountBalanceWallet, "Pay using UPI"),
-        PaymentMethod("card", "Credit / Debit Card", Icons.Outlined.CreditCard, "Visa, Mastercard, RuPay"),
-        PaymentMethod("netbanking", "Net Banking", Icons.Outlined.AccountBalance, "All major banks available"),
-        PaymentMethod("wallets", "Wallets", Icons.Outlined.Wallet, "Amazon Pay, PhonePe & more")
+        PaymentMethod("upi", "UPI", Icons.Rounded.AccountBalanceWallet, "Pay using UPI"),
+        PaymentMethod("card", "Credit / Debit Card", Icons.Rounded.CreditCard, "Visa, Mastercard, RuPay"),
+        PaymentMethod("netbanking", "Net Banking", Icons.Rounded.AccountBalance, "All major banks available"),
+        PaymentMethod("wallets", "Wallets", Icons.Rounded.Wallet, "Amazon Pay, PhonePe & more")
     )
 
     Scaffold(
@@ -93,7 +104,7 @@ fun PaymentScreen(
                 title = { Text("Payment", color = PaymentWhite, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back", tint = PaymentWhite)
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back", tint = PaymentWhite)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
@@ -106,11 +117,8 @@ fun PaymentScreen(
         },
         containerColor = Color.Transparent
     ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Brush.verticalGradient(listOf(PaymentBlueTop, PaymentBlueBottom)))
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            GlowBackground()
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -136,10 +144,32 @@ fun PaymentScreen(
                     )
                 }
 
-                // 5. Security Note
+                // 5. Important booking policy
+                item { NonRefundableNotice() }
+
+                // 6. Security Note
                 item { SecurityNote() }
                 
                 item { Spacer(modifier = Modifier.height(20.dp)) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NonRefundableNotice() {
+    Surface(
+        color = PaymentOrange.copy(alpha = .10f),
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(1.dp, PaymentOrange.copy(alpha = .45f))
+    ) {
+        Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.Top) {
+            Icon(Icons.Rounded.Info, contentDescription = null, tint = PaymentOrange, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(10.dp))
+            Column {
+                Text("Tickets are non-refundable", color = PaymentWhite, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Spacer(Modifier.height(3.dp))
+                Text("Once payment is completed, this booking cannot be cancelled, exchanged, or refunded.", color = PaymentGray, fontSize = 11.sp, lineHeight = 16.sp)
             }
         }
     }
@@ -150,7 +180,7 @@ private fun BookingSummaryCard(details: BookingDetails) {
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = PaymentCard),
-        border = BorderStroke(1.dp, Color(0xFF2A426B))
+        border = BorderStroke(1.dp, Color(0xFF1648D5).copy(alpha = .38f))
     ) {
         Row(
             modifier = Modifier
@@ -196,7 +226,7 @@ private fun BookingSummaryCard(details: BookingDetails) {
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Outlined.CalendarToday, null, tint = PaymentOrange, modifier = Modifier.size(12.dp))
+                    Icon(Icons.Rounded.CalendarToday, null, tint = PaymentOrange, modifier = Modifier.size(12.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = "${details.date} • ${details.time}",
@@ -222,7 +252,7 @@ private fun CouponSection(isApplied: Boolean, onToggle: () -> Unit) {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = PaymentCard),
-        border = BorderStroke(1.dp, if (isApplied) PaymentOrange.copy(alpha = 0.5f) else Color(0xFF2A426B))
+        border = BorderStroke(1.dp, if (isApplied) PaymentOrange.copy(alpha = 0.5f) else Color(0xFF1648D5).copy(alpha = .38f))
     ) {
         Row(
             modifier = Modifier
@@ -232,7 +262,7 @@ private fun CouponSection(isApplied: Boolean, onToggle: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.LocalOffer, null, tint = PaymentOrange, modifier = Modifier.size(20.dp))
+                Icon(Icons.Rounded.LocalOffer, null, tint = PaymentOrange, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
@@ -278,7 +308,7 @@ private fun PriceDetailsSection(
         Card(
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = PaymentCard),
-            border = BorderStroke(1.dp, Color(0xFF2A426B))
+            border = BorderStroke(1.dp, Color(0xFF1648D5).copy(alpha = .38f))
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
                 PriceRow("Ticket Price", "₹$ticket")
@@ -290,7 +320,7 @@ private fun PriceDetailsSection(
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
-                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFF293A59)))
+                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFF1648D5).copy(alpha = .38f)))
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Row(
@@ -357,10 +387,10 @@ private fun PaymentMethodCard(
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(12.dp),
-        color = if (isSelected) Color(0xFF0038A8).copy(alpha = 0.3f) else PaymentCard,
+        color = if (isSelected) PaymentOrange.copy(alpha = .14f) else PaymentCard,
         border = BorderStroke(
             width = 1.5.dp,
-            color = if (isSelected) PaymentOrange else Color(0xFF2A426B)
+            color = if (isSelected) PaymentOrange else Color(0xFF1648D5).copy(alpha = .38f)
         )
     ) {
         Row(
@@ -418,7 +448,7 @@ private fun SecurityNote() {
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(Icons.Outlined.Lock, null, tint = PaymentGray, modifier = Modifier.size(14.dp))
+        Icon(Icons.Rounded.Lock, null, tint = PaymentGray, modifier = Modifier.size(14.dp))
         Spacer(modifier = Modifier.width(8.dp))
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text("Secure payment", color = PaymentWhite.copy(alpha = 0.8f), fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -431,7 +461,7 @@ private fun SecurityNote() {
 private fun BottomPaymentBar(amount: Int, enabled: Boolean, onPayClick: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = Color(0xFF061F58),
+        color = Color(0xFF0E0B38).copy(alpha = .92f),
         tonalElevation = 8.dp,
         shadowElevation = 16.dp
     ) {
@@ -453,7 +483,7 @@ private fun BottomPaymentBar(amount: Int, enabled: Boolean, onPayClick: () -> Un
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = PaymentOrange,
-                    disabledContainerColor = Color(0xFF4A5261)
+                    disabledContainerColor = Color(0xFF082A82).copy(alpha = .55f)
                 ),
                 modifier = Modifier
                     .height(54.dp)

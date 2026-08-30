@@ -9,9 +9,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.rounded.CalendarToday
+import androidx.compose.material.icons.rounded.ConfirmationNumber
+import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,17 +28,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.entrymyslot.app.screens.home.PopularEvent
+import com.entrymyslot.app.screens.home.GlowBackground
 
 // ------------------------------------------------------------
 // COLORS
 // ------------------------------------------------------------
-private val EventBlueTop = Color(0xFF063DB5)
-private val EventBlueBottom = Color(0xFF041F5D)
-private val EventOrange = Color(0xFFFA580B)
+private val EventBlueTop = Color(0xFF0B3A82)
+private val EventBlueBottom = Color(0xFF061A33)
+private val EventOrange = Color(0xFFFF8A3D)
 private val EventWhite = Color.White
-private val EventGray = Color(0xFFB8C0D0)
-private val EventCard = Color(0xFF111D32)
-private val EventCardLight = Color(0xFF142B58)
+private val EventGray = Color(0xFF98A2B3)
+private val EventCard = Color(0xFF0E0B38).copy(alpha = .68f)
+private val EventCardLight = Color(0xFF1648D5).copy(alpha = .18f)
 
 // ------------------------------------------------------------
 // MODELS
@@ -82,7 +87,7 @@ fun EventBookingScreen(
                 title = { Text("Book Event", color = EventWhite, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back", tint = EventWhite)
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back", tint = EventWhite)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
@@ -93,11 +98,8 @@ fun EventBookingScreen(
         },
         containerColor = Color.Transparent
     ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Brush.verticalGradient(listOf(EventBlueTop, EventBlueBottom)))
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            GlowBackground()
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -159,7 +161,7 @@ private fun EventHeader(event: PopularEvent) {
             .padding(18.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = EventCard),
-        border = BorderStroke(1.dp, Color(0xFF2A426B))
+        border = BorderStroke(1.dp, Color(0xFF1648D5).copy(alpha = .38f))
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             // Thumbnail Placeholder
@@ -170,7 +172,7 @@ private fun EventHeader(event: PopularEvent) {
                     .background(EventCardLight),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Outlined.ConfirmationNumber, null, tint = EventGray, modifier = Modifier.size(32.dp))
+                Icon(Icons.Rounded.ConfirmationNumber, null, tint = EventGray, modifier = Modifier.size(32.dp))
             }
 
             Spacer(modifier = Modifier.width(16.dp))
@@ -180,12 +182,12 @@ private fun EventHeader(event: PopularEvent) {
                 Text("Sports Event", color = EventGray, fontSize = 13.sp)
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Outlined.LocationOn, null, tint = EventOrange, modifier = Modifier.size(14.dp))
+                    Icon(Icons.Rounded.LocationOn, null, tint = EventOrange, modifier = Modifier.size(14.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(event.location, color = EventGray, fontSize = 12.sp)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
-                    Icon(Icons.Outlined.CalendarToday, null, tint = EventOrange, modifier = Modifier.size(14.dp))
+                    Icon(Icons.Rounded.CalendarToday, null, tint = EventOrange, modifier = Modifier.size(14.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(event.date, color = EventGray, fontSize = 12.sp)
                 }
@@ -207,11 +209,11 @@ private fun VenueVisualization() {
             modifier = Modifier
                 .fillMaxWidth(0.6f)
                 .height(30.dp)
-                .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
-                .border(1.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)),
+                .background(EventWhite.copy(alpha = 0.08f), RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
+                .border(1.dp, EventWhite.copy(alpha = 0.22f), RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp)),
             contentAlignment = Alignment.Center
         ) {
-            Text("STAGE", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 4.sp)
+            Text("STAGE", color = EventWhite, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 4.sp)
         }
         
         Spacer(modifier = Modifier.height(16.dp))
@@ -227,7 +229,7 @@ private fun VenueVisualization() {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(2.dp)
-                .background(Color.White.copy(alpha = 0.2f))
+                .background(EventWhite.copy(alpha = 0.14f))
         )
         Text("GENERAL AREA", color = EventGray, fontSize = 9.sp, modifier = Modifier.padding(top = 4.dp))
     }
@@ -240,7 +242,7 @@ private fun TierArea(label: String, width: Float) {
             modifier = Modifier
                 .fillMaxWidth(width)
                 .height(20.dp)
-                .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                .border(1.dp, EventWhite.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
         )
         Text(label, color = EventGray, fontSize = 8.sp, fontWeight = FontWeight.Medium)
     }
@@ -260,11 +262,11 @@ private fun TicketTierCard(
             .padding(horizontal = 18.dp, vertical = 8.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) Color(0xFF0038A8).copy(alpha = 0.2f) else EventCard
+            containerColor = if (isSelected) EventOrange.copy(alpha = 0.14f) else EventCard
         ),
         border = BorderStroke(
             width = 1.5.dp,
-            color = if (isSelected) EventOrange else if (tier.isSoldOut) Color.Transparent else Color(0xFF2A426B)
+            color = if (isSelected) EventOrange else if (tier.isSoldOut) Color.Transparent else Color(0xFF1648D5).copy(alpha = .38f)
         )
     ) {
         Row(
@@ -345,7 +347,7 @@ private fun BookingSummary(
         Card(
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = EventCard),
-            border = BorderStroke(1.dp, Color(0xFF2A426B))
+            border = BorderStroke(1.dp, Color(0xFF1648D5).copy(alpha = .38f))
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
                 tiers.forEach { tier ->
@@ -365,7 +367,7 @@ private fun BookingSummary(
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
-                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFF293A59)))
+                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFF1648D5).copy(alpha = .30f)))
                 Spacer(modifier = Modifier.height(12.dp))
 
                 SummaryPriceRow("Subtotal", "₹$subtotal")
@@ -373,7 +375,7 @@ private fun BookingSummary(
                 SummaryPriceRow("Taxes", "₹$taxes")
 
                 Spacer(modifier = Modifier.height(12.dp))
-                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFF293A59)))
+                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFF1648D5).copy(alpha = .30f)))
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Row(
@@ -409,7 +411,7 @@ private fun BottomBookingBar(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = Color(0xFF061F58),
+        color = Color(0xFF0E0B38).copy(alpha = .92f),
         tonalElevation = 8.dp
     ) {
         Row(
@@ -430,7 +432,7 @@ private fun BottomBookingBar(
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = EventOrange,
-                    disabledContainerColor = Color(0xFF4A5261)
+                    disabledContainerColor = Color(0xFF082A82).copy(alpha = .55f)
                 ),
                 modifier = Modifier.height(52.dp).padding(start = 16.dp)
             ) {

@@ -10,7 +10,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,15 +24,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Calendar
+import com.entrymyslot.app.screens.home.GlowBackground
 
-private val MovieBlueTop = Color(0xFF063DB5)
-private val MovieBlueBottom = Color(0xFF041F5D)
-private val MovieOrange = Color(0xFFFF8A00)
+private val MovieBlueTop = Color(0xFF0B3A82)
+private val MovieBlueBottom = Color(0xFF061A33)
+private val MovieOrange = Color(0xFFFF8A3D)
 private val MovieWhite = Color.White
-private val MovieGray = Color(0xFFB8C0D0)
-private val MovieCardLight = Color(0xFF142B58)
+private val MovieGray = Color(0xFF98A2B3)
+private val MovieCardLight = Color(0xFF0E0B38).copy(alpha = .68f)
 private val SeatAvailable = Color(0xFF183E65)
-private val SeatSelected = Color(0xFFFF8A00)
+private val SeatSelected = Color(0xFFFF8A3D)
 private val SeatBooked = Color(0xFF3A404B)
 
 @Composable
@@ -49,10 +52,9 @@ fun MovieBookingScreen(
     val totalPrice = selectedSeats.size * ticketPrice
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(MovieBlueTop, MovieBlueBottom)))
+        modifier = Modifier.fillMaxSize()
     ) {
+        GlowBackground()
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -66,7 +68,7 @@ fun MovieBookingScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                     contentDescription = "Back",
                     tint = MovieWhite,
                     modifier = Modifier
@@ -268,7 +270,7 @@ private fun SeatItem(isSelected: Boolean, isBooked: Boolean, onClick: () -> Unit
             .clickable(enabled = !isBooked) { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        if (isSelected) Icon(Icons.Outlined.Check, null, tint = Color.White, modifier = Modifier.size(16.dp))
+        if (isSelected) Icon(Icons.Rounded.Check, null, tint = Color.White, modifier = Modifier.size(16.dp))
     }
 }
 
@@ -277,7 +279,7 @@ private fun MovieBottomBar(count: Int, total: Int, onContinueClick: () -> Unit) 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFF061F58))
+            .background(Color(0xFF0E0B38).copy(alpha = .92f))
             .navigationBarsPadding()
             .padding(horizontal = 20.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
