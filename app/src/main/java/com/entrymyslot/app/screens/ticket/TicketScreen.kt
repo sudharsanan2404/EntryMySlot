@@ -136,13 +136,7 @@ private fun TicketNavigation(onBack: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(Modifier.clickable(onClick = onBack), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                Modifier.size(40.dp).clip(CircleShape).background(Color.White.copy(alpha = .05f))
-                    .border(1.dp, Color.White.copy(alpha = .20f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White, modifier = Modifier.size(18.dp))
-            }
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White, modifier = Modifier.size(24.dp))
             Spacer(Modifier.width(12.dp))
             Text("BACK", color = TicketWhite60, fontSize = 14.sp, fontWeight = FontWeight.Bold, letterSpacing = .6.sp)
         }

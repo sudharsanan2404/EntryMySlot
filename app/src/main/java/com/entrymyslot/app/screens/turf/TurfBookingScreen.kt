@@ -44,6 +44,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import com.entrymyslot.app.screens.home.GlowBackground
+import com.entrymyslot.app.core.components.TermsAndPolicyBottomSheet
 
 
 // ------------------------------------------------------------
@@ -130,6 +131,8 @@ fun TurfBookingScreen(
     var selectedSlots by remember {
         mutableStateOf(setOf<Int>())
     }
+
+    var showTerms by remember { mutableStateOf(false) }
 
     val pricePerHour = 800
 
@@ -349,7 +352,18 @@ fun TurfBookingScreen(
             BottomBookingBar(
                 selectedSlots = selectedSlots.size,
                 totalPrice = totalPrice,
-                onContinueClick = onContinueClick
+                onContinueClick = { showTerms = true }
+            )
+        }
+
+        if (showTerms) {
+            TermsAndPolicyBottomSheet(
+                category = "TURF",
+                onDismiss = { showTerms = false },
+          onAccept = {
+                    showTerms = false
+                    onContinueClick()
+                }
             )
         }
     }

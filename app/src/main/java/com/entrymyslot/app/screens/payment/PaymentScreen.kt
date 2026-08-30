@@ -1,27 +1,23 @@
 package com.entrymyslot.app.screens.payment
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.outlined.Event
+import androidx.compose.material.icons.outlined.Movie
+import androidx.compose.material.icons.outlined.SportsSoccer
 import androidx.compose.material.icons.rounded.AccountBalance
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.CalendarToday
-import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.CreditCard
 import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.LocalOffer
 import androidx.compose.material.icons.rounded.Lock
-import androidx.compose.material.icons.rounded.Wallet
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,29 +26,20 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.entrymyslot.app.R
 import com.entrymyslot.app.screens.home.GlowBackground
 
-// ------------------------------------------------------------
-// COLORS
-// ------------------------------------------------------------
-private val PaymentBlueTop = Color(0xFF0B3A82)
-private val PaymentBlueBottom = Color(0xFF061A33)
 private val PaymentOrange = Color(0xFFFF8A3D)
 private val PaymentWhite = Color.White
 private val PaymentGray = Color(0xFF98A2B3)
-private val PaymentCard = Color(0xFF0E0B38).copy(alpha = .68f)
-private val PaymentCardLight = Color(0xFF1648D5).copy(alpha = .18f)
-private val PaymentSuccessGreen = Color(0xFF4CAF50)
+private val PaymentCard = Color(0xFF0E1739).copy(alpha = .94f)
+private val PaymentCardLight = Color(0xFF1B2854)
+private val PaymentBorder = Color(0xFF31426F).copy(alpha = .72f)
+private val PaymentDivider = Color.White.copy(alpha = .09f)
+private val PaymentGreen = Color(0xFF35C66B)
 
-// ------------------------------------------------------------
-// MODELS
-// ------------------------------------------------------------
 enum class BookingCategory { MOVIE, TURF, EVENT }
 
 data class BookingDetails(
@@ -61,7 +48,7 @@ data class BookingDetails(
     val date: String,
     val time: String,
     val location: String,
-    val details: String, // e.g., "Seats: A3, A4" or "Slots: 6 PM - 7 PM"
+    val details: String,
     val imageUrl: String? = null
 )
 
@@ -69,12 +56,10 @@ data class PaymentMethod(
     val id: String,
     val name: String,
     val icon: ImageVector,
-    val description: String
+    val description: String,
+    val badge: String? = null
 )
 
-// ------------------------------------------------------------
-// PAYMENT SCREEN
-// ------------------------------------------------------------
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PaymentScreen(
@@ -83,25 +68,21 @@ fun PaymentScreen(
     onPaySuccess: () -> Unit = {}
 ) {
     var selectedMethodId by remember { mutableStateOf("upi") }
-    var isCouponApplied by remember { mutableStateOf(false) }
 
     val ticketPrice = 360
     val convenienceFee = 30
     val taxes = 18
-    val discount = if (isCouponApplied) 50 else 0
-    val totalAmount = (ticketPrice + convenienceFee + taxes) - discount
-
-    val paymentMethods = listOf(
-        PaymentMethod("upi", "UPI", Icons.Rounded.AccountBalanceWallet, "Pay using UPI"),
+    val totalAmount = ticketPrice + convenienceFee + taxes
+    val methods = listOf(
+        PaymentMethod("upi", "UPI (GPay, PhonePe, Paytm)", Icons.Rounded.AccountBalanceWallet, "Pay instantly using any UPI app", "FASTEST"),
         PaymentMethod("card", "Credit / Debit Card", Icons.Rounded.CreditCard, "Visa, Mastercard, RuPay"),
-        PaymentMethod("netbanking", "Net Banking", Icons.Rounded.AccountBalance, "All major banks available"),
-        PaymentMethod("wallets", "Wallets", Icons.Rounded.Wallet, "Amazon Pay, PhonePe & more")
+        PaymentMethod("netbanking", "Netbanking", Icons.Rounded.AccountBalance, "All major Indian banks supported")
     )
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Payment", color = PaymentWhite, fontWeight = FontWeight.Bold) },
+                title = { Text("Payment", color = PaymentWhite, fontSize = 20.sp, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back", tint = PaymentWhite)
@@ -110,66 +91,37 @@ fun PaymentScreen(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         },
-        bottomBar = {
-            BottomPaymentBar(totalAmount, selectedMethodId.isNotEmpty()) {
-                onPaySuccess()
-            }
-        },
         containerColor = Color.Transparent
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize()) {
             GlowBackground()
             LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentPadding = PaddingValues(18.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp)
+                modifier = Modifier.fillMaxSize().padding(paddingValues),
+                contentPadding = PaddingValues(start = 18.dp, top = 10.dp, end = 18.dp, bottom = 26.dp),
+                verticalArrangement = Arrangement.spacedBy(22.dp)
             ) {
-                // 1. Booking Summary Card
                 item { BookingSummaryCard(bookingDetails) }
-
-                // 2. Coupon Section
-                item { CouponSection(isCouponApplied) { isCouponApplied = !isCouponApplied } }
-
-                // 3. Price Details
-                item { PriceDetailsSection(ticketPrice, convenienceFee, taxes, discount, totalAmount) }
-
-                // 4. Payment Methods
                 item {
-                    PaymentMethodsSection(
-                        methods = paymentMethods,
-                        selectedId = selectedMethodId,
-                        onSelect = { selectedMethodId = it }
+                    PaymentOptionsSection(methods, selectedMethodId) { selectedMethodId = it }
+                }
+                item {
+                    OrderSummaryCard(
+                        bookingDetails = bookingDetails,
+                        ticketPrice = ticketPrice,
+                        convenienceFee = convenienceFee,
+                        taxes = taxes,
+                        totalAmount = totalAmount,
+                        enabled = selectedMethodId.isNotBlank(),
+                        onPayClick = onPaySuccess
                     )
                 }
-
-                // 5. Important booking policy
-                item { NonRefundableNotice() }
-
-                // 6. Security Note
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        SectionHeading("Notes")
+                        NonRefundableNotice(bookingDetails.category)
+                    }
+                }
                 item { SecurityNote() }
-                
-                item { Spacer(modifier = Modifier.height(20.dp)) }
-            }
-        }
-    }
-}
-
-@Composable
-private fun NonRefundableNotice() {
-    Surface(
-        color = PaymentOrange.copy(alpha = .10f),
-        shape = RoundedCornerShape(14.dp),
-        border = BorderStroke(1.dp, PaymentOrange.copy(alpha = .45f))
-    ) {
-        Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.Top) {
-            Icon(Icons.Rounded.Info, contentDescription = null, tint = PaymentOrange, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(10.dp))
-            Column {
-                Text("Tickets are non-refundable", color = PaymentWhite, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                Spacer(Modifier.height(3.dp))
-                Text("Once payment is completed, this booking cannot be cancelled, exchanged, or refunded.", color = PaymentGray, fontSize = 11.sp, lineHeight = 16.sp)
             }
         }
     }
@@ -178,68 +130,55 @@ private fun NonRefundableNotice() {
 @Composable
 private fun BookingSummaryCard(details: BookingDetails) {
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = PaymentCard),
-        border = BorderStroke(1.dp, Color(0xFF1648D5).copy(alpha = .38f))
+        border = BorderStroke(1.dp, PaymentBorder)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .background(Brush.horizontalGradient(listOf(Color(0xFF173A7D).copy(alpha = .38f), Color.Transparent)))
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Thumbnail Placeholder
             Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(PaymentCardLight),
+                modifier = Modifier.size(70.dp).clip(RoundedCornerShape(14.dp)).background(PaymentCardLight),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = when(details.category) {
-                        BookingCategory.MOVIE -> Icons.Outlined.Movie
-                        BookingCategory.TURF -> Icons.Outlined.SportsSoccer
-                        BookingCategory.EVENT -> Icons.Outlined.Event
-                    },
-                    contentDescription = null,
-                    tint = PaymentGray,
-                    modifier = Modifier.size(32.dp)
-                )
+                Icon(bookingIcon(details.category), null, tint = PaymentOrange, modifier = Modifier.size(31.dp))
             }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column {
+            Spacer(modifier = Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = details.title,
+                    "PAYING FOR ${bookingLabel(details.category)}",
+                    color = PaymentOrange,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = .8.sp
+                )
+                Spacer(modifier = Modifier.height(5.dp))
+                Text(
+                    details.title,
                     color = PaymentWhite,
-                    fontSize = 18.sp,
+                    fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
-                    maxLines = 1
+                    maxLines = 2,
+                    lineHeight = 21.sp
                 )
-                Text(
-                    text = details.location,
-                    color = PaymentGray,
-                    fontSize = 13.sp,
-                    maxLines = 1
-                )
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(3.dp))
+                Text(details.location, color = PaymentGray, fontSize = 12.sp, maxLines = 1)
+                Spacer(modifier = Modifier.height(7.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.CalendarToday, null, tint = PaymentOrange, modifier = Modifier.size(12.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "${details.date} • ${details.time}",
-                        color = PaymentWhite.copy(alpha = 0.9f),
-                        fontSize = 12.sp
-                    )
+                    Icon(Icons.Rounded.CalendarToday, null, tint = PaymentGray, modifier = Modifier.size(13.dp))
+                    Spacer(modifier = Modifier.width(5.dp))
+                    Text("${details.date}  •  ${details.time}", color = PaymentWhite.copy(alpha = .88f), fontSize = 11.sp)
                 }
                 Text(
-                    text = details.details,
+                    details.details,
                     color = PaymentOrange,
-                    fontSize = 13.sp,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(top = 4.dp)
+                    modifier = Modifier.padding(top = 5.dp)
                 )
             }
         }
@@ -247,192 +186,177 @@ private fun BookingSummaryCard(details: BookingDetails) {
 }
 
 @Composable
-private fun CouponSection(isApplied: Boolean, onToggle: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = PaymentCard),
-        border = BorderStroke(1.dp, if (isApplied) PaymentOrange.copy(alpha = 0.5f) else Color(0xFF1648D5).copy(alpha = .38f))
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+private fun PaymentOptionsSection(methods: List<PaymentMethod>, selectedId: String, onSelect: (String) -> Unit) {
+    Column {
+        SectionHeading("Payment options")
+        Spacer(modifier = Modifier.height(12.dp))
+        Surface(
+            shape = RoundedCornerShape(18.dp),
+            color = PaymentCard,
+            border = BorderStroke(1.dp, PaymentBorder),
+            shadowElevation = 8.dp
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.LocalOffer, null, tint = PaymentOrange, modifier = Modifier.size(20.dp))
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = if (isApplied) "FIRSTBOOK applied!" else "Have a coupon?",
-                        color = PaymentWhite,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                    if (isApplied) {
-                        Text("You saved ₹50", color = PaymentSuccessGreen, fontSize = 11.sp)
-                    }
+            Column {
+                methods.forEachIndexed { index, method ->
+                    PaymentOptionRow(method, method.id == selectedId) { onSelect(method.id) }
+                    if (index != methods.lastIndex) HorizontalDivider(color = PaymentDivider)
                 }
             }
-            
-            Text(
-                text = if (isApplied) "Remove" else "Apply Coupon →",
-                color = PaymentOrange,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.clickable { onToggle() }
+        }
+    }
+}
+
+@Composable
+private fun PaymentOptionRow(method: PaymentMethod, isSelected: Boolean, onClick: () -> Unit) {
+    Surface(onClick = onClick, color = if (isSelected) PaymentOrange.copy(alpha = .085f) else Color.Transparent) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 15.dp, vertical = 17.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            SelectionCircle(isSelected)
+            Spacer(modifier = Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(method.name, color = PaymentWhite, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(modifier = Modifier.height(3.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    method.badge?.let { badge ->
+                        Surface(color = PaymentGreen.copy(alpha = .15f), shape = RoundedCornerShape(4.dp)) {
+                            Text(
+                                badge,
+                                color = PaymentGreen,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(7.dp))
+                    }
+                    Text(method.description, color = PaymentGray, fontSize = 10.sp, maxLines = 1)
+                }
+            }
+            Spacer(modifier = Modifier.width(10.dp))
+            Icon(
+                method.icon,
+                contentDescription = null,
+                tint = if (isSelected) PaymentOrange else PaymentGray,
+                modifier = Modifier.size(26.dp)
             )
         }
     }
 }
 
 @Composable
-private fun PriceDetailsSection(
-    ticket: Int,
-    fee: Int,
+private fun SelectionCircle(isSelected: Boolean) {
+    Box(
+        modifier = Modifier.size(21.dp).border(
+            if (isSelected) 2.dp else 1.dp,
+            if (isSelected) PaymentOrange else PaymentGray,
+            CircleShape
+        ),
+        contentAlignment = Alignment.Center
+    ) {
+        if (isSelected) {
+            Box(modifier = Modifier.size(11.dp).clip(CircleShape).background(PaymentOrange))
+        }
+    }
+}
+
+@Composable
+private fun OrderSummaryCard(
+    bookingDetails: BookingDetails,
+    ticketPrice: Int,
+    convenienceFee: Int,
     taxes: Int,
-    discount: Int,
-    total: Int
+    totalAmount: Int,
+    enabled: Boolean,
+    onPayClick: () -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            "Price Details",
-            color = PaymentWhite,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = PaymentCard),
-            border = BorderStroke(1.dp, Color(0xFF1648D5).copy(alpha = .38f))
-        ) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                PriceRow("Ticket Price", "₹$ticket")
-                PriceRow("Convenience Fee", "₹$fee")
-                PriceRow("Taxes", "₹$taxes")
-                
-                if (discount > 0) {
-                    PriceRow("Discount", "- ₹$discount", isDiscount = true)
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFF1648D5).copy(alpha = .38f)))
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Total Amount", color = PaymentWhite, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                    Text("₹$total", color = PaymentWhite, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
-                }
+    Card(
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = PaymentCard),
+        border = BorderStroke(1.dp, PaymentBorder),
+        elevation = CardDefaults.cardElevation(defaultElevation = 10.dp)
+    ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            Text("ORDER SUMMARY", color = PaymentGray, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(bookingDetails.title, color = PaymentWhite, fontSize = 19.sp, fontWeight = FontWeight.Bold, lineHeight = 24.sp)
+            Spacer(modifier = Modifier.height(5.dp))
+            Text(
+                "${bookingDetails.location} • ${bookingDetails.date} • ${bookingDetails.time}",
+                color = PaymentGray,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                lineHeight = 15.sp
+            )
+            Spacer(modifier = Modifier.height(17.dp))
+            SummaryRow(summaryItemLabel(bookingDetails.category), "₹$ticketPrice")
+            SummaryRow("Convenience fee", "₹$convenienceFee")
+            SummaryRow("Taxes", "₹$taxes")
+            HorizontalDivider(modifier = Modifier.padding(vertical = 14.dp), color = PaymentDivider)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Amount payable", color = PaymentWhite, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text("₹$totalAmount", color = PaymentOrange, fontSize = 25.sp, fontWeight = FontWeight.ExtraBold)
+            }
+            Spacer(modifier = Modifier.height(17.dp))
+            Button(
+                onClick = onPayClick,
+                enabled = enabled,
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = PaymentOrange,
+                    contentColor = PaymentWhite,
+                    disabledContainerColor = PaymentOrange.copy(alpha = .35f)
+                ),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp)
+            ) {
+                Icon(Icons.Rounded.Lock, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Proceed to pay", fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
 }
 
 @Composable
-private fun PriceRow(label: String, value: String, isDiscount: Boolean = false) {
+private fun SummaryRow(label: String, value: String) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(label, color = PaymentGray, fontSize = 14.sp)
-        Text(
-            text = value,
-            color = if (isDiscount) PaymentSuccessGreen else PaymentWhite,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium
-        )
+        Text(label, color = PaymentGray, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+        Text(value, color = PaymentWhite, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
 @Composable
-private fun PaymentMethodsSection(
-    methods: List<PaymentMethod>,
-    selectedId: String,
-    onSelect: (String) -> Unit
-) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            "Payment Method",
-            color = PaymentWhite,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            methods.forEach { method ->
-                val isSelected = selectedId == method.id
-                PaymentMethodCard(method, isSelected) { onSelect(method.id) }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PaymentMethodCard(
-    method: PaymentMethod,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
+private fun NonRefundableNotice(category: BookingCategory) {
     Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(12.dp),
-        color = if (isSelected) PaymentOrange.copy(alpha = .14f) else PaymentCard,
-        border = BorderStroke(
-            width = 1.5.dp,
-            color = if (isSelected) PaymentOrange else Color(0xFF1648D5).copy(alpha = .38f)
-        )
+        color = PaymentOrange.copy(alpha = .09f),
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(1.dp, PaymentOrange.copy(alpha = .38f))
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(if (isSelected) PaymentOrange.copy(alpha = 0.1f) else PaymentCardLight),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = method.icon,
-                    contentDescription = null,
-                    tint = if (isSelected) PaymentOrange else PaymentGray,
-                    modifier = Modifier.size(24.dp)
+        Row(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.Top) {
+            Icon(Icons.Rounded.Info, null, tint = PaymentOrange, modifier = Modifier.size(20.dp))
+            Spacer(modifier = Modifier.width(10.dp))
+            Column {
+                Text(
+                    "${bookingItemName(category)} is non-refundable",
+                    color = PaymentWhite,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp
                 )
-            }
-            
-            Spacer(modifier = Modifier.width(16.dp))
-            
-            Column(modifier = Modifier.weight(1f)) {
-                Text(method.name, color = PaymentWhite, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                Text(method.description, color = PaymentGray, fontSize = 12.sp)
-            }
-
-            if (isSelected) {
-                Icon(
-                    imageVector = Icons.Default.CheckCircle,
-                    contentDescription = "Selected",
-                    tint = PaymentOrange,
-                    modifier = Modifier.size(20.dp)
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(20.dp)
-                        .border(1.dp, PaymentGray.copy(alpha = 0.5f), RoundedCornerShape(50))
+                Spacer(modifier = Modifier.height(3.dp))
+                Text(
+                    "Once payment is completed, this booking cannot be cancelled, exchanged, or refunded.",
+                    color = PaymentGray,
+                    fontSize = 11.sp,
+                    lineHeight = 16.sp
                 )
             }
         }
@@ -442,61 +366,41 @@ private fun PaymentMethodCard(
 @Composable
 private fun SecurityNote() {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
+        modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(Icons.Rounded.Lock, null, tint = PaymentGray, modifier = Modifier.size(14.dp))
-        Spacer(modifier = Modifier.width(8.dp))
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Secure payment", color = PaymentWhite.copy(alpha = 0.8f), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            Text("Your payment information is protected", color = PaymentGray, fontSize = 10.sp)
-        }
+        Icon(Icons.Rounded.Lock, null, tint = PaymentGreen, modifier = Modifier.size(14.dp))
+        Spacer(modifier = Modifier.width(7.dp))
+        Text("100% secure and encrypted payment", color = PaymentGray, fontSize = 11.sp, fontWeight = FontWeight.Medium)
     }
 }
 
 @Composable
-private fun BottomPaymentBar(amount: Int, enabled: Boolean, onPayClick: () -> Unit) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = Color(0xFF0E0B38).copy(alpha = .92f),
-        tonalElevation = 8.dp,
-        shadowElevation = 16.dp
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text("Total Amount", color = PaymentGray, fontSize = 12.sp)
-                Text("₹$amount", color = PaymentWhite, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
-            }
+private fun SectionHeading(text: String) {
+    Text(text, color = PaymentWhite, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+}
 
-            Button(
-                onClick = onPayClick,
-                enabled = enabled,
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = PaymentOrange,
-                    disabledContainerColor = Color(0xFF082A82).copy(alpha = .55f)
-                ),
-                modifier = Modifier
-                    .height(54.dp)
-                    .fillMaxWidth(0.6f),
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
-            ) {
-                Text(
-                    text = "Pay ₹$amount",
-                    color = PaymentWhite,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-    }
+private fun bookingIcon(category: BookingCategory): ImageVector = when (category) {
+    BookingCategory.MOVIE -> Icons.Outlined.Movie
+    BookingCategory.TURF -> Icons.Outlined.SportsSoccer
+    BookingCategory.EVENT -> Icons.Outlined.Event
+}
+
+private fun bookingLabel(category: BookingCategory): String = when (category) {
+    BookingCategory.MOVIE -> "MOVIE BOOKING"
+    BookingCategory.TURF -> "TURF BOOKING"
+    BookingCategory.EVENT -> "EVENT BOOKING"
+}
+
+private fun summaryItemLabel(category: BookingCategory): String = when (category) {
+    BookingCategory.MOVIE -> "Tickets"
+    BookingCategory.TURF -> "Slot charge"
+    BookingCategory.EVENT -> "Tickets"
+}
+
+private fun bookingItemName(category: BookingCategory): String = when (category) {
+    BookingCategory.MOVIE -> "Tickets"
+    BookingCategory.TURF -> "Turf booking"
+    BookingCategory.EVENT -> "Event booking"
 }

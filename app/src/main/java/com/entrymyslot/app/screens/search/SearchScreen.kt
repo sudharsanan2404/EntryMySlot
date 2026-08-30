@@ -1,7 +1,9 @@
 package com.entrymyslot.app.screens.search
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -16,6 +18,8 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.Sort
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
@@ -167,11 +171,42 @@ private fun SearchFilters(
         }
         var sortMenuOpen by remember { mutableStateOf(false) }
         Box {
-            OutlinedButton(onClick = { sortMenuOpen = true }, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.AutoMirrored.Rounded.Sort, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(sort.label); Spacer(Modifier.weight(1f)); Icon(Icons.Rounded.ExpandMore, null)
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { sortMenuOpen = true },
+                shape = RoundedCornerShape(12.dp),
+                color = SearchField,
+                border = BorderStroke(1.dp, SearchAccent.copy(alpha = 0.2f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.AutoMirrored.Rounded.Sort, null, tint = SearchAccent, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Text(sort.label, color = SearchText, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Spacer(Modifier.weight(1f))
+                    Icon(Icons.Rounded.ExpandMore, null, tint = SearchMuted, modifier = Modifier.size(20.dp))
+                }
             }
-            DropdownMenu(expanded = sortMenuOpen, onDismissRequest = { sortMenuOpen = false }) {
-                SearchSort.entries.forEach { option -> DropdownMenuItem(text = { Text(option.label) }, onClick = { onSortChange(option); sortMenuOpen = false }) }
+            DropdownMenu(
+                expanded = sortMenuOpen,
+                onDismissRequest = { sortMenuOpen = false },
+                modifier = Modifier
+                    .width(IntrinsicSize.Max)
+                    .background(Color(0xFF1D2550))
+                    .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
+            ) {
+                SearchSort.entries.forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(option.label, color = if (sort == option) SearchAccent else Color.White, fontSize = 14.sp) },
+                        onClick = { onSortChange(option); sortMenuOpen = false },
+                        leadingIcon = {
+                            if (sort == option) Icon(Icons.Rounded.Check, null, tint = SearchAccent, modifier = Modifier.size(18.dp))
+                        }
+                    )
+                }
             }
         }
     }

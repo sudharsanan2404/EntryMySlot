@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Calendar
 import com.entrymyslot.app.screens.home.GlowBackground
+import com.entrymyslot.app.core.components.TermsAndPolicyBottomSheet
 
 private val MovieBlueTop = Color(0xFF0B3A82)
 private val MovieBlueBottom = Color(0xFF061A33)
@@ -47,6 +48,7 @@ fun MovieBookingScreen(
     var selectedTime by remember { mutableStateOf(initialTime) }
     var seatCountToBook by remember { mutableIntStateOf(1) }
     var selectedSeats by remember { mutableStateOf(setOf<String>()) }
+    var showTerms by remember { mutableStateOf(false) }
 
     val ticketPrice = 180
     val totalPrice = selectedSeats.size * ticketPrice
@@ -164,7 +166,20 @@ fun MovieBookingScreen(
                 }
             }
 
-            MovieBottomBar(selectedSeats.size, totalPrice, onContinueClick)
+            MovieBottomBar(selectedSeats.size, totalPrice) {
+                showTerms = true
+            }
+        }
+
+        if (showTerms) {
+            TermsAndPolicyBottomSheet(
+                category = "MOVIE",
+                onDismiss = { showTerms = false },
+          onAccept = {
+                    showTerms = false
+                    onContinueClick()
+                }
+            )
         }
     }
 }

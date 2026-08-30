@@ -93,7 +93,7 @@ private fun MovieHero(movie: PopularEvent, onBackClick: () -> Unit) {
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = .12f), Color(0xFF061A33)), startY = 80f)))
         IconButton(
             onClick = onBackClick,
-            modifier = Modifier.statusBarsPadding().padding(8.dp).background(Color.Black.copy(alpha = .42f), CircleShape)
+            modifier = Modifier.statusBarsPadding().padding(8.dp)
         ) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back", tint = Color.White) }
         Column(Modifier.align(Alignment.BottomStart).padding(20.dp)) {
             Text(movie.title, color = Color.White, fontSize = 30.sp, lineHeight = 34.sp, fontWeight = FontWeight.Black)

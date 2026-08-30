@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.entrymyslot.app.screens.home.PopularEvent
 import com.entrymyslot.app.screens.home.GlowBackground
+import com.entrymyslot.app.core.components.TermsAndPolicyBottomSheet
 
 // ------------------------------------------------------------
 // COLORS
@@ -74,6 +75,7 @@ fun EventBookingScreen(
     }
 
     var selectedQuantities by remember { mutableStateOf(mapOf<String, Int>()) }
+    var showTerms by remember { mutableStateOf(false) }
     
     val totalTickets = selectedQuantities.values.sum()
     val subtotal = tiers.sumOf { tier -> (selectedQuantities[tier.id] ?: 0) * tier.price }
@@ -94,7 +96,7 @@ fun EventBookingScreen(
             )
         },
         bottomBar = {
-            BottomBookingBar(totalTickets, totalAmount, onContinueClick, selectedQuantities)
+            BottomBookingBar(totalTickets, totalAmount, { showTerms = true }, selectedQuantities)
         },
         containerColor = Color.Transparent
     ) { paddingValues ->
@@ -148,6 +150,17 @@ fun EventBookingScreen(
                 }
                 
                 item { Spacer(modifier = Modifier.height(20.dp)) }
+            }
+
+            if (showTerms) {
+                TermsAndPolicyBottomSheet(
+                    category = "EVENT",
+                    onDismiss = { showTerms = false },
+              onAccept = {
+                        showTerms = false
+                        onContinueClick(selectedQuantities)
+                    }
+                )
             }
         }
     }
