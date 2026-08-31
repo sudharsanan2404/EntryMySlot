@@ -13,7 +13,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.entrymyslot.app.core.components.EntryBottomNavigation
 import com.entrymyslot.app.core.storage.AuthTokenStore
 import com.entrymyslot.app.screens.auth.AuthScreen
 import com.entrymyslot.app.screens.home.HomeScreen
@@ -65,15 +67,19 @@ fun AppNavigation(
 
     val homeViewModel: HomeViewModel = viewModel()
     val homeState by homeViewModel.uiState.collectAsStateWithLifecycle()
+    val currentBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = currentBackStackEntry?.destination?.route
+    val navbarRoutes = setOf("home", "search/{type}", "bookings", "profile", "wishlist")
 
-    NavHost(
-        navController = navController,
-        startDestination = if (accessToken != null) "home" else "auth",
-        enterTransition = { slideInHorizontally(tween(280)) { it / 8 } },
-        exitTransition = { slideOutHorizontally(tween(240)) { -it / 10 } },
-        popEnterTransition = { slideInHorizontally(tween(280)) { -it / 8 } },
-        popExitTransition = { slideOutHorizontally(tween(240)) { it / 10 } }
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        NavHost(
+            navController = navController,
+            startDestination = if (accessToken != null) "home" else "auth",
+            enterTransition = { slideInHorizontally(tween(150)) { it / 12 } },
+            exitTransition = { slideOutHorizontally(tween(120)) { -it / 14 } },
+            popEnterTransition = { slideInHorizontally(tween(150)) { -it / 12 } },
+            popExitTransition = { slideOutHorizontally(tween(120)) { it / 14 } }
+        ) {
 
         composable("auth") {
             AuthScreen(
@@ -385,6 +391,36 @@ fun AppNavigation(
                 onDoneClick = {
                     navController.navigate("home") { popUpTo("home") { inclusive = true } }
                 }
+            )
+        }
+        }
+
+        if (currentRoute in navbarRoutes) {
+            val selectedItem = when (currentRoute) {
+                "home" -> "Home"
+                "search/{type}" -> "Search"
+                "bookings" -> "My Bookings"
+                "profile" -> "Profile"
+                else -> ""
+            }
+            EntryBottomNavigation(
+                selectedItem = selectedItem,
+                onItemSelected = { item ->
+                    val destination = when (item) {
+                        "Home" -> "home"
+                        "Search" -> "search/all"
+                        "My Bookings" -> "bookings"
+                        else -> "profile"
+                    }
+                    if (selectedItem != item) {
+                        navController.navigate(destination) {
+                            launchSingleTop = true
+                            restoreState = true
+                            popUpTo("home") { saveState = true }
+                        }
+                    }
+                },
+                modifier = Modifier.align(Alignment.BottomCenter)
             )
         }
     }

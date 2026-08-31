@@ -65,7 +65,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.entrymyslot.app.core.components.EntryBottomNavigation
 import com.entrymyslot.app.screens.home.GlowBackground
 
 private val ProfileBackground = Color(0xFF061A38)
@@ -110,11 +109,6 @@ fun ProfileScreen(
             }
 
         }
-        EntryBottomNavigation(
-            selectedItem = "Profile",
-            onItemSelected = onBottomNavigationClick,
-            modifier = Modifier.align(Alignment.BottomCenter)
-        )
     }
 }
 

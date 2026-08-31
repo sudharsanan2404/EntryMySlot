@@ -44,7 +44,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.entrymyslot.app.core.components.EntryBottomNavigation
 import com.entrymyslot.app.screens.home.GlowBackground
 import com.entrymyslot.app.screens.home.PopularEvent
 
@@ -119,11 +118,6 @@ fun WishlistScreen(
             }
 
         }
-        EntryBottomNavigation(
-            selectedItem = "",
-            onItemSelected = onBottomNavigationClick,
-            modifier = Modifier.align(Alignment.BottomCenter)
-        )
     }
 }
 
