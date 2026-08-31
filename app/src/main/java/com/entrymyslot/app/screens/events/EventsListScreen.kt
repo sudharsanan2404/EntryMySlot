@@ -47,12 +47,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.entrymyslot.app.R
 import com.entrymyslot.app.screens.home.GlowBackground
 import com.entrymyslot.app.screens.home.PopularEvent
 
@@ -318,44 +320,14 @@ private fun EventImage(
         ),
         contentAlignment = Alignment.Center
     ) {
-        if (event.imageUrl != null) {
-            AsyncImage(
-                model = event.imageUrl,
-                contentDescription = event.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-        } else {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(
-                    modifier = Modifier
-                        .size(58.dp)
-                        .clip(CircleShape)
-                        .background(EventsAccent.copy(alpha = 0.14f))
-                        .border(
-                            width = 1.dp,
-                            color = EventsAccent.copy(alpha = 0.38f),
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Event,
-                        contentDescription = event.title,
-                        tint = EventsAccent,
-                        modifier = Modifier.size(29.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.height(9.dp))
-                Text(
-                    text = "ENTRYMYSLOT EVENTS",
-                    color = EventsSecondaryText,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
-                )
-            }
-        }
+        AsyncImage(
+            model = event.imageUrl ?: R.drawable.event_fallback,
+            contentDescription = event.title,
+            placeholder = painterResource(R.drawable.event_fallback),
+            error = painterResource(R.drawable.event_fallback),
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
 
         Box(
             modifier = Modifier

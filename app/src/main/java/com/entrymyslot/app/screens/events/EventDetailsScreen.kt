@@ -53,6 +53,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -60,9 +61,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.entrymyslot.app.R
 import com.entrymyslot.app.screens.home.GlowBackground
-import com.entrymyslot.app.screens.home.PopularEvent
-import com.entrymyslot.app.screens.wishlist.WishlistStore
+import com.entrymyslot.app.data.model.Event
+import com.entrymyslot.app.data.FakeData
+import com.entrymyslot.app.data.model.BookingType
 
 private val DetailsBackground = Color(0xFF061A38)
 private val DetailsSurface = Color(0xFF0B274F)
@@ -75,7 +78,7 @@ private val DetailsMutedText = Color(0xFF7185A1)
 
 @Composable
 fun EventDetailsScreen(
-    event: PopularEvent,
+    event: Event,
     onBackClick: () -> Unit,
     onBookTicketsClick: () -> Unit
 ) {
@@ -113,8 +116,7 @@ fun EventDetailsScreen(
 
             item(key = "about_event") {
                 AboutEventSection(
-                    description = "Review the schedule and venue details for ${event.title}. " +
-                        "When you’re ready, continue to choose your ticket category and quantity."
+                    description = event.description
                 )
             }
 
@@ -133,7 +135,7 @@ fun EventDetailsScreen(
 
 @Composable
 private fun EventHero(
-    event: PopularEvent,
+    event: Event,
     onBackClick: () -> Unit
 ) {
     var contentVisible by remember(event.id) { mutableStateOf(false) }
@@ -154,16 +156,14 @@ private fun EventHero(
                 )
             )
     ) {
-        if (event.imageUrl != null) {
-            AsyncImage(
-                model = event.imageUrl,
-                contentDescription = event.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-        } else {
-            EventHeroFallback(eventTitle = event.title)
-        }
+        AsyncImage(
+            model = event.imageUrl ?: R.drawable.event_fallback,
+            contentDescription = event.title,
+            placeholder = painterResource(R.drawable.event_fallback),
+            error = painterResource(R.drawable.event_fallback),
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
 
         Box(
             modifier = Modifier
@@ -235,8 +235,8 @@ private fun EventHero(
 }
 
 @Composable
-private fun EventInterestCard(event: PopularEvent) {
-    val interested = WishlistStore.contains(event.id)
+private fun EventInterestCard(event: Event) {
+    val interested = FakeData.isWishlisted(event.id)
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 5.dp)
             .clip(RoundedCornerShape(14.dp)).background(DetailsSurface)
@@ -254,7 +254,7 @@ private fun EventInterestCard(event: PopularEvent) {
             )
         }
         Button(
-            onClick = { WishlistStore.toggle(event, "EVENT", Icons.Outlined.Event) },
+            onClick = { FakeData.toggleWishlist(event.id, BookingType.EVENT) },
             modifier = Modifier.height(34.dp),
             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
             colors = ButtonDefaults.buttonColors(containerColor = if (interested) DetailsSurfaceRaised else DetailsAccent)
@@ -367,7 +367,7 @@ private fun PremiumHeroBackButton(
 
 @Composable
 private fun EventInformationSection(
-    event: PopularEvent,
+    event: Event,
     onGoToLocationClick: () -> Unit
 ) {
     DetailsSection(

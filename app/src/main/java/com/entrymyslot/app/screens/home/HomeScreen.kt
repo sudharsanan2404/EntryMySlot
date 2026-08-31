@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -88,6 +89,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -109,12 +111,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.entrymyslot.app.R
 import com.entrymyslot.app.core.components.GpsDisabledDialog
 import com.entrymyslot.app.core.components.LocationFetchState
 import com.entrymyslot.app.core.components.rememberLocationFetcher
+import com.entrymyslot.app.data.FakeData
+import com.entrymyslot.app.data.model.AppNotification
+import com.entrymyslot.app.data.model.CatalogItem
+import com.entrymyslot.app.data.model.HomePromotion
+import com.entrymyslot.app.data.model.NotificationKind
+import com.entrymyslot.app.data.model.PromotionDestination
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -128,41 +134,7 @@ private val PremiumWhite = Color(0xFFF8FAFF)
 private val PremiumSecondary = Color(0xFFA8B8CF)
 private val PremiumMuted = Color(0xFF7185A1)
 
-data class PopularEvent(
-    val id: String,
-    val title: String,
-    val date: String,
-    val location: String,
-    val price: String,
-    val imageUrl: String? = null
-)
-
-val popularEvents = listOf(
-    PopularEvent("pop_1", "IND vs AUS - 2nd ODI", "20 Oct 2024 | 2:00 PM", "Eden Gardens, Kolkata", "From ₹299"),
-    PopularEvent("pop_2", "Arijit Singh Live", "25 Nov 2024 | 7:00 PM", "DY Patil Stadium, Mumbai", "From ₹799"),
-    PopularEvent("pop_3", "Live Music Night", "12 Dec 2024 | 8:00 PM", "Chennai", "From ₹499"),
-    PopularEvent("pop_4", "Tech Summit 2024", "15 Jan 2025 | 10:00 AM", "Trade Center, Bangalore", "Free Entry"),
-    PopularEvent("pop_5", "Stand-up Comedy", "05 Dec 2024 | 9:00 PM", "The Laugh Club, Chennai", "From ₹350"),
-    PopularEvent("pop_6", "Food Festival", "10 Nov 2024 | 11:00 AM", "Island Ground, Chennai", "From ₹100")
-)
-
-val latestMovies = listOf(
-    PopularEvent("mov_1", "The Dark Knight", "In Cinemas Now", "IMAX, Chennai", "From ₹190"),
-    PopularEvent("mov_2", "Inception", "Re-releasing Soon", "PVR, Bangalore", "From ₹250"),
-    PopularEvent("mov_3", "Interstellar", "15 Oct 2024", "Luxe, Mumbai", "From ₹300"),
-    PopularEvent("mov_4", "Avatar: Way of Water", "In Cinemas Now", "PVR, Chennai", "From ₹220"),
-    PopularEvent("mov_5", "The Matrix", "Next Week", "Sathyam, Chennai", "From ₹180"),
-    PopularEvent("mov_6", "Avengers: Endgame", "20 Oct 2024", "INOX, Madurai", "From ₹150")
-)
-
-val sportsNearYou = listOf(
-    PopularEvent("sport_1", "Green Arena Turf", "Open Now", "Adyar, Chennai", "From ₹800"),
-    PopularEvent("sport_2", "Blue Wave Pool", "6:00 AM - 9:00 PM", "Velachery, Chennai", "From ₹200"),
-    PopularEvent("sport_3", "Elite Badminton Club", "Available Today", "T. Nagar, Chennai", "From ₹400"),
-    PopularEvent("sport_4", "Victory Cricket Ground", "Slots Available", "OMR, Chennai", "From ₹1500"),
-    PopularEvent("sport_5", "Smash Tennis Court", "Open 24/7", "Anna Nagar, Chennai", "From ₹600"),
-    PopularEvent("sport_6", "Dunk Basket Court", "Available Now", "Porur, Chennai", "From ₹300")
-)
+typealias PopularEvent = CatalogItem
 
 @Composable
 fun GlowBackground(modifier: Modifier = Modifier) {
@@ -192,14 +164,16 @@ fun HomeScreen(
     onSearchClick: () -> Unit = {},
     onWishlistClick: () -> Unit = {},
     onLocationClick: () -> Unit = {},
-    homeViewModel: HomeViewModel = viewModel()
+    onDrawerVisibilityChange: (Boolean) -> Unit = {},
+    selectedCity: String = FakeData.currentUser.city
 ) {
-    val homeState by homeViewModel.uiState.collectAsStateWithLifecycle()
     PremiumHomeScreen(
-        featuredEvents = homeState.events.map { it.toPopularEvent() }.ifEmpty { popularEvents },
-        featuredMovies = homeState.movies.map { it.toPopularEvent() }.ifEmpty { latestMovies },
-        nearbySports = homeState.sports.map { it.toPopularEvent() }.ifEmpty { sportsNearYou },
-        selectedCity = homeState.selectedCity,
+        featuredEvents = FakeData.events,
+        featuredMovies = FakeData.movies,
+        nearbySports = FakeData.turfs,
+        promotions = FakeData.promotions.map(HomePromotion::toBanner),
+        selectedCity = selectedCity,
+        onPromotionClick = { banner -> onCategoryClick(banner.destination) },
         onCategoryClick = onCategoryClick,
         onEventClick = onEventClick,
         onBottomNavigationClick = onBottomNavigationClick,
@@ -207,79 +181,53 @@ fun HomeScreen(
         onMovieBookClick = onMovieBookClick,
         onSearchClick = onSearchClick,
         onWishlistClick = onWishlistClick,
-        onLocationClick = onLocationClick
+        onLocationClick = onLocationClick,
+        onDrawerVisibilityChange = onDrawerVisibilityChange
     )
 }
 
-fun com.entrymyslot.app.data.model.HomeContent.toPopularEvent() = PopularEvent(
-    id = id,
-    title = title,
-    date = date,
-    location = location,
-    price = price,
-    imageUrl = imageUrl
-)
-
 private enum class HomeContentKind { Event, Movie, Sport }
-private enum class NotificationKind { Reminder, Booking, Offer }
+private typealias HomeNotification = AppNotification
 
-private data class HomeNotification(
-    val id: Int,
-    val title: String,
-    val message: String,
-    val kind: NotificationKind
-)
-
-private data class PromotionBanner(
+internal data class PromotionBanner(
     val category: String,
     val title: String,
     val subtitle: String,
     val cta: String,
     val destination: String,
+    val imageUrl: String? = null,
     val icon: ImageVector,
     val startColor: Color,
     val endColor: Color
 )
 
-private val promotionBanners = listOf(
-    PromotionBanner(
-        category = "NOW SHOWING",
-        title = "Big-screen stories await",
-        subtitle = "Find a showtime and reserve your perfect seats.",
-        cta = "Explore movies",
-        destination = "Movies",
-        icon = Icons.Outlined.ConfirmationNumber,
-        startColor = Color(0xFF123F77),
-        endColor = Color(0xFF071C3E)
-    ),
-    PromotionBanner(
-        category = "SPORTS NEAR YOU",
-        title = "Own the next game",
-        subtitle = "Discover nearby venues and book your slot.",
-        cta = "Find a venue",
-        destination = "Sports",
-        icon = Icons.Outlined.SportsSoccer,
-        startColor = Color(0xFF16446D),
-        endColor = Color(0xFF071D3C)
-    ),
-    PromotionBanner(
-        category = "LIVE EXPERIENCES",
-        title = "Make tonight memorable",
-        subtitle = "Browse events worth stepping out for.",
-        cta = "View events",
-        destination = "Events",
-        icon = Icons.Outlined.Event,
-        startColor = Color(0xFF263D72),
-        endColor = Color(0xFF091B3B)
+private fun HomePromotion.toBanner(): PromotionBanner {
+    val visuals = when (destination) {
+        PromotionDestination.MOVIES -> Triple(Icons.Outlined.ConfirmationNumber, Color(0xFF123F77), Color(0xFF071C3E))
+        PromotionDestination.SPORTS -> Triple(Icons.Outlined.SportsSoccer, Color(0xFF16446D), Color(0xFF071D3C))
+        PromotionDestination.EVENTS -> Triple(Icons.Outlined.Event, Color(0xFF263D72), Color(0xFF091B3B))
+    }
+    return PromotionBanner(
+        category = category,
+        title = title,
+        subtitle = subtitle,
+        cta = cta,
+        destination = destination.name.lowercase().replaceFirstChar(Char::uppercase),
+        imageUrl = imageUrl,
+        icon = visuals.first,
+        startColor = visuals.second,
+        endColor = visuals.third
     )
-)
+}
 
 @Composable
 internal fun PremiumHomeScreen(
     featuredEvents: List<PopularEvent>,
     featuredMovies: List<PopularEvent>,
     nearbySports: List<PopularEvent>,
+    promotions: List<PromotionBanner>,
     selectedCity: String,
+    onPromotionClick: (PromotionBanner) -> Unit,
     onCategoryClick: (String) -> Unit,
     onEventClick: (PopularEvent) -> Unit,
     onBottomNavigationClick: (String) -> Unit,
@@ -287,22 +235,14 @@ internal fun PremiumHomeScreen(
     onMovieBookClick: (PopularEvent) -> Unit,
     onSearchClick: () -> Unit,
     onWishlistClick: () -> Unit,
-    onLocationClick: () -> Unit
+    onLocationClick: () -> Unit,
+    onDrawerVisibilityChange: (Boolean) -> Unit
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var selectedBottomItem by remember { mutableStateOf("Home") }
     var showNotifications by remember { mutableStateOf(false) }
-    var notifications by remember {
-        mutableStateOf(
-            listOf(
-                HomeNotification(1, "Venue reminder · Today, 6:00 PM", "Green Arena Turf is booked for 2 hours. Arrive 15 minutes early.", NotificationKind.Reminder),
-                HomeNotification(2, "Booking confirmed", "Your Live Cricket Championship tickets are ready in My Bookings.", NotificationKind.Booking),
-                HomeNotification(3, "Weekend venue offer", "Save 20% on selected badminton courts near Chennai this weekend.", NotificationKind.Offer)
-            )
-        )
-    }
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
@@ -317,6 +257,14 @@ internal fun PremiumHomeScreen(
         } else {
             showSystemReminderNotification(context)
         }
+    }
+    LaunchedEffect(drawerState) {
+        snapshotFlow { drawerState.currentValue to drawerState.targetValue }
+            .collect { (current, target) ->
+                onDrawerVisibilityChange(
+                    current != DrawerValue.Closed || target != DrawerValue.Closed
+                )
+            }
     }
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -348,7 +296,9 @@ internal fun PremiumHomeScreen(
                     featuredEvents = featuredEvents,
                     featuredMovies = featuredMovies,
                     nearbySports = nearbySports,
+                    promotions = promotions,
                     selectedCity = selectedCity,
+                    onPromotionClick = onPromotionClick,
                     onCategoryClick = onCategoryClick,
                     onEventClick = onEventClick,
                     onSportClick = onSportClick,
@@ -365,9 +315,9 @@ internal fun PremiumHomeScreen(
     }
     if (showNotifications) {
         NotificationPanel(
-            notifications = notifications,
-            onClear = { id -> notifications = notifications.filterNot { it.id == id } },
-            onClearAll = { notifications = emptyList() },
+            notifications = FakeData.notifications,
+            onClear = { id -> FakeData.notifications.removeAll { it.id == id } },
+            onClearAll = FakeData.notifications::clear,
             onDismiss = { showNotifications = false }
         )
     }
@@ -378,7 +328,9 @@ private fun PremiumHomeContent(
     featuredEvents: List<PopularEvent>,
     featuredMovies: List<PopularEvent>,
     nearbySports: List<PopularEvent>,
+    promotions: List<PromotionBanner>,
     selectedCity: String,
+    onPromotionClick: (PromotionBanner) -> Unit,
     onCategoryClick: (String) -> Unit,
     onEventClick: (PopularEvent) -> Unit,
     onSportClick: (PopularEvent) -> Unit,
@@ -411,7 +363,10 @@ private fun PremiumHomeContent(
         }
 
         item(key = "promotions") {
-            PromotionalCarousel(onBannerClick = onCategoryClick)
+            PromotionalCarousel(
+                banners = promotions,
+                onBannerClick = onPromotionClick
+            )
             Spacer(modifier = Modifier.height(24.dp))
         }
 
@@ -531,9 +486,9 @@ private fun NotificationPanel(
     val filters = listOf("All", "Reminders", "Bookings", "Offers")
     val visibleNotifications = notifications.filter { notification ->
         when (selectedFilter) {
-            "Reminders" -> notification.kind == NotificationKind.Reminder
-            "Bookings" -> notification.kind == NotificationKind.Booking
-            "Offers" -> notification.kind == NotificationKind.Offer
+            "Reminders" -> notification.kind == NotificationKind.REMINDER
+            "Bookings" -> notification.kind == NotificationKind.BOOKING
+            "Offers" -> notification.kind == NotificationKind.OFFER
             else -> true
         }
     }
@@ -633,6 +588,8 @@ private fun NotificationPanel(
 }
 
 private fun showSystemReminderNotification(context: Context) {
+    val reminder = FakeData.notifications.firstOrNull { it.kind == NotificationKind.REMINDER }
+        ?: return
     val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     val channelId = "entrymyslot_reminders"
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -647,8 +604,8 @@ private fun showSystemReminderNotification(context: Context) {
     }
     val notification = builder
         .setSmallIcon(R.drawable.ic_launcher_foreground)
-        .setContentTitle("Green Arena Turf · Booking reminder")
-        .setContentText("Your venue is booked today at 6:00 PM. Arrive 15 minutes early.")
+        .setContentTitle(reminder.title)
+        .setContentText(reminder.message)
         .setAutoCancel(true)
         .setPriority(android.app.Notification.PRIORITY_HIGH)
         .build()
@@ -765,15 +722,18 @@ private fun LocationChip(city: String, onClick: () -> Unit) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun PromotionalCarousel(onBannerClick: (String) -> Unit) {
-    val pagerState = rememberPagerState(pageCount = { promotionBanners.size })
+private fun PromotionalCarousel(
+    banners: List<PromotionBanner>,
+    onBannerClick: (PromotionBanner) -> Unit
+) {
+    val pagerState = rememberPagerState(pageCount = { banners.size })
 
     LaunchedEffect(pagerState) {
         while (true) {
             delay(5_000)
             if (!pagerState.isScrollInProgress) {
                 pagerState.animateScrollToPage(
-                    page = (pagerState.currentPage + 1) % promotionBanners.size,
+                    page = (pagerState.currentPage + 1) % banners.size,
                     animationSpec = tween(520)
                 )
             }
@@ -789,13 +749,13 @@ private fun PromotionalCarousel(onBannerClick: (String) -> Unit) {
             modifier = Modifier.fillMaxWidth()
         ) { page ->
             PromotionalBannerCard(
-                banner = promotionBanners[page],
-                onClick = { onBannerClick(promotionBanners[page].destination) }
+                banner = banners[page],
+                onClick = { onBannerClick(banners[page]) }
             )
         }
         Spacer(modifier = Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            promotionBanners.indices.forEach { index ->
+            banners.indices.forEach { index ->
                 val selected = pagerState.currentPage == index
                 val width by animateDpAsState(
                     targetValue = if (selected) 22.dp else 7.dp,
@@ -840,6 +800,26 @@ private fun PromotionalBannerCard(
                 RoundedCornerShape(22.dp)
             )
     ) {
+        banner.imageUrl?.let { imageUrl ->
+            coil3.compose.AsyncImage(
+                model = imageUrl,
+                contentDescription = banner.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(
+                                banner.startColor.copy(alpha = .96f),
+                                banner.endColor.copy(alpha = .52f)
+                            )
+                        )
+                    )
+            )
+        }
         Box(
             modifier = Modifier
                 .size(170.dp)
@@ -1180,36 +1160,19 @@ private fun PremiumContentCard(
                 .height(imageHeight)
                 .background(PremiumBlue)
         ) {
-            if (event.imageUrl != null) {
-                coil3.compose.AsyncImage(
-                    model = event.imageUrl,
-                    contentDescription = event.title,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(PremiumBlue, PremiumSurfaceRaised)
-                            )
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = when (kind) {
-                            HomeContentKind.Event -> Icons.Outlined.Event
-                            HomeContentKind.Movie -> Icons.Outlined.ConfirmationNumber
-                            HomeContentKind.Sport -> Icons.Outlined.SportsSoccer
-                        },
-                        contentDescription = null,
-                        tint = PremiumBlueEdge.copy(alpha = 0.55f),
-                        modifier = Modifier.size(if (kind == HomeContentKind.Movie) 38.dp else 32.dp)
-                    )
-                }
+            val fallbackImage = when (kind) {
+                HomeContentKind.Event -> R.drawable.event_fallback
+                HomeContentKind.Movie -> R.drawable.movie_poster_fallback
+                HomeContentKind.Sport -> R.drawable.turf_hero
             }
+            coil3.compose.AsyncImage(
+                model = event.imageUrl ?: fallbackImage,
+                contentDescription = event.title,
+                placeholder = painterResource(fallbackImage),
+                error = painterResource(fallbackImage),
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -1270,9 +1233,10 @@ private fun PremiumDrawer(
     onWishlistClick: () -> Unit
 ) {
     ModalDrawerSheet(
-        modifier = Modifier.widthIn(max = 318.dp),
-        drawerContainerColor = PremiumBackground,
-        drawerShape = RoundedCornerShape(topEnd = 28.dp, bottomEnd = 28.dp)
+        modifier = Modifier.fillMaxHeight().width(318.dp),
+        drawerContainerColor = Color.Transparent,
+        drawerShape = RoundedCornerShape(0.dp),
+        windowInsets = WindowInsets(0, 0, 0, 0)
     ) {
         Box(
             modifier = Modifier
@@ -1386,13 +1350,20 @@ private fun DrawerItem(text: String, icon: ImageVector, onClick: () -> Unit) {
 @Composable
 fun LocationSelectionScreen(
     selectedCity: String,
+    availableCities: List<String> = emptyList(),
     onBackClick: () -> Unit,
     onCitySelected: (String) -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
     val locationFetcher = rememberLocationFetcher(onCityResolved = onCitySelected)
-    val filteredDistricts = remember(searchQuery) {
-        premiumDistricts.filter { it.contains(searchQuery, ignoreCase = true) }
+    val cityOptions = remember(selectedCity, availableCities) {
+        (listOf(selectedCity) + availableCities.ifEmpty { FakeData.cities })
+            .filter(String::isNotBlank)
+            .distinct()
+            .sorted()
+    }
+    val filteredDistricts = remember(searchQuery, cityOptions) {
+        cityOptions.filter { it.contains(searchQuery, ignoreCase = true) }
     }
 
     if (locationFetcher.showGpsDialog) {
@@ -1619,17 +1590,6 @@ private fun CityRow(city: String, isSelected: Boolean, onClick: () -> Unit) {
         )
     }
 }
-
-private val premiumDistricts = listOf(
-    "Ariyalur", "Chengalpattu", "Chennai", "Coimbatore", "Cuddalore",
-    "Dharmapuri", "Dindigul", "Erode", "Kallakurichi", "Kancheepuram",
-    "Kanniyakumari", "Karur", "Krishnagiri", "Madurai", "Mayiladuthurai",
-    "Nagapattinam", "Namakkal", "Nilgiris", "Perambalur", "Pudukkottai",
-    "Ramanathapuram", "Ranipet", "Salem", "Sivaganga", "Tenkasi",
-    "Thanjavur", "Theni", "Thoothukudi", "Tiruchirappalli", "Tirunelveli",
-    "Tirupathur", "Tiruppur", "Tiruvallur", "Tiruvannamalai", "Tiruvarur",
-    "Vellore", "Viluppuram", "Virudhunagar"
-)
 
 private fun premiumShortCityName(city: String): String = when (city) {
     "Chennai" -> "CHN"

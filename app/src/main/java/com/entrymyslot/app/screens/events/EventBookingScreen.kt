@@ -59,6 +59,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -68,9 +69,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.entrymyslot.app.R
 import com.entrymyslot.app.core.components.TermsAndPolicyBottomSheet
 import com.entrymyslot.app.screens.home.GlowBackground
-import com.entrymyslot.app.screens.home.PopularEvent
+import com.entrymyslot.app.data.FakeData
+import com.entrymyslot.app.data.model.Event
+import com.entrymyslot.app.data.model.TicketTier
 
 private val BookingBackground = Color(0xFF061A38)
 private val BookingSurface = Color(0xFF0B274F)
@@ -81,30 +85,13 @@ private val BookingPrimaryText = Color(0xFFF8FAFF)
 private val BookingSecondaryText = Color(0xFFA8B8CF)
 private val BookingMutedText = Color(0xFF7185A1)
 
-data class TicketTier(
-    val id: String,
-    val name: String,
-    val price: Int,
-    val description: String,
-    val available: Int,
-    val isSoldOut: Boolean = false
-)
-
 @Composable
 fun EventBookingScreen(
-    event: PopularEvent,
+    event: Event,
     onBackClick: () -> Unit = {},
     onContinueClick: (Map<String, Int>) -> Unit = {}
 ) {
-    val tiers = remember {
-        listOf(
-            TicketTier("vip", "VIP", 2500, "Premium seating with best stadium view", 18),
-            TicketTier("platinum", "Platinum", 1800, "Excellent view from elevated platform", 45),
-            TicketTier("gold", "Gold", 1200, "Good view from center stands", 120),
-            TicketTier("silver", "Silver", 700, "Standard view from side stands", 200),
-            TicketTier("general", "General", 400, "Entry level seating", 0, isSoldOut = true)
-        )
-    }
+    val tiers = remember(event.id) { FakeData.getTicketTiers(event.id) }
 
     var selectedQuantities by remember(event.id) {
         mutableStateOf(mapOf<String, Int>())
@@ -300,7 +287,7 @@ private fun EventSeatMap() {
 }
 
 @Composable
-private fun BookingEventSummary(event: PopularEvent) {
+private fun BookingEventSummary(event: Event) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -318,21 +305,14 @@ private fun BookingEventSummary(event: PopularEvent) {
                 ),
             contentAlignment = Alignment.Center
         ) {
-            if (event.imageUrl != null) {
-                AsyncImage(
-                    model = event.imageUrl,
-                    contentDescription = event.title,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Outlined.Event,
-                    contentDescription = event.title,
-                    tint = BookingAccent,
-                    modifier = Modifier.size(34.dp)
-                )
-            }
+            AsyncImage(
+                model = event.imageUrl ?: R.drawable.event_fallback,
+                contentDescription = event.title,
+                placeholder = painterResource(R.drawable.event_fallback),
+                error = painterResource(R.drawable.event_fallback),
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
         }
 
         Spacer(modifier = Modifier.width(11.dp))

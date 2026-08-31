@@ -7,6 +7,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -53,6 +54,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
@@ -65,7 +68,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.entrymyslot.app.R
 import com.entrymyslot.app.screens.home.GlowBackground
+import com.entrymyslot.app.data.FakeData
+import com.entrymyslot.app.data.model.BookingStatus
 
 private val ProfileBackground = Color(0xFF061A38)
 private val ProfileSurface = Color(0xFF0B274F)
@@ -147,18 +153,18 @@ private fun ProfileHeaderSection() {
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.Person,
+                Image(
+                    painter = painterResource(R.drawable.profile_avatar_fallback),
                     contentDescription = "Profile",
-                    tint = ProfilePrimaryText.copy(alpha = 0.88f),
-                    modifier = Modifier.size(35.dp)
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
                 )
             }
         }
 
         Spacer(modifier = Modifier.height(10.dp))
         Text(
-            text = "Navaneethan",
+            text = FakeData.currentUser.fullName,
             color = ProfilePrimaryText,
             fontSize = 20.sp,
             fontWeight = FontWeight.ExtraBold,
@@ -167,7 +173,7 @@ private fun ProfileHeaderSection() {
         )
         Spacer(modifier = Modifier.height(2.dp))
         Text(
-            text = "navaneethan@email.com",
+            text = FakeData.currentUser.email,
             color = ProfileSecondaryText,
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
@@ -192,11 +198,11 @@ private fun StatisticsRow() {
             .padding(vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        StatItem("Bookings", "12", Modifier.weight(1f))
+        StatItem("Bookings", FakeData.bookings.size.toString(), Modifier.weight(1f))
         StatDivider()
-        StatItem("Upcoming", "3", Modifier.weight(1f), isHighlight = true)
+        StatItem("Upcoming", FakeData.upcomingBookings.size.toString(), Modifier.weight(1f), isHighlight = true)
         StatDivider()
-        StatItem("Completed", "9", Modifier.weight(1f))
+        StatItem("Completed", FakeData.bookings.count { it.status == BookingStatus.COMPLETED }.toString(), Modifier.weight(1f))
     }
 }
 
@@ -375,11 +381,11 @@ private fun AccountSettingsSection() {
 @Composable
 private fun PersonalInformationDetails() {
     val details = listOf(
-        "Full Name" to "Navaneethan",
-        "Email" to "navaneethan@email.com",
-        "Phone" to "+91 98765 43210",
-        "City" to "Chennai",
-        "Member Since" to "August 2026"
+        "Full Name" to FakeData.currentUser.fullName,
+        "Email" to FakeData.currentUser.email,
+        "Phone" to FakeData.currentUser.phone,
+        "City" to FakeData.currentUser.city,
+        "Member Since" to FakeData.currentUser.memberSince
     )
     Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
         details.forEach { (label, value) ->

@@ -66,8 +66,9 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.entrymyslot.app.R
 import com.entrymyslot.app.screens.home.GlowBackground
-import com.entrymyslot.app.screens.home.PopularEvent
-import com.entrymyslot.app.screens.wishlist.WishlistStore
+import com.entrymyslot.app.data.FakeData
+import com.entrymyslot.app.data.model.BookingType
+import com.entrymyslot.app.data.model.Movie
 
 private val MovieOrange = Color(0xFFFA580B)
 private val MovieBackground = Color(0xFF061A38)
@@ -80,7 +81,7 @@ private val MovieDivider = Color(0xFF24476F)
 
 @Composable
 fun MovieDetailsScreen(
-    movie: PopularEvent,
+    movie: Movie,
     onBackClick: () -> Unit,
     onBookClick: () -> Unit
 ) {
@@ -98,7 +99,7 @@ fun MovieDetailsScreen(
             }
 
             item(key = "about") {
-                AboutMovieSection()
+                AboutMovieSection(movie)
             }
 
             item(key = "interest") {
@@ -114,7 +115,7 @@ fun MovieDetailsScreen(
             }
 
             item(key = "cast") {
-                CastRow()
+                CastRow(movie)
             }
 
             item(key = "trailer") {
@@ -131,7 +132,7 @@ fun MovieDetailsScreen(
 
 @Composable
 private fun MovieHero(
-    movie: PopularEvent,
+    movie: Movie,
     onBackClick: () -> Unit
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
@@ -143,10 +144,10 @@ private fun MovieHero(
                 .height(heroHeight)
         ) {
             AsyncImage(
-                model = movie.imageUrl ?: R.drawable.entrymyslot,
+                model = movie.imageUrl ?: R.drawable.movie_poster_fallback,
                 contentDescription = "${movie.title} poster",
-                placeholder = painterResource(R.drawable.entrymyslot),
-                error = painterResource(R.drawable.entrymyslot),
+                placeholder = painterResource(R.drawable.movie_poster_fallback),
+                error = painterResource(R.drawable.movie_poster_fallback),
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
@@ -190,7 +191,7 @@ private fun MovieHero(
                     overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(12.dp))
-                MovieMetadata()
+                MovieMetadata(movie)
             }
         }
     }
@@ -235,8 +236,8 @@ private fun PremiumBackButton(
 }
 
 @Composable
-private fun MovieInterestCard(movie: PopularEvent) {
-    val interested = WishlistStore.contains(movie.id)
+private fun MovieInterestCard(movie: Movie) {
+    val interested = FakeData.isWishlisted(movie.id)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -258,7 +259,7 @@ private fun MovieInterestCard(movie: PopularEvent) {
             )
         }
         Button(
-            onClick = { WishlistStore.toggle(movie, "MOVIE", Icons.Outlined.Movie) },
+            onClick = { FakeData.toggleWishlist(movie.id, BookingType.MOVIE) },
             modifier = Modifier.height(34.dp),
             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
             colors = ButtonDefaults.buttonColors(
@@ -269,7 +270,7 @@ private fun MovieInterestCard(movie: PopularEvent) {
 }
 
 @Composable
-private fun MovieMetadata() {
+private fun MovieMetadata(movie: Movie) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -283,18 +284,18 @@ private fun MovieMetadata() {
             )
             Spacer(modifier = Modifier.width(5.dp))
             Text(
-                text = "8.5/10",
+                text = "${movie.rating}/10",
                 color = MovieOrange,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold
             )
         }
         MetadataDot()
-        MetadataText(text = "Tamil")
+        MetadataText(text = movie.language)
         MetadataDot()
-        MetadataText(text = "Action")
+        MetadataText(text = movie.genre)
         MetadataDot()
-        MetadataText(text = "2h 35m")
+        MetadataText(text = movie.duration)
     }
 }
 
@@ -320,7 +321,7 @@ private fun MetadataText(text: String) {
 }
 
 @Composable
-private fun AboutMovieSection() {
+private fun AboutMovieSection(movie: Movie) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -329,7 +330,7 @@ private fun AboutMovieSection() {
         SectionHeading(text = "About the Movie")
         Spacer(modifier = Modifier.height(9.dp))
         Text(
-            text = "A spectacular big-screen experience packed with action, heart and unforgettable moments. Reserve the best seats at a cinema near you.",
+            text = movie.description,
             color = MovieSecondary,
             fontSize = 14.sp,
             lineHeight = 21.sp,
@@ -366,26 +367,20 @@ private fun SectionHeading(
 }
 
 @Composable
-private fun CastRow() {
-    val cast = listOf(
-        "Lead Actor" to "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=240&h=240&fit=crop",
-        "Lead Actress" to "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=240&h=240&fit=crop",
-        "Director" to "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=240&h=240&fit=crop",
-        "Producer" to "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=240&h=240&fit=crop"
-    )
-
+private fun CastRow(movie: Movie) {
+    val cast = FakeData.getCast(movie)
     LazyRow(
         contentPadding = PaddingValues(horizontal = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        items(items = cast, key = { member -> member.first }) { member ->
-            CastMember(name = member.first, imageUrl = member.second)
+        items(items = cast, key = { member -> member.id }) { member ->
+            CastMemberCard(name = member.name, imageUrl = member.imageUrl)
         }
     }
 }
 
 @Composable
-private fun CastMember(name: String, imageUrl: String) {
+private fun CastMemberCard(name: String, imageUrl: String?) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
@@ -421,6 +416,8 @@ private fun CastMember(name: String, imageUrl: String) {
             AsyncImage(
                 model = imageUrl,
                 contentDescription = "$name photo",
+                placeholder = painterResource(R.drawable.profile_avatar_fallback),
+                error = painterResource(R.drawable.profile_avatar_fallback),
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )

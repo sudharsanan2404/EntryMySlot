@@ -75,6 +75,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -89,6 +90,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.entrymyslot.app.R
 import com.entrymyslot.app.screens.home.PopularEvent
 import com.entrymyslot.app.screens.home.GlowBackground
 import kotlin.random.Random
@@ -1036,7 +1038,7 @@ private fun MovieSearchCard(item: PopularEvent, modifier: Modifier) {
                 .background(Brush.verticalGradient(listOf(Color(0xFF173C70), Color(0xFF071A35)))),
             contentAlignment = Alignment.Center
         ) {
-            ResultArtwork(item, Icons.Rounded.Movie)
+            ResultArtwork(item, R.drawable.movie_poster_fallback)
         }
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -1070,7 +1072,7 @@ private fun SportSearchCard(item: PopularEvent, modifier: Modifier) {
                 .background(SearchAccent.copy(alpha = 0.12f))
                 .border(1.dp, SearchAccent.copy(alpha = 0.25f), RoundedCornerShape(18.dp)),
             contentAlignment = Alignment.Center
-        ) { ResultArtwork(item, Icons.Rounded.SportsSoccer) }
+        ) { ResultArtwork(item, R.drawable.turf_hero) }
         Column(Modifier.weight(1f).padding(start = 13.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("VENUE", color = SearchAccent, fontSize = 8.sp, fontWeight = FontWeight.ExtraBold)
@@ -1091,7 +1093,7 @@ private fun EventSearchCard(item: PopularEvent, modifier: Modifier) {
                 .background(Brush.horizontalGradient(listOf(Color(0xFF173E72), Color(0xFF091D3D)))),
             contentAlignment = Alignment.Center
         ) {
-            ResultArtwork(item, Icons.Rounded.Event)
+            ResultArtwork(item, R.drawable.event_fallback)
             Box(
                 Modifier.align(Alignment.TopStart).padding(10.dp).clip(RoundedCornerShape(50))
                     .background(Color.Black.copy(alpha = 0.58f)).padding(horizontal = 9.dp, vertical = 5.dp)
@@ -1108,17 +1110,15 @@ private fun EventSearchCard(item: PopularEvent, modifier: Modifier) {
 }
 
 @Composable
-private fun ResultArtwork(item: PopularEvent, fallbackIcon: androidx.compose.ui.graphics.vector.ImageVector) {
-    if (item.imageUrl != null) {
-        AsyncImage(
-            model = item.imageUrl,
-            contentDescription = item.title,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
-        )
-    } else {
-        Icon(fallbackIcon, contentDescription = null, tint = SearchAccent, modifier = Modifier.size(30.dp))
-    }
+private fun ResultArtwork(item: PopularEvent, fallbackImage: Int) {
+    AsyncImage(
+        model = item.imageUrl ?: fallbackImage,
+        contentDescription = item.title,
+        placeholder = painterResource(fallbackImage),
+        error = painterResource(fallbackImage),
+        contentScale = ContentScale.Crop,
+        modifier = Modifier.fillMaxSize()
+    )
 }
 
 @Composable

@@ -62,6 +62,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -72,9 +73,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.entrymyslot.app.R
 import com.entrymyslot.app.screens.home.GlowBackground
+import com.entrymyslot.app.data.FakeData
+import com.entrymyslot.app.data.model.Turf
 import com.entrymyslot.app.screens.home.PopularEvent
-import com.entrymyslot.app.screens.wishlist.WishlistStore
+import com.entrymyslot.app.data.model.BookingType
 
 private val TurfBackground = Color(0xFF061A38)
 private val TurfSurface = Color(0xFF0B274F)
@@ -89,42 +93,18 @@ private val TurfMutedText = Color(0xFF7185A1)
 fun TurfScreen(
     onBackClick: () -> Unit = {},
     onBookNowClick: () -> Unit = {},
-    sportId: String = "sport_1"
+    sportId: String = FakeData.turfs.first().id
 ) {
-    val title = when (sportId) {
-        "sport_1" -> "Green Arena Turf"
-        "sport_2" -> "Blue Wave Pool"
-        "sport_3" -> "Elite Badminton Club"
-        else -> "Sports Venue"
-    }
-    val venueType = when (sportId) {
-        "sport_1" -> "5-a-side Turf"
-        "sport_2" -> "Aquatic Centre"
-        "sport_3" -> "Indoor Court"
-        else -> "Sports Venue"
-    }
-    val price = when (sportId) {
-        "sport_1" -> "₹800 / hour"
-        "sport_2" -> "₹200 / hour"
-        "sport_3" -> "₹400 / hour"
-        else -> "Contact for Price"
-    }
-    val about = when (sportId) {
-        "sport_1" -> "Premium 5-a-side football turf with professional artificial grass, floodlights and comfortable facilities. Perfect for casual games and tournaments."
-        "sport_2" -> "Pristine Olympic-sized swimming pool with temperature control and dedicated lanes for professional training and recreational swimming."
-        "sport_3" -> "State-of-the-art indoor badminton facility featuring 4 professional wooden courts with synthetic mats and excellent LED lighting."
-        else -> "Premium sports facility with modern amenities and professional standards."
-    }
-    val sports = when (sportId) {
-        "sport_1" -> listOf("Football", "Cricket")
-        "sport_2" -> listOf("Swimming", "Diving")
-        "sport_3" -> listOf("Badminton", "Table Tennis")
-        else -> listOf("Sports")
-    }
-    val venueImages = emptyList<String>()
-    val venueSpecifications = emptyList<Pair<String, String>>()
-    val venueRules = emptyList<String>()
-    val venueLocation = "Chennai, Tamil Nadu"
+    val turf = FakeData.getTurfById(sportId) ?: FakeData.turfs.first()
+    val title = turf.title
+    val venueType = turf.venueType
+    val price = "₹${turf.pricePerHour} / hour"
+    val about = turf.description
+    val sports = turf.sports
+    val venueImages = turf.imageUrls
+    val venueSpecifications = turf.specifications
+    val venueRules = turf.rules
+    val venueLocation = turf.location
     val context = LocalContext.current
 
     Box(
@@ -174,13 +154,7 @@ fun TurfScreen(
 
             item(key = "interest") {
                 TurfInterestCard(
-                    PopularEvent(
-                        id = sportId,
-                        title = title,
-                        date = venueType,
-                        location = venueLocation,
-                        price = price
-                    )
+                    turf
                 )
                 Spacer(modifier = Modifier.height(20.dp))
             }
@@ -188,7 +162,7 @@ fun TurfScreen(
             item(key = "facilities") {
                 SectionHeading(title = "Facilities")
                 Spacer(modifier = Modifier.height(10.dp))
-                FacilitiesGrid(sportId = sportId)
+                FacilitiesGrid(turf = turf)
                 Spacer(modifier = Modifier.height(20.dp))
             }
 
@@ -254,7 +228,7 @@ private fun TurfHeader(
 
 @Composable
 private fun TurfInterestCard(venue: PopularEvent) {
-    val interested = WishlistStore.contains(venue.id)
+    val interested = FakeData.isWishlisted(venue.id)
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 18.dp)
             .clip(RoundedCornerShape(14.dp)).background(TurfSurface)
@@ -272,7 +246,7 @@ private fun TurfInterestCard(venue: PopularEvent) {
             )
         }
         Button(
-            onClick = { WishlistStore.toggle(venue, "SPORT", Icons.Outlined.SportsSoccer) },
+            onClick = { FakeData.toggleWishlist(venue.id, BookingType.TURF) },
             modifier = Modifier.height(34.dp),
             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
             colors = ButtonDefaults.buttonColors(containerColor = if (interested) TurfSurfaceRaised else TurfAccent)
@@ -412,29 +386,14 @@ private fun VenueImagePage(
             },
         contentAlignment = Alignment.Center
     ) {
-        if (!imageUrl.isNullOrBlank()) {
-            AsyncImage(
-                model = imageUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-        } else {
-            Box(
-                modifier = Modifier
-                    .size(62.dp)
-                    .clip(CircleShape)
-                    .background(TurfAccent.copy(alpha = 0.13f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = TurfAccent,
-                    modifier = Modifier.size(31.dp)
-                )
-            }
-        }
+        AsyncImage(
+            model = imageUrl?.takeIf(String::isNotBlank) ?: R.drawable.turf_hero,
+            contentDescription = null,
+            placeholder = painterResource(R.drawable.turf_hero),
+            error = painterResource(R.drawable.turf_hero),
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
 
         Text(
             text = "ENTRYMYSLOT SPORTS",
@@ -574,25 +533,17 @@ private fun SectionHeading(title: String) {
 }
 
 @Composable
-private fun FacilitiesGrid(sportId: String) {
-    val mainIcon = when (sportId) {
-        "sport_2" -> Icons.Outlined.WaterDrop
-        else -> Icons.Outlined.SportsSoccer
+private fun FacilitiesGrid(turf: Turf) {
+    val facilities = turf.facilities.map { label ->
+        val icon = when (label) {
+            "Swimming" -> Icons.Outlined.WaterDrop
+            "Floodlights" -> Icons.Outlined.LightMode
+            "Changing Room" -> Icons.Outlined.Shower
+            "Parking" -> Icons.Outlined.LocalParking
+            else -> Icons.Outlined.SportsSoccer
+        }
+        icon to label
     }
-    val mainLabel = when (sportId) {
-        "sport_1" -> "Football"
-        "sport_2" -> "Swimming"
-        "sport_3" -> "Badminton"
-        else -> "Sports"
-    }
-
-    val facilities = listOf(
-        mainIcon to mainLabel,
-        Icons.Outlined.LightMode to "Floodlights",
-        Icons.Outlined.Shower to "Changing Room",
-        Icons.Outlined.LocalParking to "Parking"
-    )
-
     LazyRow(
         contentPadding = PaddingValues(horizontal = 18.dp),
         horizontalArrangement = Arrangement.spacedBy(18.dp)

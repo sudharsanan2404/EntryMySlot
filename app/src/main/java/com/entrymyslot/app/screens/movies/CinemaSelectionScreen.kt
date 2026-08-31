@@ -66,6 +66,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.entrymyslot.app.screens.home.GlowBackground
+import com.entrymyslot.app.data.FakeData
+import com.entrymyslot.app.data.model.Cinema
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -80,29 +82,16 @@ private val MovieSecondary = Color(0xFFA8B8CF)
 private val MovieMuted = Color(0xFF7185A1)
 private val MovieDivider = Color(0xFF24476F)
 
-data class Cinema(
-    val id: String,
-    val name: String,
-    val location: String,
-    val showTimes: List<String>
-)
-
-val sampleCinemas = listOf(
-    Cinema("c1", "PVR Cinemas", "Phoenix Marketcity, Chennai", listOf("10:30 AM", "01:45 PM", "04:30 PM", "07:15 PM", "10:30 PM")),
-    Cinema("c2", "INOX", "VR Mall, Chennai", listOf("11:00 AM", "02:30 PM", "05:00 PM", "08:15 PM", "11:00 PM")),
-    Cinema("c3", "AGS Cinemas", "T. Nagar, Chennai", listOf("10:00 AM", "01:00 PM", "04:00 PM", "07:00 PM", "10:00 PM")),
-    Cinema("c4", "Sathyam Cinemas", "Royapettah, Chennai", listOf("10:45 AM", "02:00 PM", "05:15 PM", "08:30 PM", "11:15 PM"))
-)
-
 @Composable
 fun CinemaSelectionScreen(
+    movieId: String,
     onBackClick: () -> Unit,
     onTimeSelected: (Cinema, String, Calendar) -> Unit
 ) {
     var selectedDate by remember { mutableStateOf(Calendar.getInstance()) }
     var searchQuery by remember { mutableStateOf("") }
     val filteredCinemas = remember(searchQuery) {
-        sampleCinemas.filter { cinema ->
+        FakeData.cinemas.filter { cinema ->
             cinema.name.contains(searchQuery.trim(), ignoreCase = true)
         }
     }
@@ -188,6 +177,7 @@ fun CinemaSelectionScreen(
                 ) { cinema ->
                     CinemaCard(
                         cinema = cinema,
+                        showTimes = FakeData.getCinemaShowTimes(cinema.id, movieId),
                         onTimeClick = { time ->
                             onTimeSelected(cinema, time, selectedDate)
                         }
@@ -382,6 +372,7 @@ private fun DateCard(
 @Composable
 private fun CinemaCard(
     cinema: Cinema,
+    showTimes: List<String>,
     onTimeClick: (String) -> Unit
 ) {
     val shape = RoundedCornerShape(20.dp)
@@ -477,6 +468,7 @@ private fun CinemaCard(
 
             CinemaShowTimes(
                 cinema = cinema,
+                showTimes = showTimes,
                 onTimeClick = onTimeClick
             )
         }
@@ -487,6 +479,7 @@ private fun CinemaCard(
 @Composable
 private fun CinemaShowTimes(
     cinema: Cinema,
+    showTimes: List<String>,
     onTimeClick: (String) -> Unit
 ) {
     FlowRow(
@@ -494,7 +487,7 @@ private fun CinemaShowTimes(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        cinema.showTimes.forEach { time ->
+        showTimes.forEach { time ->
             ShowtimeChip(
                 cinemaName = cinema.name,
                 time = time,

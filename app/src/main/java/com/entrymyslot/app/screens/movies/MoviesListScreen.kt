@@ -57,6 +57,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -66,6 +67,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.entrymyslot.app.R
 import com.entrymyslot.app.screens.home.GlowBackground
 import com.entrymyslot.app.screens.home.PopularEvent
 
@@ -221,16 +223,14 @@ private fun MoviePoster(movie: PopularEvent) {
             .aspectRatio(2f / 3f)
             .background(MovieBlue)
     ) {
-        if (movie.imageUrl != null) {
-            coil3.compose.AsyncImage(
-                model = movie.imageUrl,
-                contentDescription = movie.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-        } else {
-            MoviePosterFallback(title = movie.title)
-        }
+        coil3.compose.AsyncImage(
+            model = movie.imageUrl ?: R.drawable.movie_poster_fallback,
+            contentDescription = movie.title,
+            placeholder = painterResource(R.drawable.movie_poster_fallback),
+            error = painterResource(R.drawable.movie_poster_fallback),
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
 
         Box(
             modifier = Modifier

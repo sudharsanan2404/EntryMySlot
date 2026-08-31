@@ -69,6 +69,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.entrymyslot.app.core.components.TermsAndPolicyBottomSheet
 import com.entrymyslot.app.screens.home.GlowBackground
+import com.entrymyslot.app.data.FakeData
+import com.entrymyslot.app.data.model.Turf
+import com.entrymyslot.app.data.model.TurfSlot
 import java.text.SimpleDateFormat
 import java.util.Calendar
 
@@ -85,41 +88,9 @@ private val AvailableBorder = Color(0xFF3471A3)
 private val BookedSurface = Color(0xFF09182D)
 private val BookedBorder = Color(0xFF1A3049)
 
-private data class TurfSlot(
-    val id: Int,
-    val time: String,
-    val booked: Boolean
-)
-
-private val turfSlots = listOf(
-    TurfSlot(0, "12 AM", false),
-    TurfSlot(1, "1 AM", false),
-    TurfSlot(2, "2 AM", true),
-    TurfSlot(3, "3 AM", false),
-    TurfSlot(4, "4 AM", true),
-    TurfSlot(5, "5 AM", false),
-    TurfSlot(6, "6 AM", false),
-    TurfSlot(7, "7 AM", true),
-    TurfSlot(8, "8 AM", false),
-    TurfSlot(9, "9 AM", false),
-    TurfSlot(10, "10 AM", true),
-    TurfSlot(11, "11 AM", false),
-    TurfSlot(12, "12 PM", false),
-    TurfSlot(13, "1 PM", true),
-    TurfSlot(14, "2 PM", false),
-    TurfSlot(15, "3 PM", false),
-    TurfSlot(16, "4 PM", false),
-    TurfSlot(17, "5 PM", true),
-    TurfSlot(18, "6 PM", false),
-    TurfSlot(19, "7 PM", false),
-    TurfSlot(20, "8 PM", true),
-    TurfSlot(21, "9 PM", false),
-    TurfSlot(22, "10 PM", false),
-    TurfSlot(23, "11 PM", false)
-)
-
 @Composable
 fun TurfBookingScreen(
+    turfId: String,
     onBackClick: () -> Unit = {},
     onContinueClick: () -> Unit = {}
 ) {
@@ -131,7 +102,9 @@ fun TurfBookingScreen(
     }
     var showTerms by remember { mutableStateOf(false) }
 
-    val pricePerHour = 800
+    val turf = FakeData.getTurfById(turfId) ?: FakeData.turfs.first()
+    val slots = FakeData.getSlots(turf.id)
+    val pricePerHour = turf.pricePerHour
     val totalPrice = selectedSlots.size * pricePerHour
 
     Box(
@@ -150,7 +123,7 @@ fun TurfBookingScreen(
                 contentPadding = PaddingValues(bottom = 24.dp)
             ) {
                 item(key = "venue_summary") {
-                    VenueSummary()
+                    VenueSummary(turf)
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
@@ -183,13 +156,14 @@ fun TurfBookingScreen(
 
                 item(key = "slot_grid") {
                     SlotGrid(
+                        slots = slots,
                         selectedSlots = selectedSlots,
                         onSlotClick = { slot ->
                             if (!slot.booked) {
-                                selectedSlots = if (selectedSlots.contains(slot.id)) {
-                                    selectedSlots - slot.id
+                                selectedSlots = if (selectedSlots.contains(slot.hour)) {
+                                    selectedSlots - slot.hour
                                 } else {
-                                    selectedSlots + slot.id
+                                    selectedSlots + slot.hour
                                 }
                             }
                         }
@@ -287,7 +261,7 @@ private fun PremiumBackButton(onClick: () -> Unit) {
 }
 
 @Composable
-private fun VenueSummary() {
+private fun VenueSummary(turf: Turf) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -295,7 +269,7 @@ private fun VenueSummary() {
             .padding(vertical = 4.dp)
     ) {
         Text(
-            text = "Green Arena Turf",
+            text = turf.title,
             color = TurfBookingPrimaryText,
             fontSize = 21.sp,
             fontWeight = FontWeight.ExtraBold
@@ -325,7 +299,7 @@ private fun VenueSummary() {
             )
             Spacer(modifier = Modifier.width(6.dp))
             Text(
-                text = "Chennai, Tamil Nadu",
+                text = turf.location,
                 color = TurfBookingSecondaryText,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
@@ -563,6 +537,7 @@ private fun LegendItem(
 
 @Composable
 private fun SlotGrid(
+    slots: List<TurfSlot>,
     selectedSlots: Set<Int>,
     onSlotClick: (TurfSlot) -> Unit
 ) {
@@ -572,7 +547,7 @@ private fun SlotGrid(
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(7.dp)
     ) {
-        turfSlots.chunked(3).forEach { rowSlots ->
+        slots.chunked(3).forEach { rowSlots ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(7.dp)
@@ -580,7 +555,7 @@ private fun SlotGrid(
                 rowSlots.forEach { slot ->
                     TurfSlotItem(
                         slot = slot,
-                        selected = selectedSlots.contains(slot.id),
+                        selected = selectedSlots.contains(slot.hour),
                         onClick = { onSlotClick(slot) },
                         modifier = Modifier.weight(1f)
                     )

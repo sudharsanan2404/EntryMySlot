@@ -46,12 +46,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.entrymyslot.app.R
 import com.entrymyslot.app.screens.home.GlowBackground
 import com.entrymyslot.app.screens.home.PopularEvent
 
@@ -324,43 +326,13 @@ private fun SportImage(sport: PopularEvent) {
             ),
         contentAlignment = Alignment.Center
     ) {
-        if (!sport.imageUrl.isNullOrBlank()) {
-            AsyncImage(
-                model = sport.imageUrl,
-                contentDescription = "${sport.title} venue",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-        } else {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(
-                    modifier = Modifier
-                        .size(46.dp)
-                        .clip(CircleShape)
-                        .background(SportsAccent.copy(alpha = 0.14f))
-                        .border(
-                            width = 1.dp,
-                            color = SportsAccent.copy(alpha = 0.38f),
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.SportsSoccer,
-                        contentDescription = null,
-                        tint = SportsAccent,
-                        modifier = Modifier.size(25.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.height(7.dp))
-                Text(
-                    text = "ENTRYMYSLOT SPORTS",
-                    color = SportsSecondaryText,
-                    fontSize = 8.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.8.sp
-                )
-            }
-        }
+        AsyncImage(
+            model = sport.imageUrl?.takeIf(String::isNotBlank) ?: R.drawable.turf_hero,
+            contentDescription = "${sport.title} venue",
+            placeholder = painterResource(R.drawable.turf_hero),
+            error = painterResource(R.drawable.turf_hero),
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
     }
 }

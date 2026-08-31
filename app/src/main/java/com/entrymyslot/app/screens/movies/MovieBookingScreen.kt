@@ -59,6 +59,8 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.entrymyslot.app.core.components.TermsAndPolicyBottomSheet
+import com.entrymyslot.app.data.FakeData
+import com.entrymyslot.app.data.model.Cinema
 import com.entrymyslot.app.screens.home.GlowBackground
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -86,6 +88,7 @@ private val SeatMapHeight = 360.dp
 
 @Composable
 fun MovieBookingScreen(
+    movieId: String,
     cinema: Cinema,
     initialTime: String,
     selectedDate: Calendar,
@@ -97,8 +100,15 @@ fun MovieBookingScreen(
     var selectedSeats by remember { mutableStateOf(setOf<String>()) }
     var showTerms by remember { mutableStateOf(false) }
 
-    val ticketPrice = 180
+    val movie = FakeData.getMovieById(movieId) ?: FakeData.movies.first()
+    val ticketPrice = movie.ticketPrice
     val totalPrice = selectedSeats.size * ticketPrice
+    val showTimes = FakeData.getCinemaShowTimes(cinema.id, movie.id)
+    val selectedShow = FakeData.getShows(movie.id, cinema.id).find { it.time == selectedTime }
+    val showSeats = selectedShow?.let { FakeData.getSeats(it.id) }.orEmpty()
+    val bookedSeats = showSeats.filter { it.booked }
+        .mapTo(mutableSetOf()) { it.label }
+    val seatLabels = showSeats.map { it.label }
 
     Box(
         modifier = Modifier.fillMaxSize()
@@ -113,7 +123,7 @@ fun MovieBookingScreen(
             PremiumTopBar(onBackClick = onBackClick)
             CinemaMetadata(cinema = cinema)
             ShowTimeSelector(
-                showTimes = cinema.showTimes,
+                showTimes = showTimes,
                 selectedTime = selectedTime,
                 onTimeSelected = { time ->
                     selectedTime = time
@@ -133,6 +143,8 @@ fun MovieBookingScreen(
                     .weight(1f)
                     .fillMaxWidth(),
                 selectedSeats = selectedSeats,
+                bookedSeats = bookedSeats,
+                seatLabels = seatLabels,
                 countToBook = seatCountToBook,
                 onSeatClick = { newSelection -> selectedSeats = newSelection }
             )
@@ -381,6 +393,8 @@ private fun LegendItem(state: SeatVisualState, text: String) {
 @Composable
 private fun SeatMapViewport(
     selectedSeats: Set<String>,
+    bookedSeats: Set<String>,
+    seatLabels: List<String>,
     countToBook: Int,
     onSeatClick: (Set<String>) -> Unit,
     modifier: Modifier = Modifier
@@ -470,7 +484,7 @@ private fun SeatMapViewport(
                     transformOrigin = TransformOrigin.Center
                 }
         ) {
-            SeatMapContent(selectedSeats, countToBook, onSeatClick)
+            SeatMapContent(selectedSeats, bookedSeats, seatLabels, countToBook, onSeatClick)
         }
 
         AnimatedVisibility(
@@ -505,12 +519,12 @@ private fun SeatMapViewport(
 @Composable
 private fun SeatMapContent(
     selectedSeats: Set<String>,
+    bookedSeats: Set<String>,
+    seatLabels: List<String>,
     countToBook: Int,
     onSeatClick: (Set<String>) -> Unit
 ) {
-    val rows = listOf("A", "B", "C", "D", "E", "F", "G")
-    val bookedSeats = setOf("A2", "B4", "C1", "D3", "E2", "F4", "A6", "B7", "C5", "E8")
-
+    val rows = seatLabels.mapNotNull { it.firstOrNull()?.toString() }.distinct()
     Column(
         modifier = Modifier.fillMaxSize().padding(top = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally

@@ -22,30 +22,30 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.Movie
-import androidx.compose.material.icons.outlined.SportsSoccer
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.entrymyslot.app.R
 import com.entrymyslot.app.screens.home.GlowBackground
 import com.entrymyslot.app.screens.home.PopularEvent
+import com.entrymyslot.app.data.FakeData
+import com.entrymyslot.app.data.model.BookingType
+import com.entrymyslot.app.data.model.WishlistItem
 
 private val WishlistSurface = Color(0xFF0B274F)
 private val WishlistBorder = Color(0xFF24527D)
@@ -53,29 +53,15 @@ private val WishlistAccent = Color(0xFFFA580B)
 private val WishlistText = Color(0xFFF8FAFF)
 private val WishlistSecondary = Color(0xFFA8B8CF)
 
-data class WishlistEntry(
-    val event: PopularEvent,
-    val category: String,
-    val icon: ImageVector
-)
-
-object WishlistStore {
-    val items = mutableStateListOf<WishlistEntry>()
-
-    fun contains(id: String): Boolean = items.any { it.event.id == id }
-
-    fun toggle(event: PopularEvent, category: String, icon: ImageVector) {
-        val existing = items.indexOfFirst { it.event.id == event.id }
-        if (existing >= 0) items.removeAt(existing) else items.add(WishlistEntry(event, category, icon))
-    }
-}
-
 @Composable
 fun WishlistScreen(
     onBackClick: () -> Unit,
     onItemClick: (PopularEvent, String) -> Unit,
     onBottomNavigationClick: (String) -> Unit = {}
 ) {
+    val wishlistEntries = FakeData.wishlistItems.mapNotNull { reference ->
+        FakeData.getItemById(reference.itemId)?.let { reference to it }
+    }
     Box(Modifier.fillMaxSize()) {
         GlowBackground()
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
@@ -95,7 +81,7 @@ fun WishlistScreen(
                 }
             }
 
-            if (WishlistStore.items.isEmpty()) {
+            if (wishlistEntries.isEmpty()) {
                 Column(
                     Modifier.weight(1f).fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -111,8 +97,9 @@ fun WishlistScreen(
                     contentPadding = PaddingValues(start = 16.dp, top = 10.dp, end = 16.dp, bottom = 92.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(WishlistStore.items, key = { "${it.category}-${it.event.id}" }) { entry ->
-                        WishlistCard(entry = entry, onClick = { onItemClick(entry.event, entry.category) })
+                    items(wishlistEntries, key = { (reference, item) -> "${reference.type}-${item.id}" }) { (reference, item) ->
+                        val category = reference.type.wishlistCategory()
+                        WishlistCard(reference = reference, item = item, onClick = { onItemClick(item, category) })
                     }
                 }
             }
@@ -122,7 +109,8 @@ fun WishlistScreen(
 }
 
 @Composable
-private fun WishlistCard(entry: WishlistEntry, onClick: () -> Unit) {
+private fun WishlistCard(reference: WishlistItem, item: PopularEvent, onClick: () -> Unit) {
+    val category = reference.type.wishlistCategory()
     Row(
         Modifier.fillMaxWidth().height(132.dp)
             .clip(RoundedCornerShape(20.dp))
@@ -137,33 +125,42 @@ private fun WishlistCard(entry: WishlistEntry, onClick: () -> Unit) {
                 .background(Color(0xFF071D3C)),
             contentAlignment = Alignment.Center
         ) {
-            if (entry.event.imageUrl != null) {
-                AsyncImage(
-                    model = entry.event.imageUrl,
-                    contentDescription = entry.event.title,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                Icon(entry.icon, null, tint = WishlistAccent, modifier = Modifier.size(34.dp))
+            val fallbackImage = when {
+                reference.type == BookingType.MOVIE -> R.drawable.movie_poster_fallback
+                reference.type == BookingType.TURF -> R.drawable.turf_hero
+                else -> R.drawable.event_fallback
             }
+            AsyncImage(
+                model = item.imageUrl ?: fallbackImage,
+                contentDescription = item.title,
+                placeholder = painterResource(fallbackImage),
+                error = painterResource(fallbackImage),
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
             Box(
                 Modifier.align(Alignment.TopStart).padding(7.dp).clip(RoundedCornerShape(50))
                     .background(Color.Black.copy(alpha = 0.62f)).padding(horizontal = 7.dp, vertical = 4.dp)
             ) {
-                Text(entry.category, color = WishlistText, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                Text(category, color = WishlistText, fontSize = 8.sp, fontWeight = FontWeight.Bold)
             }
         }
         Column(Modifier.weight(1f).padding(start = 13.dp)) {
-            Text(entry.event.title, color = WishlistText, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(item.title, color = WishlistText, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Row(Modifier.padding(top = 7.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.LocationOn, null, tint = WishlistSecondary, modifier = Modifier.size(14.dp))
-                Text(entry.event.location, color = WishlistSecondary, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 4.dp))
+                Text(item.location, color = WishlistSecondary, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 4.dp))
             }
-            Text(entry.event.price, color = WishlistAccent, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
+            Text(item.price, color = WishlistAccent, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
         }
         Box(Modifier.size(34.dp).clip(CircleShape).background(WishlistAccent.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
             Icon(Icons.Rounded.Favorite, contentDescription = "Interested", tint = WishlistAccent, modifier = Modifier.size(18.dp))
         }
     }
+}
+
+private fun BookingType.wishlistCategory(): String = when (this) {
+    BookingType.MOVIE -> "MOVIE"
+    BookingType.TURF -> "SPORT"
+    BookingType.EVENT -> "EVENT"
 }

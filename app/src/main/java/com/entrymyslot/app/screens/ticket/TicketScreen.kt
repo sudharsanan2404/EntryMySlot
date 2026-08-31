@@ -1,5 +1,13 @@
 package com.entrymyslot.app.screens.ticket
 
+import android.content.Context
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -20,6 +28,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.getValue
@@ -38,6 +47,8 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -48,12 +59,16 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.entrymyslot.app.R
+import com.entrymyslot.app.data.model.TicketDetails
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import kotlin.math.min
 import kotlin.math.sqrt
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
 
 private val TicketNight = Color(0xFF030A1C)
 private val TicketBlue = Color(0xFF0126A5)
@@ -63,23 +78,6 @@ private val TicketWhite60 = Color.White.copy(alpha = .60f)
 private val TicketSans = FontFamily.SansSerif
 private val TicketMono = FontFamily.Monospace
 
-data class TicketDetails(
-    val bookingId: String,
-    val title: String,
-    val category: String,
-    val venue: String,
-    val date: String,
-    val time: String,
-    val admission: String,
-    val attendee: String = "Guest User",
-    val amount: String = "₹0"
-) {
-    val slots: List<String>
-        get() = time.split(" - ", ",").map(String::trim).filter(String::isNotEmpty)
-    val qrPayload: String
-        get() = "$bookingId|$title|$venue|$date|$time|$admission"
-}
-
 @Composable
 fun TicketScreen(
     ticket: TicketDetails,
@@ -88,6 +86,8 @@ fun TicketScreen(
     onDownloadClick: () -> Unit = {},
     onShareClick: () -> Unit = {}
 ) {
+    BackHandler(onBack = onBackClick)
+    val ticketTilt = rememberTicketTilt()
     ProvideTextStyle(TextStyle(fontFamily = TicketSans)) {
         Box(Modifier.fillMaxSize().background(TicketNight)) {
             TicketFixedBackground()
@@ -99,7 +99,7 @@ fun TicketScreen(
                     Modifier.fillMaxWidth().padding(vertical = 20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    TicketBody(ticket)
+                    TicketBody(ticket, ticketTilt)
                     Spacer(Modifier.height(24.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         TicketSaveButton(onDownloadClick)
@@ -144,11 +144,15 @@ private fun TicketNavigation(onBack: () -> Unit) {
 }
 
 @Composable
-private fun TicketBody(ticket: TicketDetails) {
+private fun TicketBody(ticket: TicketDetails, tilt: TicketTilt) {
     val shape = RoundedCornerShape(24.dp)
+    val density = LocalDensity.current.density
     Box(
         Modifier.fillMaxWidth().height(640.dp)
             .graphicsLayer {
+                rotationX = tilt.x
+                rotationY = tilt.y
+                cameraDistance = 18f * density
                 compositingStrategy = CompositingStrategy.Offscreen
                 this.shape = shape
                 clip = true
@@ -176,6 +180,59 @@ private fun TicketBody(ticket: TicketDetails) {
         }
     }
 }
+
+private data class TicketTilt(val x: Float, val y: Float)
+
+@Composable
+private fun rememberTicketTilt(): TicketTilt {
+    val context = LocalContext.current
+    var targetX by remember { mutableStateOf(0f) }
+    var targetY by remember { mutableStateOf(0f) }
+
+    DisposableEffect(context) {
+        val manager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        val sensor = manager.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR)
+            ?: manager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
+        var basePitch: Float? = null
+        var baseRoll: Float? = null
+        val rotationMatrix = FloatArray(9)
+        val orientation = FloatArray(3)
+
+        val listener = object : SensorEventListener {
+            override fun onSensorChanged(event: SensorEvent) {
+                SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values)
+                SensorManager.getOrientation(rotationMatrix, orientation)
+                val pitch = orientation[1]
+                val roll = orientation[2]
+                if (basePitch == null || baseRoll == null) {
+                    basePitch = pitch
+                    baseRoll = roll
+                    return
+                }
+                targetX = (-Math.toDegrees(angleDelta(pitch, basePitch).toDouble()).toFloat() * .55f)
+                    .coerceIn(-8f, 8f)
+                targetY = (Math.toDegrees(angleDelta(roll, baseRoll).toDouble()).toFloat() * .55f)
+                    .coerceIn(-8f, 8f)
+            }
+
+            override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
+        }
+
+        if (sensor != null) manager.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_GAME)
+        onDispose {
+            manager.unregisterListener(listener)
+            targetX = 0f
+            targetY = 0f
+        }
+    }
+
+    val smoothX by animateFloatAsState(targetX, spring(dampingRatio = .72f, stiffness = 180f), label = "ticketTiltX")
+    val smoothY by animateFloatAsState(targetY, spring(dampingRatio = .72f, stiffness = 180f), label = "ticketTiltY")
+    return TicketTilt(smoothX, smoothY)
+}
+
+private fun angleDelta(value: Float, baseline: Float): Float =
+    atan2(sin(value - baseline), cos(value - baseline))
 
 @Composable
 private fun TicketPrimary(ticket: TicketDetails, modifier: Modifier) {

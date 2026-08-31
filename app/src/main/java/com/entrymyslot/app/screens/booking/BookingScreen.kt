@@ -70,6 +70,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.entrymyslot.app.screens.home.GlowBackground
+import com.entrymyslot.app.data.FakeData
+import com.entrymyslot.app.data.model.Booking
+import com.entrymyslot.app.data.model.BookingStatus
+import com.entrymyslot.app.data.model.BookingType
 
 private val BookingBackground = Color(0xFF061A38)
 private val BookingSurface = Color(0xFF0B274F)
@@ -82,31 +86,7 @@ private val BookingMutedText = Color(0xFF7185A1)
 private val StatusCompletedColor = Color(0xFF52A77A)
 private val StatusCancelledColor = Color(0xFFD46B6B)
 
-enum class BookingType { MOVIE, TURF, EVENT }
-
-enum class BookingStatus { UPCOMING, COMPLETED, CANCELLED }
-
-data class BookingItem(
-    val id: String,
-    val type: BookingType,
-    val title: String,
-    val location: String,
-    val dateTime: String,
-    val details: String,
-    val price: String,
-    val status: BookingStatus
-)
-
-val upcomingBookings = listOf(
-    BookingItem("1", BookingType.MOVIE, "The Epic Blockbuster", "PVR Cinemas", "28 Aug 2026 • 1:30 PM", "Seats: A3, A4", "₹360", BookingStatus.UPCOMING),
-    BookingItem("2", BookingType.TURF, "Green Arena Turf", "Chennai", "29 Aug 2026 • 6:00 PM - 8:00 PM", "2 Hours Booked", "₹1,600", BookingStatus.UPCOMING),
-    BookingItem("3", BookingType.EVENT, "Live Cricket Championship", "Nehru Stadium", "30 Aug 2026 • 6:30 PM", "VIP × 2 • Gold × 2", "₹7,400", BookingStatus.UPCOMING)
-)
-
-val pastBookings = listOf(
-    BookingItem("4", BookingType.MOVIE, "The Dark Knight", "Luxe Cinemas", "25 Aug 2026 • 7:30 PM", "Seats: B4, B5", "₹360", BookingStatus.COMPLETED),
-    BookingItem("5", BookingType.TURF, "Power Turf", "Adyar", "20 Aug 2026 • 5:00 PM", "1 Hour Booked", "₹800", BookingStatus.CANCELLED)
-)
+typealias BookingItem = Booking
 
 @Composable
 fun BookingScreen(
@@ -169,7 +149,7 @@ fun BookingScreen(
             ) {
                 when (selectedTab) {
                     0 -> {
-                        val filtered = filterBookings(upcomingBookings, selectedFilter)
+                        val filtered = filterBookings(FakeData.upcomingBookings, selectedFilter)
                         if (filtered.isEmpty()) {
                             item {
                                 EmptyState(
@@ -189,7 +169,7 @@ fun BookingScreen(
                     }
 
                     1 -> {
-                        val filtered = filterBookings(pastBookings, selectedFilter)
+                        val filtered = filterBookings(FakeData.pastBookings, selectedFilter)
                         if (filtered.isEmpty()) {
                             item {
                                 EmptyState(
@@ -414,6 +394,9 @@ private fun BookingCard(
     )
     val cardShape = RoundedCornerShape(17.dp)
     val actionLabel = if (item.type == BookingType.TURF) "View Booking" else "View Ticket"
+    val bookedItem = FakeData.getItemById(item.itemId)
+    val itemTitle = bookedItem?.title ?: "Booking"
+    val itemLocation = FakeData.getBookingVenue(item)
 
     Column(
         modifier = Modifier
@@ -449,9 +432,9 @@ private fun BookingCard(
                     append(", ")
                     append(item.status.name)
                     append(", ")
-                    append(item.title)
+                    append(itemTitle)
                     append(", ")
-                    append(item.location)
+                    append(itemLocation)
                     append(", ")
                     append(item.dateTime)
                     append(", ")
@@ -474,7 +457,7 @@ private fun BookingCard(
         Spacer(modifier = Modifier.height(10.dp))
 
         Text(
-            text = item.title,
+            text = itemTitle,
             color = BookingPrimaryText,
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
@@ -492,7 +475,7 @@ private fun BookingCard(
             )
             Spacer(modifier = Modifier.width(5.dp))
             Text(
-                text = item.location,
+                text = itemLocation,
                 modifier = Modifier.weight(1f),
                 color = BookingSecondaryText,
                 fontSize = 12.sp,
