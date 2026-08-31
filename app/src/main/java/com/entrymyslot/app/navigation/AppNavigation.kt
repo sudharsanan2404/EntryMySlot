@@ -6,6 +6,10 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -16,12 +20,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.entrymyslot.app.core.components.EntryBottomNavigation
-import com.entrymyslot.app.core.storage.AuthTokenStore
+import com.entrymyslot.app.AppAuthState
 import com.entrymyslot.app.data.FakeData
 import com.entrymyslot.app.data.model.BookingDetails
 import com.entrymyslot.app.data.model.BookingType
@@ -37,23 +42,23 @@ import com.entrymyslot.app.screens.turf.TurfBookingScreen
 import com.entrymyslot.app.screens.events.EventDetailsScreen
 import com.entrymyslot.app.screens.events.EventBookingScreen
 import com.entrymyslot.app.screens.profile.ProfileScreen
+import com.entrymyslot.app.screens.test.TestScreen
 import com.entrymyslot.app.screens.booking.BookingScreen
 import com.entrymyslot.app.screens.search.SearchResultType
 import com.entrymyslot.app.screens.search.SearchScreen
 import com.entrymyslot.app.screens.ticket.TicketScreen
 import com.entrymyslot.app.screens.wishlist.WishlistScreen
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun AppNavigation(
-    authTokenStore: AuthTokenStore
+    authState: AppAuthState,
+    onAuthenticated: () -> Unit,
+    onLoggedOut: () -> Unit
 ) {
 
     val navController = rememberNavController()
-    val accessToken by authTokenStore.accessToken.collectAsStateWithLifecycle(initialValue = "LOADING")
 
-    if (accessToken == "LOADING") {
-        // You could show a splash screen here
+    if (authState == AppAuthState.Loading) {
         return
     }
 
@@ -73,7 +78,7 @@ fun AppNavigation(
     Box(modifier = Modifier.fillMaxSize()) {
         NavHost(
             navController = navController,
-            startDestination = if (accessToken != null) "home" else "auth",
+            startDestination = if (authState == AppAuthState.Unauthenticated) "auth" else "home",
             enterTransition = { slideInHorizontally(tween(150)) { it / 12 } },
             exitTransition = { slideOutHorizontally(tween(120)) { -it / 14 } },
             popEnterTransition = { slideInHorizontally(tween(150)) { -it / 12 } },
@@ -83,6 +88,7 @@ fun AppNavigation(
         composable("auth") {
             AuthScreen(
                 onAuthSuccess = {
+                    onAuthenticated()
                     navController.navigate("home") {
                         popUpTo("auth") {
                             inclusive = true
@@ -144,9 +150,7 @@ fun AppNavigation(
                 else -> null
             }
             SearchScreen(
-                movies = FakeData.movies,
-                sports = FakeData.turfs,
-                events = FakeData.events,
+                selectedCity = selectedCity,
                 initialType = initialType,
                 onBackClick = { navController.popBackStack() },
                 onResultClick = { result ->
@@ -230,12 +234,20 @@ fun AppNavigation(
                 onBookingClick = {
                     navController.navigate("bookings")
                 },
+                onUsernameClick = {
+                    navController.navigate("test")
+                },
                 onLogoutClick = {
+                    onLoggedOut()
                     navController.navigate("auth") {
                         popUpTo("home") { inclusive = true }
                     }
                 }
             )
+        }
+
+        composable("test") {
+            TestScreen(onBackClick = { navController.popBackStack() })
         }
 
         composable("wishlist") {
@@ -373,6 +385,19 @@ fun AppNavigation(
                     }
                 },
                 modifier = Modifier.align(Alignment.BottomCenter)
+            )
+        }
+
+        if (authState == AppAuthState.AuthenticatedOffline && currentRoute != "auth") {
+            Text(
+                text = "No internet. Signed-in session is kept; online data may be unavailable.",
+                color = Color.White,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .background(Color(0xFF9A3412))
+                    .statusBarsPadding()
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
             )
         }
     }

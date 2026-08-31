@@ -58,6 +58,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -68,10 +69,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.entrymyslot.app.EntryMySlotApp
 import com.entrymyslot.app.R
 import com.entrymyslot.app.screens.home.GlowBackground
 import com.entrymyslot.app.data.FakeData
 import com.entrymyslot.app.data.model.BookingStatus
+import com.entrymyslot.app.data.auth.User
 
 private val ProfileBackground = Color(0xFF061A38)
 private val ProfileSurface = Color(0xFF0B274F)
@@ -87,8 +94,19 @@ private val ProfileDestructive = Color(0xFFFF3B30)
 fun ProfileScreen(
     onBottomNavigationClick: (String) -> Unit = {},
     onBookingClick: () -> Unit = {},
+    onUsernameClick: () -> Unit = {},
     onLogoutClick: () -> Unit = {}
 ) {
+    val app = LocalContext.current.applicationContext as EntryMySlotApp
+    val viewModel: ProfileViewModel = viewModel(
+        factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                ProfileViewModel(app.appContainer.authRepository) as T
+        }
+    )
+    val profileState by viewModel.profileState.collectAsStateWithLifecycle()
+
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -106,12 +124,38 @@ fun ProfileScreen(
                 contentPadding = PaddingValues(top = 4.dp, bottom = 92.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                item { ProfileHeaderSection() }
+                item {
+                    ProfileHeaderSection(
+                        user = profileState.user,
+                        onUsernameClick = onUsernameClick
+                    )
+                }
+                profileState.errorMessage?.let { message ->
+                    item {
+                        Text(
+                            text = message,
+                            color = ProfileDestructive,
+                            fontSize = 12.sp,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { viewModel.loadProfile() }
+                                .padding(horizontal = 20.dp)
+                        )
+                    }
+                }
                 item { StatisticsRow() }
                 item { QuickActionsSection(onBookingClick = onBookingClick) }
-                item { AccountSettingsSection() }
+                item { AccountSettingsSection(profileState.user) }
                 item { PartnerSection() }
-                item { LogoutButton(onClick = onLogoutClick) }
+                item {
+                    LogoutButton(
+                        onClick = {
+                            if (!profileState.isLoggingOut) {
+                                viewModel.logout(onLogoutClick)
+                            }
+                        }
+                    )
+                }
             }
 
         }
@@ -119,7 +163,10 @@ fun ProfileScreen(
 }
 
 @Composable
-private fun ProfileHeaderSection() {
+private fun ProfileHeaderSection(
+    user: User?,
+    onUsernameClick: () -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -164,16 +211,17 @@ private fun ProfileHeaderSection() {
 
         Spacer(modifier = Modifier.height(10.dp))
         Text(
-            text = FakeData.currentUser.fullName,
+            text = user?.username ?: "Loading profile...",
             color = ProfilePrimaryText,
             fontSize = 20.sp,
             fontWeight = FontWeight.ExtraBold,
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.clickable(onClick = onUsernameClick)
         )
         Spacer(modifier = Modifier.height(2.dp))
         Text(
-            text = FakeData.currentUser.email,
+            text = user?.email.orEmpty(),
             color = ProfileSecondaryText,
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
@@ -343,7 +391,7 @@ private fun QuickActionCard(
 }
 
 @Composable
-private fun AccountSettingsSection() {
+private fun AccountSettingsSection(user: User?) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -373,19 +421,17 @@ private fun AccountSettingsSection() {
                 onClick = {}
             )
             SettingsDivider()
-            PersonalInformationDetails()
+            PersonalInformationDetails(user)
         }
     }
 }
 
 @Composable
-private fun PersonalInformationDetails() {
+private fun PersonalInformationDetails(user: User?) {
     val details = listOf(
-        "Full Name" to FakeData.currentUser.fullName,
-        "Email" to FakeData.currentUser.email,
-        "Phone" to FakeData.currentUser.phone,
-        "City" to FakeData.currentUser.city,
-        "Member Since" to FakeData.currentUser.memberSince
+        "Full Name" to (user?.username ?: "—"),
+        "Email" to (user?.email ?: "—"),
+        "Member Since" to (user?.createdAt?.take(10) ?: "—")
     )
     Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
         details.forEach { (label, value) ->

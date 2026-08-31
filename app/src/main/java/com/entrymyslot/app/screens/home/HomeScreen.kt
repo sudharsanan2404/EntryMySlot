@@ -91,6 +91,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -112,6 +116,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.entrymyslot.app.R
+import com.entrymyslot.app.EntryMySlotApp
 import com.entrymyslot.app.core.components.GpsDisabledDialog
 import com.entrymyslot.app.core.components.LocationFetchState
 import com.entrymyslot.app.core.components.rememberLocationFetcher
@@ -167,12 +172,30 @@ fun HomeScreen(
     onDrawerVisibilityChange: (Boolean) -> Unit = {},
     selectedCity: String = FakeData.currentUser.city
 ) {
+    val context = LocalContext.current
+    val app = context.applicationContext as EntryMySlotApp
+    val homeViewModel: HomeViewModel = viewModel(
+        factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                HomeViewModel(app.appContainer.homeApi) as T
+        }
+    )
+    val homeState by homeViewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(selectedCity) {
+        homeViewModel.loadHome(selectedCity)
+    }
+
     PremiumHomeScreen(
-        featuredEvents = FakeData.events,
-        featuredMovies = FakeData.movies,
-        nearbySports = FakeData.turfs,
-        promotions = FakeData.promotions.map(HomePromotion::toBanner),
+        featuredEvents = homeState.events,
+        featuredMovies = homeState.movies,
+        nearbySports = homeState.sports,
+        promotions = homeState.promotions.map(HomePromotion::toBanner),
+        isLoading = homeState.isLoading,
+        errorMessage = homeState.errorMessage,
         selectedCity = selectedCity,
+        onRetry = { homeViewModel.loadHome(selectedCity) },
         onPromotionClick = { banner -> onCategoryClick(banner.destination) },
         onCategoryClick = onCategoryClick,
         onEventClick = onEventClick,
@@ -226,7 +249,10 @@ internal fun PremiumHomeScreen(
     featuredMovies: List<PopularEvent>,
     nearbySports: List<PopularEvent>,
     promotions: List<PromotionBanner>,
+    isLoading: Boolean,
+    errorMessage: String?,
     selectedCity: String,
+    onRetry: () -> Unit,
     onPromotionClick: (PromotionBanner) -> Unit,
     onCategoryClick: (String) -> Unit,
     onEventClick: (PopularEvent) -> Unit,
@@ -297,7 +323,10 @@ internal fun PremiumHomeScreen(
                     featuredMovies = featuredMovies,
                     nearbySports = nearbySports,
                     promotions = promotions,
+                    isLoading = isLoading,
+                    errorMessage = errorMessage,
                     selectedCity = selectedCity,
+                    onRetry = onRetry,
                     onPromotionClick = onPromotionClick,
                     onCategoryClick = onCategoryClick,
                     onEventClick = onEventClick,
@@ -329,7 +358,10 @@ private fun PremiumHomeContent(
     featuredMovies: List<PopularEvent>,
     nearbySports: List<PopularEvent>,
     promotions: List<PromotionBanner>,
+    isLoading: Boolean,
+    errorMessage: String?,
     selectedCity: String,
+    onRetry: () -> Unit,
     onPromotionClick: (PromotionBanner) -> Unit,
     onCategoryClick: (String) -> Unit,
     onEventClick: (PopularEvent) -> Unit,
@@ -341,6 +373,9 @@ private fun PremiumHomeContent(
     onNotificationClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hasContent = promotions.isNotEmpty() || featuredEvents.isNotEmpty() ||
+        featuredMovies.isNotEmpty() || nearbySports.isNotEmpty()
+
     LazyColumn(
         modifier = modifier.fillMaxWidth(),
         contentPadding = PaddingValues(bottom = 92.dp)
@@ -362,44 +397,159 @@ private fun PremiumHomeContent(
             Spacer(modifier = Modifier.height(18.dp))
         }
 
-        item(key = "promotions") {
-            PromotionalCarousel(
-                banners = promotions,
-                onBannerClick = onPromotionClick
-            )
-            Spacer(modifier = Modifier.height(24.dp))
+        if (isLoading && !hasContent) {
+            item(key = "home_loading") {
+                HomeLoadingState()
+            }
         }
 
-        item(key = "popular_events") {
-            ContentSection(
-                title = "Popular Events",
-                events = featuredEvents,
-                kind = HomeContentKind.Event,
-                onSeeAllClick = { onCategoryClick("Popular Events") },
-                onEventClick = onEventClick
-            )
-            Spacer(modifier = Modifier.height(28.dp))
+        if (isLoading && hasContent) {
+            item(key = "home_refreshing") {
+                HomeRefreshingState()
+            }
         }
 
-        item(key = "latest_movies") {
-            ContentSection(
-                title = "Latest Movies",
-                events = featuredMovies,
-                kind = HomeContentKind.Movie,
-                onSeeAllClick = { onCategoryClick("Latest Movies") },
-                onEventClick = onMovieBookClick
-            )
-            Spacer(modifier = Modifier.height(28.dp))
+        if (errorMessage != null) {
+            item(key = "home_error") {
+                HomeErrorState(message = errorMessage, onRetry = onRetry)
+            }
         }
 
-        item(key = "sports_near_you") {
-            ContentSection(
-                title = "Sports Near You",
-                events = nearbySports,
-                kind = HomeContentKind.Sport,
-                onSeeAllClick = { onCategoryClick("Sports Near You") },
-                onEventClick = onSportClick
+        if (!isLoading && errorMessage == null && !hasContent) {
+            item(key = "home_empty") {
+                HomeEmptyState(onRetry = onRetry)
+            }
+        }
+
+        if (hasContent) {
+            item(key = "promotions") {
+                if (promotions.isNotEmpty()) {
+                    PromotionalCarousel(
+                        banners = promotions,
+                        onBannerClick = onPromotionClick
+                    )
+                } else {
+                    HomeSectionEmpty(message = "No featured promotions available.")
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+
+            item(key = "popular_events") {
+                ContentSection(
+                    title = "Popular Events",
+                    events = featuredEvents,
+                    kind = HomeContentKind.Event,
+                    onSeeAllClick = { onCategoryClick("Popular Events") },
+                    onEventClick = onEventClick
+                )
+                Spacer(modifier = Modifier.height(28.dp))
+            }
+
+            item(key = "latest_movies") {
+                ContentSection(
+                    title = "Latest Movies",
+                    events = featuredMovies,
+                    kind = HomeContentKind.Movie,
+                    onSeeAllClick = { onCategoryClick("Latest Movies") },
+                    onEventClick = onMovieBookClick
+                )
+                Spacer(modifier = Modifier.height(28.dp))
+            }
+
+            item(key = "sports_near_you") {
+                ContentSection(
+                    title = "Sports Near You",
+                    events = nearbySports,
+                    kind = HomeContentKind.Sport,
+                    onSeeAllClick = { onCategoryClick("Sports Near You") },
+                    onEventClick = onSportClick
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeLoadingState() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 54.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        CircularProgressIndicator(color = PremiumOrange)
+        Spacer(modifier = Modifier.height(14.dp))
+        Text("Loading latest Home content...", color = PremiumSecondary)
+    }
+}
+
+@Composable
+private fun HomeRefreshingState() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        CircularProgressIndicator(
+            color = PremiumOrange,
+            strokeWidth = 2.dp,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(modifier = Modifier.width(10.dp))
+        Text("Refreshing latest content...", color = PremiumSecondary, fontSize = 12.sp)
+    }
+}
+
+@Composable
+private fun HomeErrorState(message: String, onRetry: () -> Unit) {
+    Surface(
+        color = PremiumSurface,
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+    ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            Text("Home content unavailable", color = PremiumWhite, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(message, color = PremiumSecondary, fontSize = 13.sp)
+            Spacer(modifier = Modifier.height(14.dp))
+            Button(
+                onClick = onRetry,
+                colors = ButtonDefaults.buttonColors(containerColor = PremiumOrange)
+            ) {
+                Text("Retry")
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeEmptyState(onRetry: () -> Unit) {
+    Surface(
+        color = PremiumSurface,
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+    ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            Text("Nothing to show yet", color = PremiumWhite, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                "No active events, movies, sports or promotions are available.",
+                color = PremiumSecondary,
+                fontSize = 13.sp
             )
+            Spacer(modifier = Modifier.height(14.dp))
+            Button(
+                onClick = onRetry,
+                colors = ButtonDefaults.buttonColors(containerColor = PremiumOrange)
+            ) {
+                Text("Refresh")
+            }
         }
     }
 }
@@ -1041,10 +1191,24 @@ private fun ContentSection(
 ) {
     PremiumSectionHeader(title = title, onSeeAllClick = onSeeAllClick)
     Spacer(modifier = Modifier.height(12.dp))
-    PremiumContentRow(
-        events = events,
-        kind = kind,
-        onEventClick = onEventClick
+    if (events.isEmpty()) {
+        HomeSectionEmpty(message = "No $title available right now.")
+    } else {
+        PremiumContentRow(
+            events = events,
+            kind = kind,
+            onEventClick = onEventClick
+        )
+    }
+}
+
+@Composable
+private fun HomeSectionEmpty(message: String) {
+    Text(
+        text = message,
+        color = PremiumMuted,
+        fontSize = 13.sp,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
     )
 }
 

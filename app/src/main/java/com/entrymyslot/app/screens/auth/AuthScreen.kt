@@ -370,7 +370,7 @@ private fun OtpVerificationView(
         Spacer(modifier = Modifier.height(8.dp))
         
         Text(
-            text = "Enter the OTP sent to your mobile number",
+            text = "Enter the OTP sent to your email address",
             fontSize = 13.sp,
             color = LabelGrey,
             textAlign = TextAlign.Center,

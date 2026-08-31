@@ -42,14 +42,13 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.SentimentDissatisfied
 import androidx.compose.material.icons.outlined.SportsSoccer
 import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,6 +57,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -69,8 +69,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.entrymyslot.app.EntryMySlotApp
 import com.entrymyslot.app.screens.home.GlowBackground
-import com.entrymyslot.app.data.FakeData
 import com.entrymyslot.app.data.model.Booking
 import com.entrymyslot.app.data.model.BookingStatus
 import com.entrymyslot.app.data.model.BookingType
@@ -94,10 +98,24 @@ fun BookingScreen(
     onBottomNavigationClick: (String) -> Unit = {},
     onViewTicketClick: (BookingItem) -> Unit = {}
 ) {
-    var selectedTab by remember { mutableIntStateOf(0) }
+    val app = LocalContext.current.applicationContext as EntryMySlotApp
+    val bookingViewModel: BookingViewModel = viewModel(
+        factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                BookingViewModel(
+                    bookingApi = app.appContainer.bookingApi,
+                    networkMonitor = app.appContainer.networkMonitor
+                ) as T
+        }
+    )
+    val state by bookingViewModel.uiState.collectAsStateWithLifecycle()
     val tabs = listOf("Upcoming", "Past")
-    var selectedFilter by remember { mutableStateOf("All") }
     val filters = listOf("All", "Movies", "Turf", "Events")
+
+    LaunchedEffect(Unit) {
+        bookingViewModel.loadBookings()
+    }
 
     Box(
         modifier = Modifier.fillMaxSize()
@@ -113,11 +131,11 @@ fun BookingScreen(
 
             BookingTabs(
                 tabs = tabs,
-                selectedTab = selectedTab,
-                onTabSelected = { selectedTab = it }
+                selectedTab = state.selectedTab,
+                onTabSelected = bookingViewModel::selectTab
             )
 
-            if (selectedTab < 2) {
+            if (state.selectedTab < 2) {
                 LazyRow(
                     contentPadding = PaddingValues(
                         start = 16.dp,
@@ -130,8 +148,8 @@ fun BookingScreen(
                     items(filters, key = { it }) { filter ->
                         BookingFilterChip(
                             label = filter,
-                            isSelected = selectedFilter == filter,
-                            onClick = { selectedFilter = filter }
+                            isSelected = state.selectedFilter == filter,
+                            onClick = { bookingViewModel.selectFilter(filter) }
                         )
                     }
                 }
@@ -147,44 +165,49 @@ fun BookingScreen(
                 ),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                when (selectedTab) {
-                    0 -> {
-                        val filtered = filterBookings(FakeData.upcomingBookings, selectedFilter)
-                        if (filtered.isEmpty()) {
-                            item {
-                                EmptyState(
-                                    title = "No Upcoming Bookings",
-                                    subtitle = "Your next experience is waiting for you."
-                                )
-                            }
-                        } else {
-                            items(filtered, key = { it.id }) { item ->
-                                BookingCard(
-                                    item = item,
-                                    isPast = false,
-                                    onViewTicketClick = onViewTicketClick
-                                )
-                            }
+                when {
+                    state.isLoading && state.bookings.isEmpty() -> {
+                        item { BookingLoadingState() }
+                    }
+                    state.errorMessage != null && state.bookings.isEmpty() -> {
+                        item {
+                            BookingErrorState(
+                                message = state.errorMessage.orEmpty(),
+                                onRetry = bookingViewModel::retry
+                            )
                         }
                     }
-
-                    1 -> {
-                        val filtered = filterBookings(FakeData.pastBookings, selectedFilter)
-                        if (filtered.isEmpty()) {
-                            item {
-                                EmptyState(
-                                    title = "No Past Bookings",
-                                    subtitle = "Go book something amazing!"
-                                )
+                    state.bookings.isEmpty() -> {
+                        item {
+                            EmptyState(
+                                title = if (state.selectedTab == 0) {
+                                    "No Upcoming Bookings"
+                                } else {
+                                    "No Past Bookings"
+                                },
+                                subtitle = if (state.selectedTab == 0) {
+                                    "Your next experience is waiting for you."
+                                } else {
+                                    "Go book something amazing!"
+                                }
+                            )
+                        }
+                    }
+                    else -> {
+                        if (state.isLoading) {
+                            item(key = "booking-refreshing") { BookingRefreshingState() }
+                        }
+                        state.errorMessage?.let { message ->
+                            item(key = "booking-inline-error") {
+                                BookingInlineError(message, bookingViewModel::retry)
                             }
-                        } else {
-                            items(filtered, key = { it.id }) { item ->
-                                BookingCard(
-                                    item = item,
-                                    isPast = true,
-                                    onViewTicketClick = onViewTicketClick
-                                )
-                            }
+                        }
+                        items(state.bookings, key = { it.id }) { item ->
+                            BookingCard(
+                                item = item,
+                                isPast = state.selectedTab == 1,
+                                onViewTicketClick = onViewTicketClick
+                            )
                         }
                     }
                 }
@@ -394,9 +417,8 @@ private fun BookingCard(
     )
     val cardShape = RoundedCornerShape(17.dp)
     val actionLabel = if (item.type == BookingType.TURF) "View Booking" else "View Ticket"
-    val bookedItem = FakeData.getItemById(item.itemId)
-    val itemTitle = bookedItem?.title ?: "Booking"
-    val itemLocation = FakeData.getBookingVenue(item)
+    val itemTitle = item.title
+    val itemLocation = item.location
 
     Column(
         modifier = Modifier
@@ -641,6 +663,115 @@ private fun StatusBadge(status: BookingStatus) {
 }
 
 @Composable
+private fun BookingLoadingState() {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 72.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        CircularProgressIndicator(
+            color = BookingAccent,
+            strokeWidth = 3.dp,
+            modifier = Modifier.size(34.dp)
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = "Loading your bookings…",
+            color = BookingSecondaryText,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
+private fun BookingRefreshingState() {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        CircularProgressIndicator(
+            color = BookingAccent,
+            strokeWidth = 2.dp,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text("Updating bookings…", color = BookingSecondaryText, fontSize = 10.sp)
+    }
+}
+
+@Composable
+private fun BookingErrorState(message: String, onRetry: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 58.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.SentimentDissatisfied,
+            contentDescription = null,
+            tint = BookingAccent,
+            modifier = Modifier.size(34.dp)
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = message,
+            color = BookingPrimaryText,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(14.dp))
+        BookingRetryButton(onRetry)
+    }
+}
+
+@Composable
+private fun BookingInlineError(message: String, onRetry: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(13.dp))
+            .background(StatusCancelledColor.copy(alpha = 0.18f))
+            .border(1.dp, StatusCancelledColor.copy(alpha = 0.45f), RoundedCornerShape(13.dp))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = message,
+            modifier = Modifier.weight(1f),
+            color = BookingPrimaryText,
+            fontSize = 10.sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = "Retry",
+            color = BookingAccent,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.clickable(role = Role.Button, onClick = onRetry)
+        )
+    }
+}
+
+@Composable
+private fun BookingRetryButton(onRetry: () -> Unit) {
+    Text(
+        text = "RETRY",
+        color = Color.White,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier
+            .clip(RoundedCornerShape(11.dp))
+            .background(BookingAccent)
+            .clickable(role = Role.Button, onClick = onRetry)
+            .padding(horizontal = 22.dp, vertical = 10.dp)
+    )
+}
+
+@Composable
 private fun EmptyState(
     title: String,
     subtitle: String
@@ -709,20 +840,6 @@ private fun EmptyState(
             }
         }
     }
-}
-
-private fun filterBookings(
-    list: List<BookingItem>,
-    filter: String
-): List<BookingItem> {
-    if (filter == "All") return list
-    val type = when (filter) {
-        "Movies" -> BookingType.MOVIE
-        "Turf" -> BookingType.TURF
-        "Events" -> BookingType.EVENT
-        else -> null
-    }
-    return list.filter { it.type == type }
 }
 
 @Composable

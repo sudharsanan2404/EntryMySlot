@@ -2,371 +2,133 @@ package com.entrymyslot.app.data.auth
 
 import com.entrymyslot.app.core.storage.AuthTokenStore
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
+import retrofit2.Response
+
+class ApiException(
+    val statusCode: Int,
+    override val message: String
+) : Exception(message)
 
 class AuthRepository(
     private val authApi: AuthApi,
     private val tokenStore: AuthTokenStore
 ) {
+    private val errorJson = Json { ignoreUnknownKeys = true }
 
-    // ------------------------------------------------------------
-    // LOGIN
-    // ------------------------------------------------------------
+    suspend fun migrateStoredSession() = tokenStore.migrateLegacyTokens()
+
+    suspend fun hasStoredSession(): Boolean =
+        !tokenStore.refreshToken.firstOrNull().isNullOrBlank()
 
     suspend fun login(
         email: String,
-        password: String
-    ): Result<LoginData> {
-
-        return try {
-            val response = authApi.login(
-                LoginRequest(
-                    email = email.trim(),
-                    password = password
-                )
-            )
-
-            if (response.isSuccessful) {
-
-                val body = response.body()
-
-                if (body?.success == true) {
-
-                    tokenStore.saveTokens(
-                        accessToken = body.data.tokens.accessToken,
-                        refreshToken = body.data.tokens.refreshToken
-                    )
-
-                    Result.success(body.data)
-
-                } else {
-                    Result.failure(
-                        Exception("Login failed")
-                    )
-                }
-
-            } else {
-
-                Result.failure(
-                    Exception(
-                        response.errorBody()?.string()
-                            ?: "Login failed (${response.code()})"
-                    )
-                )
-            }
-
-        } catch (e: Exception) {
-
-            Result.failure(e)
-        }
+        password: String,
+        deviceInfo: String? = "Android"
+    ): Result<LoginData> = apiCall {
+        val response = authApi.login(LoginRequest(email.trim(), password, deviceInfo))
+        val body = response.requireBody("Login failed")
+        if (!body.success) throw ApiException(response.code(), "Login failed")
+        tokenStore.saveTokens(body.data.tokens.accessToken, body.data.tokens.refreshToken)
+        body.data
     }
-
-
-    // ------------------------------------------------------------
-    // REGISTER - REQUEST OTP
-    // ------------------------------------------------------------
 
     suspend fun register(
         email: String,
         username: String?,
         password: String
-    ): Result<RegisterOtpResponse> {
-
-        return try {
-
-            val response = authApi.register(
-                RegisterRequest(
-                    email = email.trim(),
-                    username = username?.trim(),
-                    password = password
-                )
-            )
-
-            if (response.isSuccessful) {
-
-                val body = response.body()
-
-                if (body != null) {
-                    Result.success(body)
-                } else {
-                    Result.failure(
-                        Exception("Invalid server response")
-                    )
-                }
-
-            } else {
-
-                Result.failure(
-                    Exception(
-                        response.errorBody()?.string()
-                            ?: "Registration failed (${response.code()})"
-                    )
-                )
-            }
-
-        } catch (e: Exception) {
-
-            Result.failure(e)
-        }
+    ): Result<RegisterOtpResponse> = apiCall {
+        authApi.register(
+            RegisterRequest(email.trim(), username?.trim()?.ifBlank { null }, password)
+        ).requireBody("Registration failed")
     }
-
-
-    // ------------------------------------------------------------
-    // VERIFY OTP
-    // ------------------------------------------------------------
 
     suspend fun verifyRegistrationOtp(
         email: String,
         otp: String,
-        deviceInfo: String? = null
-    ): Result<VerifyOtpData> {
-
-        return try {
-
-            val response = authApi.verifyRegistrationOtp(
-                VerifyOtpRequest(
-                    email = email.trim(),
-                    otp = otp.trim()
-                )
-            )
-
-            if (response.isSuccessful) {
-
-                val body = response.body()
-
-                if (body?.success == true) {
-
-                    tokenStore.saveTokens(
-                        accessToken = body.data.tokens.accessToken,
-                        refreshToken = body.data.tokens.refreshToken
-                    )
-
-                    Result.success(body.data)
-
-                } else {
-
-                    Result.failure(
-                        Exception(
-                            body?.message ?: "OTP verification failed"
-                        )
-                    )
-                }
-
-            } else {
-
-                Result.failure(
-                    Exception(
-                        response.errorBody()?.string()
-                            ?: "OTP verification failed (${response.code()})"
-                    )
-                )
-            }
-
-        } catch (e: Exception) {
-
-            Result.failure(e)
-        }
+        deviceInfo: String? = "Android"
+    ): Result<VerifyOtpData> = apiCall {
+        val response = authApi.verifyRegistrationOtp(
+            VerifyOtpRequest(email.trim(), otp.trim(), deviceInfo)
+        )
+        val body = response.requireBody("OTP verification failed")
+        if (!body.success) throw ApiException(response.code(), body.message)
+        tokenStore.saveTokens(body.data.tokens.accessToken, body.data.tokens.refreshToken)
+        body.data
     }
 
-
-    // ------------------------------------------------------------
-    // RESEND OTP
-    // ------------------------------------------------------------
-
-    suspend fun resendRegistrationOtp(
-        email: String
-    ): Result<ResendOtpResponse> {
-
-        return try {
-
-            val response = authApi.resendRegistrationOtp(
-                ResendOtpRequest(
-                    email = email.trim()
-                )
-            )
-
-            if (response.isSuccessful) {
-
-                val body = response.body()
-
-                if (body != null) {
-                    Result.success(body)
-                } else {
-                    Result.failure(
-                        Exception("Invalid server response")
-                    )
-                }
-
-            } else {
-
-                Result.failure(
-                    Exception(
-                        response.errorBody()?.string()
-                            ?: "Failed to resend OTP (${response.code()})"
-                    )
-                )
-            }
-
-        } catch (e: Exception) {
-
-            Result.failure(e)
-        }
+    suspend fun resendRegistrationOtp(email: String): Result<ResendOtpResponse> = apiCall {
+        authApi.resendRegistrationOtp(ResendOtpRequest(email.trim()))
+            .requireBody("Failed to resend OTP")
     }
 
-
-    // ------------------------------------------------------------
-    // REFRESH TOKEN
-    // ------------------------------------------------------------
-
-    suspend fun refreshToken(): Result<AuthTokens> {
-
-        return try {
-
-            val refreshToken = tokenStore.refreshToken.firstOrNull()
-
-            if (refreshToken.isNullOrBlank()) {
-                return Result.failure(
-                    Exception("No refresh token available")
-                )
-            }
-
-            val response = authApi.refreshToken(
-                RefreshTokenRequest(
-                    refreshToken = refreshToken
-                )
-            )
-
-            if (response.isSuccessful) {
-
-                val body = response.body()
-
-                if (body?.success == true) {
-
-                    val newTokens = body.data
-
-                    tokenStore.saveTokens(
-                        accessToken = newTokens.accessToken,
-                        refreshToken = newTokens.refreshToken
-                    )
-
-                    Result.success(newTokens)
-
-                } else {
-
-                    Result.failure(
-                        Exception("Token refresh failed")
-                    )
-                }
-
-            } else {
-
-                Result.failure(
-                    Exception("Token refresh failed (${response.code()})")
-                )
-            }
-
-        } catch (e: Exception) {
-
-            Result.failure(e)
-        }
+    suspend fun refreshToken(): Result<AuthTokens> = apiCall {
+        val storedRefreshToken = tokenStore.refreshToken.firstOrNull()
+            ?: throw ApiException(401, "No refresh token available")
+        val response = authApi.refreshToken(RefreshTokenRequest(storedRefreshToken))
+        val body = response.requireBody("Token refresh failed")
+        tokenStore.saveTokens(body.data.accessToken, body.data.refreshToken)
+        body.data
     }
 
-
-    // ------------------------------------------------------------
-    // GET CURRENT USER
-    // ------------------------------------------------------------
-
-    suspend fun getMe(): Result<User> {
-
-        return try {
-
-            val response = authApi.getMe()
-
-            if (response.isSuccessful) {
-
-                val body = response.body()
-
-                if (body?.success == true) {
-                    Result.success(body.data)
-                } else {
-                    Result.failure(
-                        Exception("Failed to load user")
-                    )
-                }
-
-            } else {
-
-                Result.failure(
-                    Exception("Failed to load user (${response.code()})")
-                )
-            }
-
-        } catch (e: Exception) {
-
-            Result.failure(e)
-        }
+    suspend fun getMe(): Result<User> = apiCall {
+        authApi.getMe().requireBody("Failed to load user").data
     }
 
+    suspend fun forgotPassword(email: String): Result<String> = apiCall {
+        authApi.forgotPassword(ForgotPasswordRequest(email.trim()))
+            .requireBody("Password reset request failed").message
+    }
 
-    // ------------------------------------------------------------
-    // LOGOUT
-    // ------------------------------------------------------------
+    suspend fun resetPassword(token: String, newPassword: String): Result<String> = apiCall {
+        authApi.resetPassword(ResetPasswordRequest(token.trim(), newPassword))
+            .requireBody("Password reset failed").message
+    }
+
+    suspend fun healthReady(): Result<HealthResponse> = apiCall {
+        authApi.healthReady().requireBody("Server is not ready")
+    }
 
     suspend fun logout(): Result<Unit> {
-
-        return try {
-
-            val refreshToken = tokenStore.refreshToken.firstOrNull()
-
-            if (!refreshToken.isNullOrBlank()) {
-
-                authApi.logout(
-                    LogoutRequest(
-                        refreshToken = refreshToken
-                    )
-                )
+        val remoteResult = apiCall {
+            tokenStore.refreshToken.firstOrNull()?.let { refreshToken ->
+                authApi.logout(LogoutRequest(refreshToken)).requireBody("Logout failed")
             }
-
-            tokenStore.clearTokens()
-
-            Result.success(Unit)
-
-        } catch (e: Exception) {
-
-            // Local logout should still happen
-            tokenStore.clearTokens()
-
-            Result.failure(e)
+            Unit
         }
+        tokenStore.clearTokens()
+        return remoteResult
     }
 
-
-    // ------------------------------------------------------------
-    // LOGOUT ALL
-    // ------------------------------------------------------------
-
     suspend fun logoutAll(): Result<Unit> {
-
-        return try {
-
-            val response = authApi.logoutAll()
-
-            tokenStore.clearTokens()
-
-            if (response.isSuccessful) {
-                Result.success(Unit)
-            } else {
-                Result.failure(
-                    Exception(
-                        "Logout all failed (${response.code()})"
-                    )
-                )
-            }
-
-        } catch (e: Exception) {
-
-            tokenStore.clearTokens()
-
-            Result.failure(e)
+        val remoteResult = apiCall {
+            authApi.logoutAll().requireBody("Logout all failed")
+            Unit
         }
+        tokenStore.clearTokens()
+        return remoteResult
+    }
+
+    private suspend fun <T> apiCall(block: suspend () -> T): Result<T> =
+        try {
+            Result.success(block())
+        } catch (exception: Exception) {
+            Result.failure(exception)
+        }
+
+    private fun <T> Response<T>.requireBody(fallbackMessage: String): T {
+        if (isSuccessful) {
+            return body() ?: throw ApiException(code(), "Invalid server response")
+        }
+
+        val serverMessage = runCatching {
+            errorBody()?.string()?.let { raw ->
+                errorJson.decodeFromString<ApiErrorResponse>(raw).message
+                    ?: errorJson.decodeFromString<ApiErrorResponse>(raw).error
+            }
+        }.getOrNull()
+
+        throw ApiException(code(), serverMessage ?: "$fallbackMessage (${code()})")
     }
 }

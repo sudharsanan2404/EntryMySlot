@@ -8,6 +8,9 @@ import retrofit2.http.POST
 
 interface AuthApi {
 
+    @GET("/health/ready")
+    suspend fun healthReady(): Response<HealthResponse>
+
     // ------------------------------------------------------------
     // LOGIN
     // POST /api/v1/auth/login-enhanced

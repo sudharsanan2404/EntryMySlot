@@ -13,6 +13,12 @@ data class ApiMessageResponse(
     val message: String
 )
 
+@Serializable
+data class ApiErrorResponse(
+    val message: String? = null,
+    val error: String? = null
+)
+
 // ------------------------------------------------------------
 // User
 // Matches backend UserPublic
@@ -20,7 +26,7 @@ data class ApiMessageResponse(
 
 @Serializable
 data class User(
-    val id: Int,
+    val id: Long,
     val email: String,
     val username: String? = null,
 
@@ -62,7 +68,7 @@ data class LoginRequest(
 data class LoginData(
     val tokens: AuthTokens,
     val user: User,
-    val sessionId: Int
+    val sessionId: Long
 )
 
 @Serializable
@@ -98,7 +104,8 @@ data class RegisterOtpResponse(
 @Serializable
 data class VerifyOtpRequest(
     val email: String,
-    val otp: String
+    val otp: String,
+    val deviceInfo: String? = null
 )
 
 @Serializable
@@ -178,4 +185,23 @@ data class ResetPasswordRequest(
 data class GetMeResponse(
     val success: Boolean,
     val data: User
+)
+
+@Serializable
+data class HealthCheck(
+    val status: String,
+    val responseTime: String? = null
+)
+
+@Serializable
+data class HealthChecks(
+    val db: HealthCheck? = null,
+    val redis: HealthCheck? = null
+)
+
+@Serializable
+data class HealthResponse(
+    val status: String,
+    val timestamp: String? = null,
+    val checks: HealthChecks? = null
 )

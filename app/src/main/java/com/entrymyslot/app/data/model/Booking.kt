@@ -12,7 +12,10 @@ data class Booking(
     val dateTime: String,
     val details: String,
     val price: String,
-    val status: BookingStatus
+    val status: BookingStatus,
+    val bookingReference: String = id,
+    val title: String = "Booking",
+    val location: String = ""
 )
 
 data class UserProfile(

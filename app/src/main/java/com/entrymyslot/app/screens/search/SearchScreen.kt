@@ -56,9 +56,11 @@ import androidx.compose.material.icons.rounded.SportsSoccer
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -75,6 +77,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.Role
@@ -90,10 +93,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.entrymyslot.app.EntryMySlotApp
 import com.entrymyslot.app.R
 import com.entrymyslot.app.screens.home.PopularEvent
 import com.entrymyslot.app.screens.home.GlowBackground
-import kotlin.random.Random
 
 enum class SearchResultType { MOVIE, SPORT, EVENT }
 
@@ -102,18 +109,21 @@ data class SearchResult(
     val type: SearchResultType
 )
 
-private enum class PriceFilter(val label: String) {
-    ANY("Any price"),
-    FREE("Free"),
-    UNDER_500("Under ₹500"),
-    ABOVE_500("₹500+")
+internal enum class PriceFilter(val label: String, val apiValue: String) {
+    ANY("Any price", "any"),
+    FREE("Free", "free"),
+    UNDER_500("Under ₹500", "under_500"),
+    ABOVE_500("₹500+", "above_500")
 }
 
-private enum class SearchSort(val label: String) {
-    RELEVANCE("Relevance"),
-    PRICE_LOW("Price: Low to high"),
-    PRICE_HIGH("Price: High to low")
+internal enum class SearchSort(val label: String, val apiValue: String) {
+    RELEVANCE("Relevance", "relevance"),
+    PRICE_LOW("Price: Low to high", "price_low"),
+    PRICE_HIGH("Price: High to low", "price_high")
 }
+
+internal val SearchResultType.apiValue: String
+    get() = name.lowercase()
 
 private val SearchBackground = Color(0xFF061A38)
 private val SearchSurface = Color(0xFF0B274F)
@@ -126,74 +136,33 @@ private val SearchMutedText = Color(0xFF7185A1)
 
 @Composable
 fun SearchScreen(
-    movies: List<PopularEvent>,
-    sports: List<PopularEvent>,
-    events: List<PopularEvent>,
+    selectedCity: String,
     onBackClick: () -> Unit,
     onResultClick: (SearchResult) -> Unit,
     initialType: SearchResultType? = null,
     onBottomNavigationClick: (String) -> Unit = {}
 ) {
-    var query by remember { mutableStateOf("") }
+    val context = LocalContext.current
+    val app = context.applicationContext as EntryMySlotApp
+    val searchViewModel: SearchViewModel = viewModel(
+        factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                SearchViewModel(app.appContainer.searchApi) as T
+        }
+    )
+    val state by searchViewModel.uiState.collectAsStateWithLifecycle()
     var showFilters by remember { mutableStateOf(false) }
-    var selectedTypes by remember(initialType) {
-        mutableStateOf(initialType?.let(::setOf) ?: SearchResultType.entries.toSet())
-    }
-    var priceFilter by remember { mutableStateOf(PriceFilter.ANY) }
-    var sort by remember { mutableStateOf(SearchSort.RELEVANCE) }
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
 
-    val allResults = remember(movies, sports, events) {
-        (
-            movies.map { SearchResult(it, SearchResultType.MOVIE) } +
-                sports.map { SearchResult(it, SearchResultType.SPORT) } +
-                events.map { SearchResult(it, SearchResultType.EVENT) }
-        ).shuffled(Random(2026))
-    }
-    val results = remember(query, selectedTypes, priceFilter, sort, allResults) {
-        val term = query.trim()
-        allResults.asSequence()
-            .filter { it.type in selectedTypes }
-            .filter {
-                term.isEmpty() ||
-                    it.item.title.contains(term, true) ||
-                    it.item.location.contains(term, true) ||
-                    it.type.name.contains(term, true)
-            }
-            .filter {
-                val price = it.item.price.numericPrice()
-                when (priceFilter) {
-                    PriceFilter.ANY -> true
-                    PriceFilter.FREE -> price == 0
-                    PriceFilter.UNDER_500 -> price in 1..499
-                    PriceFilter.ABOVE_500 -> price >= 500
-                }
-            }
-            .let { sequence ->
-                when (sort) {
-                    SearchSort.RELEVANCE -> sequence
-                    SearchSort.PRICE_LOW -> sequence.sortedBy { it.item.price.numericPrice() }
-                    SearchSort.PRICE_HIGH -> sequence.sortedByDescending { it.item.price.numericPrice() }
-                }
-            }
-            .toList()
-            .let { if (term.isEmpty() && !showFilters) it.take(8) else it }
-    }
-    val featuredForSearch = remember(query, results, selectedTypes, allResults) {
-        if (query.isBlank()) {
-            emptyList()
-        } else {
-            val matchedKeys = results.map { "${it.type}-${it.item.id}" }.toSet()
-            allResults.filter {
-                it.type in selectedTypes && "${it.type}-${it.item.id}" !in matchedKeys
-            }.take(3)
-        }
+    LaunchedEffect(initialType, selectedCity) {
+        searchViewModel.initialize(initialType, selectedCity)
     }
     val activeFilterCount =
-        (if (selectedTypes.size < SearchResultType.entries.size) 1 else 0) +
-            (if (priceFilter != PriceFilter.ANY) 1 else 0) +
-            (if (sort != SearchSort.RELEVANCE) 1 else 0)
+        (if (state.selectedTypes.size < SearchResultType.entries.size) 1 else 0) +
+            (if (state.priceFilter != PriceFilter.ANY) 1 else 0) +
+            (if (state.sort != SearchSort.RELEVANCE) 1 else 0)
 
     Box(
         modifier = Modifier
@@ -210,13 +179,16 @@ fun SearchScreen(
             SearchHeader(onBackClick = onBackClick)
 
             SearchControls(
-                query = query,
-                onQueryChange = { query = it },
-                onClearQuery = { query = "" },
+                query = state.query,
+                onQueryChange = searchViewModel::onQueryChange,
+                onClearQuery = searchViewModel::clearQuery,
                 showFilters = showFilters,
                 onFilterClick = { showFilters = !showFilters },
                 focusRequester = focusRequester,
-                onSearchAction = { focusManager.clearFocus() }
+                onSearchAction = {
+                    focusManager.clearFocus()
+                    searchViewModel.submitSearch()
+                }
             )
 
             AnimatedVisibility(
@@ -231,37 +203,35 @@ fun SearchScreen(
                 ) + fadeOut(tween(durationMillis = 120))
             ) {
                 SearchFilters(
-                    selectedTypes = selectedTypes,
-                    priceFilter = priceFilter,
-                    sort = sort,
-                    onTypeToggle = {
-                        selectedTypes = if (it in selectedTypes) {
-                            selectedTypes - it
-                        } else {
-                            selectedTypes + it
-                        }
-                    },
-                    onPriceChange = { priceFilter = it },
-                    onSortChange = { sort = it },
-                    onReset = {
-                        selectedTypes = SearchResultType.entries.toSet()
-                        priceFilter = PriceFilter.ANY
-                        sort = SearchSort.RELEVANCE
-                    }
+                    selectedTypes = state.selectedTypes,
+                    priceFilter = state.priceFilter,
+                    sort = state.sort,
+                    onTypeToggle = searchViewModel::toggleType,
+                    onPriceChange = searchViewModel::setPriceFilter,
+                    onSortChange = searchViewModel::setSort,
+                    onReset = searchViewModel::resetFilters
                 )
             }
 
             ResultsHeader(
-                title = if (query.isBlank() && activeFilterCount == 0) {
+                title = if (state.query.isBlank() && activeFilterCount == 0) {
                     "Popular near you"
                 } else {
-                    "${results.size} results"
+                    "${state.total} results"
                 }
             )
 
-            if (results.isEmpty()) {
+            if (state.isLoading && state.results.isEmpty()) {
+                SearchLoadingState(modifier = Modifier.weight(1f))
+            } else if (state.errorMessage != null && state.results.isEmpty()) {
+                SearchErrorState(
+                    message = state.errorMessage.orEmpty(),
+                    onRetry = searchViewModel::retry,
+                    modifier = Modifier.weight(1f)
+                )
+            } else if (state.results.isEmpty()) {
                 EmptySearch(
-                    query = query,
+                    query = state.query,
                     modifier = Modifier.weight(1f)
                 )
             } else {
@@ -276,30 +246,30 @@ fun SearchScreen(
                     ),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    if (query.isNotBlank()) {
-                        results.chunked(3).forEachIndexed { sectionIndex, sectionResults ->
+                    if (state.isLoading) {
+                        item(key = "search-refreshing") { SearchRefreshingIndicator() }
+                    }
+                    state.errorMessage?.let { message ->
+                        item(key = "search-inline-error") {
+                            SearchInlineError(message = message, onRetry = searchViewModel::retry)
+                        }
+                    }
+                    if (state.query.isNotBlank()) {
+                        state.results.chunked(3).forEachIndexed { sectionIndex, sectionResults ->
                             item(key = "search-match-section-${sectionResults.joinToString { it.item.id }}") {
                                 SearchResultSection(
                                     title = if (sectionIndex == 0) "Search results" else "More matches",
-                                    subtitle = "Matches for “${query.trim()}”",
+                                    subtitle = "Matches for “${state.query.trim()}”",
                                     results = sectionResults,
                                     onResultClick = onResultClick
                                 )
                             }
-                        }
-                        if (featuredForSearch.isNotEmpty()) {
-                            item(key = "search-featured-banner") { SearchDiscoveryBanner(slot = 1) }
-                            item(key = "search-featured-section") {
-                                SearchResultSection(
-                                    title = "Featured for you",
-                                    subtitle = "Recommendations beyond your search",
-                                    results = featuredForSearch,
-                                    onResultClick = onResultClick
-                                )
+                            state.discoveryCards.getOrNull(sectionIndex)?.let { card ->
+                                item(key = card.id) { SearchDiscoveryBanner(card = card) }
                             }
                         }
                     } else {
-                        val discoverySections = results.chunked(3)
+                        val discoverySections = state.results.chunked(3)
                         discoverySections.forEachIndexed { sectionIndex, sectionResults ->
                             val sectionTitle = when (sectionIndex) {
                                 0 -> "Featured for you"
@@ -316,8 +286,10 @@ fun SearchScreen(
                                 )
                             }
                             if (sectionIndex < discoverySections.lastIndex) {
-                                item(key = "discovery-banner-$sectionIndex") {
-                                    SearchDiscoveryBanner(slot = sectionIndex)
+                                state.discoveryCards.getOrNull(sectionIndex)?.let { card ->
+                                    item(key = card.id) {
+                                        SearchDiscoveryBanner(card = card)
+                                    }
                                 }
                             }
                         }
@@ -888,16 +860,6 @@ private fun ResultsHeader(title: String) {
     )
 }
 
-private fun String.numericPrice(): Int {
-    if (contains("free", true)) return 0
-    return Regex("\\d[\\d,]*")
-        .find(this)
-        ?.value
-        ?.replace(",", "")
-        ?.toIntOrNull()
-        ?: Int.MAX_VALUE
-}
-
 @Composable
 private fun SearchResultSection(
     title: String,
@@ -930,20 +892,16 @@ private fun SearchResultSection(
 }
 
 @Composable
-private fun SearchDiscoveryBanner(slot: Int) {
-    val isVenueOffer = slot % 2 == 0
-    val title = if (isVenueOffer) "Play more this weekend" else "Make your next plan count"
-    val subtitle = if (isVenueOffer) {
-        "Discover offers on nearby sports venues."
-    } else {
-        "Fresh movies and live events are waiting."
+private fun SearchDiscoveryBanner(card: SearchDiscoveryCard) {
+    val icon = when (card.type) {
+        SearchResultType.MOVIE -> Icons.Rounded.Movie
+        SearchResultType.SPORT -> Icons.Rounded.SportsSoccer
+        SearchResultType.EVENT -> Icons.Rounded.Event
     }
-    val label = if (isVenueOffer) "VENUE PICKS" else "TRENDING NOW"
-    val icon = if (isVenueOffer) Icons.Rounded.SportsSoccer else Icons.Rounded.Event
-    val colors = if (isVenueOffer) {
-        listOf(Color(0xFF123F77), Color(0xFF0B6A67))
-    } else {
-        listOf(Color(0xFF40235F), Color(0xFF102E64))
+    val colors = when (card.type) {
+        SearchResultType.MOVIE -> listOf(Color(0xFF40235F), Color(0xFF102E64))
+        SearchResultType.SPORT -> listOf(Color(0xFF123F77), Color(0xFF0B6A67))
+        SearchResultType.EVENT -> listOf(Color(0xFF633126), Color(0xFF102E64))
     }
 
     Box(
@@ -960,9 +918,9 @@ private fun SearchDiscoveryBanner(slot: Int) {
             Icon(icon, contentDescription = null, tint = Color.White.copy(alpha = 0.78f), modifier = Modifier.size(38.dp))
         }
         Column(Modifier.align(Alignment.CenterStart).padding(start = 18.dp, end = 105.dp)) {
-            Text(label, color = SearchAccent, fontSize = 8.sp, fontWeight = FontWeight.ExtraBold)
-            Text(title, color = SearchPrimaryText, fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp))
-            Text(subtitle, color = Color.White.copy(alpha = 0.72f), fontSize = 10.sp, lineHeight = 14.sp, modifier = Modifier.padding(top = 4.dp))
+            Text(card.label, color = SearchAccent, fontSize = 8.sp, fontWeight = FontWeight.ExtraBold)
+            Text(card.title, color = SearchPrimaryText, fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp))
+            Text(card.subtitle, color = Color.White.copy(alpha = 0.72f), fontSize = 10.sp, lineHeight = 14.sp, modifier = Modifier.padding(top = 4.dp))
         }
     }
 }
@@ -1118,6 +1076,119 @@ private fun ResultArtwork(item: PopularEvent, fallbackImage: Int) {
         error = painterResource(fallbackImage),
         contentScale = ContentScale.Crop,
         modifier = Modifier.fillMaxSize()
+    )
+}
+
+@Composable
+private fun SearchLoadingState(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        CircularProgressIndicator(
+            color = SearchAccent,
+            strokeWidth = 3.dp,
+            modifier = Modifier.size(34.dp)
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = "Loading latest results…",
+            color = SearchSecondaryText,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
+private fun SearchErrorState(
+    message: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxWidth().padding(horizontal = 28.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.SearchOff,
+            contentDescription = null,
+            tint = SearchAccent,
+            modifier = Modifier.size(34.dp)
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = message,
+            color = SearchPrimaryText,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+        Spacer(modifier = Modifier.height(14.dp))
+        RetrySearchButton(onRetry = onRetry)
+    }
+}
+
+@Composable
+private fun SearchRefreshingIndicator() {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        CircularProgressIndicator(
+            color = SearchAccent,
+            strokeWidth = 2.dp,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text("Updating results…", color = SearchSecondaryText, fontSize = 10.sp)
+    }
+}
+
+@Composable
+private fun SearchInlineError(message: String, onRetry: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color(0xFF6B281F).copy(alpha = 0.72f))
+            .border(1.dp, SearchAccent.copy(alpha = 0.55f), RoundedCornerShape(14.dp))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = message,
+            modifier = Modifier.weight(1f),
+            color = SearchPrimaryText,
+            fontSize = 10.sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = "Retry",
+            color = SearchAccent,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.clickable(role = Role.Button, onClick = onRetry)
+        )
+    }
+}
+
+@Composable
+private fun RetrySearchButton(onRetry: () -> Unit) {
+    Text(
+        text = "RETRY",
+        color = Color.White,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(SearchAccent)
+            .clickable(role = Role.Button, onClick = onRetry)
+            .padding(horizontal = 22.dp, vertical = 11.dp)
     )
 }
 

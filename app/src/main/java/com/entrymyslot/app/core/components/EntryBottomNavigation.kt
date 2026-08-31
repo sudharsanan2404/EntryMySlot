@@ -54,9 +54,27 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val EntryNavigationSurface = Color(0xFF071A35)
-private val EntryNavigationBorder = Color(0xFF3976A8)
-private val EntryNavigationMuted = Color(0xFF7185A1)
+private val EntryNavigationSurface: Color = Color(
+    red = 0x07,
+    green = 0x1A,
+    blue = 0x35
+)
+private val EntryNavigationBorder: Color = Color(
+    red = 0x39,
+    green = 0x76,
+    blue = 0xA8
+)
+private val EntryNavigationMuted: Color = Color(
+    red = 0x71,
+    green = 0x85,
+    blue = 0xA1
+)
+
+private data class EntryNavigationDestination(
+    val label: String,
+    val unselectedIcon: ImageVector,
+    val selectedIcon: ImageVector
+)
 
 @Composable
 fun EntryBottomNavigation(
@@ -64,11 +82,19 @@ fun EntryBottomNavigation(
     onItemSelected: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val items = listOf(
-        Triple("Home", Icons.Outlined.Home, Icons.Rounded.Home),
-        Triple("Search", Icons.Outlined.Search, Icons.Rounded.Search),
-        Triple("My Bookings", Icons.Outlined.ConfirmationNumber, Icons.Outlined.ConfirmationNumber),
-        Triple("Profile", Icons.Outlined.AccountCircle, Icons.Outlined.AccountCircle)
+    val items: List<EntryNavigationDestination> = listOf(
+        EntryNavigationDestination("Home", Icons.Outlined.Home, Icons.Rounded.Home),
+        EntryNavigationDestination("Search", Icons.Outlined.Search, Icons.Rounded.Search),
+        EntryNavigationDestination(
+            "My Bookings",
+            Icons.Outlined.ConfirmationNumber,
+            Icons.Outlined.ConfirmationNumber
+        ),
+        EntryNavigationDestination(
+            "Profile",
+            Icons.Outlined.AccountCircle,
+            Icons.Outlined.AccountCircle
+        )
     )
 
     Box(
@@ -98,11 +124,11 @@ fun EntryBottomNavigation(
             Row(modifier = Modifier.fillMaxSize()) {
                 items.forEach { item ->
                     EntryNavigationItem(
-                        label = item.first,
-                        unselectedIcon = item.second,
-                        selectedIcon = item.third,
-                        isSelected = selectedItem == item.first,
-                        onClick = { onItemSelected(item.first) },
+                        label = item.label,
+                        unselectedIcon = item.unselectedIcon,
+                        selectedIcon = item.selectedIcon,
+                        isSelected = selectedItem == item.label,
+                        onClick = { onItemSelected(item.label) },
                         modifier = Modifier.weight(1f)
                     )
                 }
