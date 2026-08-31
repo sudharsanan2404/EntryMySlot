@@ -268,9 +268,6 @@ private fun PremiumBackButton(onClick: () -> Unit) {
                 scaleX = scale
                 scaleY = scale
             }
-            .clip(CircleShape)
-            .background(TurfBookingSurface.copy(alpha = 0.94f))
-            .border(BorderStroke(1.dp, TurfBookingBorder), CircleShape)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,

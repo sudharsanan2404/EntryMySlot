@@ -34,11 +34,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Theaters
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -97,6 +100,12 @@ fun CinemaSelectionScreen(
     onTimeSelected: (Cinema, String, Calendar) -> Unit
 ) {
     var selectedDate by remember { mutableStateOf(Calendar.getInstance()) }
+    var searchQuery by remember { mutableStateOf("") }
+    val filteredCinemas = remember(searchQuery) {
+        sampleCinemas.filter { cinema ->
+            cinema.name.contains(searchQuery.trim(), ignoreCase = true)
+        }
+    }
 
     Box(
         modifier = Modifier.fillMaxSize()
@@ -149,8 +158,32 @@ fun CinemaSelectionScreen(
                     Spacer(modifier = Modifier.height(10.dp))
                 }
 
+                item(key = "cinema_search") {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
+                        placeholder = { Text("Search cinema...", color = MovieMuted) },
+                        leadingIcon = {
+                            Icon(Icons.Outlined.Search, contentDescription = null, tint = MovieSecondary)
+                        },
+                        singleLine = true,
+                        shape = RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = MovieWhite,
+                            unfocusedTextColor = MovieWhite,
+                            cursorColor = MovieOrange,
+                            focusedBorderColor = MovieOrange,
+                            unfocusedBorderColor = MovieBlueEdge.copy(alpha = 0.55f),
+                            focusedContainerColor = MovieBlueRaised,
+                            unfocusedContainerColor = MovieBlueRaised
+                        )
+                    )
+                    Spacer(Modifier.height(10.dp))
+                }
+
                 items(
-                    items = sampleCinemas,
+                    items = filteredCinemas,
                     key = { cinema -> cinema.id }
                 ) { cinema ->
                     CinemaCard(
@@ -174,22 +207,12 @@ private fun CinemaSelectionTopBar(onBackClick: () -> Unit) {
             .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Surface(
-            onClick = onBackClick,
-            modifier = Modifier.size(40.dp),
-            shape = CircleShape,
-            color = MovieBlue.copy(alpha = 0.76f),
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.09f))
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                    contentDescription = "Back",
-                    tint = MovieWhite,
-                    modifier = Modifier.size(21.dp)
-                )
-            }
-        }
+        Icon(
+            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+            contentDescription = "Back",
+            tint = MovieWhite,
+            modifier = Modifier.size(40.dp).padding(9.dp).clickable(onClick = onBackClick)
+        )
         Spacer(modifier = Modifier.width(12.dp))
         Text(
             text = "Select Cinema & Time",

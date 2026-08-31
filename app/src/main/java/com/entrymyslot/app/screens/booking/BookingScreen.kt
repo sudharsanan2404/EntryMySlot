@@ -38,7 +38,6 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Movie
-import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.SentimentDissatisfied
 import androidx.compose.material.icons.outlined.SportsSoccer
@@ -84,7 +83,7 @@ private val BookingMutedText = Color(0xFF7185A1)
 private val StatusCompletedColor = Color(0xFF52A77A)
 private val StatusCancelledColor = Color(0xFFD46B6B)
 
-enum class BookingType { MOVIE, TURF, EVENT, CONCERT }
+enum class BookingType { MOVIE, TURF, EVENT }
 
 enum class BookingStatus { UPCOMING, COMPLETED, CANCELLED }
 
@@ -119,7 +118,7 @@ fun BookingScreen(
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Upcoming", "Past")
     var selectedFilter by remember { mutableStateOf("All") }
-    val filters = listOf("All", "Movies", "Turf", "Events", "Concerts")
+    val filters = listOf("All", "Movies", "Turf", "Events")
 
     Box(
         modifier = Modifier.fillMaxSize()
@@ -257,9 +256,6 @@ private fun BookingBackButton(onClick: () -> Unit) {
                 scaleX = scale
                 scaleY = scale
             }
-            .clip(CircleShape)
-            .background(BookingSurface.copy(alpha = 0.94f))
-            .border(BorderStroke(1.dp, BookingBorder), CircleShape)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -583,7 +579,6 @@ private fun BookingTypeLabel(type: BookingType) {
         BookingType.MOVIE -> Icons.Outlined.Movie
         BookingType.TURF -> Icons.Outlined.SportsSoccer
         BookingType.EVENT -> Icons.Outlined.ConfirmationNumber
-        BookingType.CONCERT -> Icons.Outlined.MusicNote
     }
 
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -747,7 +742,6 @@ private fun filterBookings(
         "Movies" -> BookingType.MOVIE
         "Turf" -> BookingType.TURF
         "Events" -> BookingType.EVENT
-        "Concerts" -> BookingType.CONCERT
         else -> null
     }
     return list.filter { it.type == type }

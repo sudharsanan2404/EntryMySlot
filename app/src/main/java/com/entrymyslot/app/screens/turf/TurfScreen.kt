@@ -47,6 +47,8 @@ import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -123,8 +125,6 @@ fun TurfScreen(
     val venueLocation = "Chennai, Tamil Nadu"
     val context = LocalContext.current
 
-    var isFavorite by remember { mutableStateOf(false) }
-
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -135,11 +135,7 @@ fun TurfScreen(
             contentPadding = PaddingValues(bottom = 104.dp)
         ) {
             item(key = "header") {
-                TurfHeader(
-                    isFavorite = isFavorite,
-                    onBackClick = onBackClick,
-                    onFavoriteClick = { isFavorite = !isFavorite }
-                )
+                TurfHeader(onBackClick = onBackClick)
             }
 
             item(key = "venue_hero") {
@@ -171,6 +167,11 @@ fun TurfScreen(
                     fontSize = 14.sp,
                     lineHeight = 21.sp
                 )
+                Spacer(modifier = Modifier.height(20.dp))
+            }
+
+            item(key = "interest") {
+                TurfInterestCard()
                 Spacer(modifier = Modifier.height(20.dp))
             }
 
@@ -219,9 +220,7 @@ fun TurfScreen(
 
 @Composable
 private fun TurfHeader(
-    isFavorite: Boolean,
-    onBackClick: () -> Unit,
-    onFavoriteClick: () -> Unit
+    onBackClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -240,10 +239,34 @@ private fun TurfHeader(
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold
         )
-        FavoriteButton(
-            isFavorite = isFavorite,
-            onClick = onFavoriteClick
-        )
+    }
+}
+
+@Composable
+private fun TurfInterestCard() {
+    var interested by remember { mutableStateOf(false) }
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 18.dp)
+            .clip(RoundedCornerShape(14.dp)).background(TurfSurface)
+            .border(1.dp, TurfBorder, RoundedCornerShape(14.dp)).padding(11.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text("Interested in this venue?", color = TurfPrimaryText, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Text(
+                "Get updates when slots or venue information changes.",
+                color = TurfSecondaryText,
+                fontSize = 10.sp,
+                lineHeight = 14.sp,
+                modifier = Modifier.padding(top = 2.dp, end = 6.dp)
+            )
+        }
+        Button(
+            onClick = { interested = !interested },
+            modifier = Modifier.height(34.dp),
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = if (interested) TurfSurfaceRaised else TurfAccent)
+        ) { Text(if (interested) "Interested ✓" else "Interested", color = TurfPrimaryText, fontSize = 10.sp) }
     }
 }
 
@@ -273,86 +296,12 @@ private fun HeaderBackButton(onClick: () -> Unit) {
             ),
         contentAlignment = Alignment.Center
     ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(TurfSurface.copy(alpha = 0.94f))
-                .border(BorderStroke(1.dp, TurfBorder), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                contentDescription = "Back",
-                tint = TurfPrimaryText,
-                modifier = Modifier.size(21.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun FavoriteButton(
-    isFavorite: Boolean,
-    onClick: () -> Unit
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.90f else 1f,
-        animationSpec = tween(durationMillis = 110),
-        label = "favoriteScale"
-    )
-    val containerColor by animateColorAsState(
-        targetValue = if (isFavorite) {
-            TurfAccent.copy(alpha = 0.18f)
-        } else {
-            TurfSurface.copy(alpha = 0.94f)
-        },
-        animationSpec = tween(durationMillis = 150),
-        label = "favoriteContainer"
-    )
-    val borderColor by animateColorAsState(
-        targetValue = if (isFavorite) TurfAccent else TurfBorder,
-        animationSpec = tween(durationMillis = 150),
-        label = "favoriteBorder"
-    )
-
-    Box(
-        modifier = Modifier
-            .size(48.dp)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                role = Role.Button,
-                onClickLabel = if (isFavorite) "Remove favorite" else "Add favorite",
-                onClick = onClick
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(containerColor)
-                .border(BorderStroke(1.dp, borderColor), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = if (isFavorite) {
-                    Icons.Rounded.Favorite
-                } else {
-                    Icons.Outlined.FavoriteBorder
-                },
-                contentDescription = "Favorite",
-                tint = if (isFavorite) TurfAccent else TurfPrimaryText,
-                modifier = Modifier.size(21.dp)
-            )
-        }
+        Icon(
+            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+            contentDescription = "Back",
+            tint = TurfPrimaryText,
+            modifier = Modifier.size(21.dp)
+        )
     }
 }
 

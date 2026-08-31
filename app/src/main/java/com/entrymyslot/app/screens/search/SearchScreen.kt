@@ -323,9 +323,6 @@ private fun SearchBackButton(onClick: () -> Unit) {
                 scaleX = scale
                 scaleY = scale
             }
-            .clip(CircleShape)
-            .background(SearchSurface.copy(alpha = 0.94f))
-            .border(BorderStroke(1.dp, SearchBorder), CircleShape)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,

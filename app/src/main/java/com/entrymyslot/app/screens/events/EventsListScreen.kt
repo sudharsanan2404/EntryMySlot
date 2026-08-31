@@ -167,9 +167,6 @@ private fun PremiumBackButton(onClick: () -> Unit) {
                 scaleX = scale
                 scaleY = scale
             }
-            .clip(CircleShape)
-            .background(EventsSurface.copy(alpha = 0.94f))
-            .border(BorderStroke(1.dp, EventsBorder), CircleShape)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,

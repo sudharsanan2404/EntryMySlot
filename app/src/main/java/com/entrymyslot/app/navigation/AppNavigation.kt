@@ -15,6 +15,11 @@ import com.entrymyslot.app.core.storage.AuthTokenStore
 import com.entrymyslot.app.screens.auth.AuthScreen
 import com.entrymyslot.app.screens.home.HomeScreen
 import com.entrymyslot.app.screens.home.LocationSelectionScreen
+import com.entrymyslot.app.screens.home.PopularEvent
+import com.entrymyslot.app.screens.home.latestMovies
+import com.entrymyslot.app.screens.home.popularEvents
+import com.entrymyslot.app.screens.home.sportsNearYou
+import com.entrymyslot.app.screens.home.toPopularEvent
 import com.entrymyslot.app.screens.movies.CinemaSelectionScreen
 import com.entrymyslot.app.screens.movies.MovieBookingScreen
 import com.entrymyslot.app.screens.movies.MovieDetailsScreen
@@ -30,11 +35,6 @@ import com.entrymyslot.app.screens.events.EventsListScreen
 import com.entrymyslot.app.screens.events.EventDetailsScreen
 import com.entrymyslot.app.screens.events.EventBookingScreen
 import com.entrymyslot.app.screens.home.HomeViewModel
-import com.entrymyslot.app.screens.home.PopularEvent
-import com.entrymyslot.app.screens.home.toPopularEvent
-import com.entrymyslot.app.screens.home.latestMovies
-import com.entrymyslot.app.screens.home.sportsNearYou
-import com.entrymyslot.app.screens.home.popularEvents
 import com.entrymyslot.app.screens.profile.ProfileScreen
 import com.entrymyslot.app.screens.booking.BookingScreen
 import com.entrymyslot.app.screens.booking.upcomingBookings
@@ -95,9 +95,9 @@ fun AppNavigation(
                 homeViewModel = homeViewModel,
                 onCategoryClick = { category ->
                     when (category) {
-                        "Movies" -> navController.navigate("movies_list")
-                        "Sports" -> navController.navigate("sports_list")
-                        "Events" -> navController.navigate("events_list")
+                        "Movies", "Latest Movies", "Popular Movies" -> navController.navigate("movies_list")
+                        "Sports", "Sports Near You", "Popular Turf" -> navController.navigate("sports_list")
+                        "Events", "Popular Events" -> navController.navigate("events_list")
                     }
                 },
                 onBottomNavigationClick = { item ->

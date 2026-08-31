@@ -42,6 +42,8 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -103,6 +105,7 @@ fun ProfileScreen(
                 item { StatisticsRow() }
                 item { QuickActionsSection(onBookingClick = onBookingClick) }
                 item { AccountSettingsSection() }
+                item { PartnerSection() }
                 item { LogoutButton(onClick = onLogoutClick) }
             }
 
@@ -175,55 +178,6 @@ private fun ProfileHeaderSection() {
             fontWeight = FontWeight.Medium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
-        )
-        Spacer(modifier = Modifier.height(10.dp))
-        EditProfileButton()
-    }
-}
-
-@Composable
-private fun EditProfileButton() {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.97f else 1f,
-        animationSpec = tween(durationMillis = 110),
-        label = "editProfileScale"
-    )
-    val color by animateColorAsState(
-        targetValue = if (isPressed) ProfileAccent.copy(alpha = 0.86f) else ProfileAccent,
-        animationSpec = tween(durationMillis = 110),
-        label = "editProfileColor"
-    )
-
-    Box(
-        modifier = Modifier
-            .height(48.dp)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-            .clip(RoundedCornerShape(10.dp))
-            .background(color)
-            .semantics {
-                contentDescription = "Edit Profile"
-                role = Role.Button
-            }
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                role = Role.Button,
-                onClickLabel = "Edit Profile",
-                onClick = { /* Edit Profile */ }
-            )
-            .padding(horizontal = 20.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "Edit Profile",
-            color = Color.White,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold
         )
     }
 }
@@ -368,20 +322,12 @@ private fun QuickActionCard(
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(32.dp)
-                .clip(RoundedCornerShape(9.dp))
-                .background(ProfileAccent.copy(alpha = 0.13f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = ProfileAccent,
-                modifier = Modifier.size(18.dp)
-            )
-        }
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = ProfileAccent,
+            modifier = Modifier.size(22.dp)
+        )
         Spacer(modifier = Modifier.width(11.dp))
         Text(
             text = title,
@@ -392,26 +338,11 @@ private fun QuickActionCard(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-            contentDescription = null,
-            tint = ProfileMutedText,
-            modifier = Modifier.size(13.dp)
-        )
     }
 }
 
 @Composable
 private fun AccountSettingsSection() {
-    val settings = listOf(
-        Icons.Outlined.Person to "Personal Information",
-        Icons.Outlined.Payment to "Saved Payments",
-        Icons.Outlined.Notifications to "Notifications",
-        Icons.AutoMirrored.Outlined.HelpOutline to "Help & Support",
-        Icons.Outlined.Description to "Terms & Conditions",
-        Icons.Outlined.PrivacyTip to "Privacy Policy"
-    )
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -435,15 +366,55 @@ private fun AccountSettingsSection() {
                     RoundedCornerShape(15.dp)
                 )
         ) {
-            settings.forEachIndexed { index, setting ->
-                SettingsItem(
-                    icon = setting.first,
-                    title = setting.second,
-                    onClick = {}
-                )
-                if (index != settings.lastIndex) SettingsDivider()
+            SettingsItem(
+                icon = Icons.Outlined.Person,
+                title = "Personal Information",
+                onClick = {}
+            )
+            SettingsDivider()
+            PersonalInformationDetails()
+        }
+    }
+}
+
+@Composable
+private fun PersonalInformationDetails() {
+    val details = listOf(
+        "Full Name" to "Navaneethan",
+        "Email" to "navaneethan@email.com",
+        "Phone" to "+91 98765 43210",
+        "City" to "Chennai",
+        "Member Since" to "August 2026"
+    )
+    Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
+        details.forEach { (label, value) ->
+            Row(Modifier.fillMaxWidth().padding(vertical = 7.dp)) {
+                Text(label, color = ProfileMutedText, fontSize = 12.sp, modifier = Modifier.weight(1f))
+                Text(value, color = ProfilePrimaryText, fontSize = 12.sp, fontWeight = FontWeight.Medium)
             }
         }
+    }
+}
+
+@Composable
+private fun PartnerSection() {
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(18.dp)).background(ProfileSurface)
+            .border(1.dp, ProfileBorder, RoundedCornerShape(18.dp)).padding(16.dp)
+    ) {
+        Text("List Your Turf or Venue", color = ProfilePrimaryText, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+        Text(
+            "Reach more customers by partnering with EntryMySlot.",
+            color = ProfileSecondaryText,
+            fontSize = 12.sp,
+            modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
+        )
+        Button(
+            onClick = { },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = ProfileAccent)
+        ) { Text("Partner With Us", color = Color.White, fontWeight = FontWeight.Bold) }
     }
 }
 
@@ -484,20 +455,12 @@ private fun SettingsItem(
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(30.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(ProfileAccent.copy(alpha = 0.11f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = ProfileAccent,
-                modifier = Modifier.size(17.dp)
-            )
-        }
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = ProfileAccent,
+            modifier = Modifier.size(20.dp)
+        )
         Spacer(modifier = Modifier.width(11.dp))
         Text(
             text = title,
@@ -507,12 +470,6 @@ private fun SettingsItem(
             fontWeight = FontWeight.Medium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
-        )
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-            contentDescription = null,
-            tint = ProfileMutedText,
-            modifier = Modifier.size(12.dp)
         )
     }
 }

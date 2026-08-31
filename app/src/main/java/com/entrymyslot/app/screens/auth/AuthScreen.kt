@@ -141,11 +141,11 @@ fun AuthScreen(
     LaunchedEffect(uiState.isLoggedIn) {
         if (uiState.isLoggedIn) {
             if (isLogin) {
-                successMessageTitle = "Welcome Back!"
-                successMessageSub = "Login Successful"
+                successMessageTitle = "Login Successful"
+                successMessageSub = "Welcome back to EntryMySlot"
             } else {
-                successMessageTitle = "Welcome to EntryMySlot!"
-                successMessageSub = "Your account has been created successfully."
+                successMessageTitle = "Account Verified"
+                successMessageSub = "Your account has been successfully registered.\nWelcome to EntryMySlot"
             }
             showSuccessOverlay = true
             kotlinx.coroutines.delay(2200.milliseconds)
@@ -299,8 +299,8 @@ fun AuthScreen(
 private fun SuccessOverlay(visible: Boolean, title: String, subtitle: String) {
     AnimatedVisibility(
         visible = visible,
-        enter = fadeIn(tween(800)) + scaleIn(tween(800)),
-        exit = fadeOut(tween(800))
+        enter = fadeIn(tween(300)) + scaleIn(tween(300), initialScale = 0.96f),
+        exit = fadeOut(tween(200))
     ) {
         Box(
             modifier = Modifier
@@ -309,37 +309,11 @@ private fun SuccessOverlay(visible: Boolean, title: String, subtitle: String) {
             contentAlignment = Alignment.Center
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(24.dp)) {
-                val scale = remember { Animatable(0f) }
-                val pulseScale = remember { Animatable(1f) }
-
-                LaunchedEffect(visible) {
-                    if (visible) {
-                        scale.animateTo(
-                            1.2f,
-                            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
-                        )
-                        scale.animateTo(1f)
-                        
-                        pulseScale.animateTo(
-                            1.1f,
-                            animationSpec = infiniteRepeatable(
-                                animation = tween(1000),
-                                repeatMode = RepeatMode.Reverse
-                            )
-                        )
-                    }
-                }
-
                 Icon(
                     imageVector = Icons.Default.CheckCircle,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(110.dp)
-                        .graphicsLayer(
-                            scaleX = scale.value * pulseScale.value,
-                            scaleY = scale.value * pulseScale.value
-                        ),
-                    tint = Color.White
+                    contentDescription = "Success",
+                    modifier = Modifier.size(82.dp),
+                    tint = EntryOrange
                 )
                 Spacer(modifier = Modifier.height(32.dp))
                 Text(

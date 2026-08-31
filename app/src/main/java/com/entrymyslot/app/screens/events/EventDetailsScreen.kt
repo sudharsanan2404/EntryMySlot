@@ -43,6 +43,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -101,6 +103,11 @@ fun EventDetailsScreen(
                         context.openEventLocation(event.location)
                     }
                 )
+            }
+
+
+            item(key = "interest") {
+                EventInterestCard()
             }
 
             item(key = "about_event") {
@@ -183,61 +190,74 @@ private fun EventHero(
                 .fillMaxWidth()
                 .graphicsLayer {
                     alpha = contentAlpha
-                    translationY = (1f - contentAlpha) * 14.dp.toPx()
+                    translationY = (1f - contentAlpha) * 12.dp.toPx()
                 }
-                .padding(horizontal = 18.dp, vertical = 22.dp)
+                .padding(horizontal = 18.dp, vertical = 18.dp)
         ) {
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(DetailsAccent.copy(alpha = 0.16f))
-                    .border(
-                        BorderStroke(1.dp, DetailsAccent.copy(alpha = 0.42f)),
-                        RoundedCornerShape(8.dp)
-                    )
-                    .padding(horizontal = 9.dp, vertical = 5.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Event,
-                    contentDescription = null,
-                    tint = DetailsAccent,
-                    modifier = Modifier.size(14.dp)
-                )
-                Spacer(modifier = Modifier.width(5.dp))
-                Text(
-                    text = "EVENT",
-                    color = DetailsPrimaryText,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
-                )
-            }
-
-            Spacer(modifier = Modifier.height(11.dp))
-
             Text(
                 text = event.title,
                 color = DetailsPrimaryText,
-                fontSize = 27.sp,
+                fontSize = 25.sp,
                 fontWeight = FontWeight.ExtraBold,
-                lineHeight = 32.sp,
-                maxLines = 3,
+                lineHeight = 29.sp,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
+            Spacer(Modifier.height(9.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.CalendarToday, null, tint = DetailsAccent, modifier = Modifier.size(15.dp))
+                    Text(
+                        event.date,
+                        color = DetailsPrimaryText.copy(alpha = 0.88f),
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(start = 6.dp)
+                    )
+                }
+                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.LocationOn, null, tint = DetailsAccent, modifier = Modifier.size(15.dp))
+                    Text(
+                        event.location,
+                        color = DetailsPrimaryText.copy(alpha = 0.88f),
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(start = 6.dp)
+                    )
+                }
+            }
+        }
 
-            Spacer(modifier = Modifier.height(10.dp))
+    }
+}
 
-            HeroMetadata(
-                icon = Icons.Rounded.CalendarToday,
-                text = event.date
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            HeroMetadata(
-                icon = Icons.Rounded.LocationOn,
-                text = event.location
+@Composable
+private fun EventInterestCard() {
+    var interested by remember { mutableStateOf(false) }
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 5.dp)
+            .clip(RoundedCornerShape(14.dp)).background(DetailsSurface)
+            .border(1.dp, DetailsBorder, RoundedCornerShape(14.dp)).padding(11.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text("Interested in this event?", color = DetailsPrimaryText, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Text(
+                "Get updates when details or booking information changes.",
+                color = DetailsSecondaryText,
+                fontSize = 10.sp,
+                lineHeight = 14.sp,
+                modifier = Modifier.padding(top = 2.dp, end = 6.dp)
             )
         }
+        Button(
+            onClick = { interested = !interested },
+            modifier = Modifier.height(34.dp),
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = if (interested) DetailsSurfaceRaised else DetailsAccent)
+        ) { Text(if (interested) "Interested ✓" else "Interested", color = DetailsPrimaryText, fontSize = 10.sp) }
     }
 }
 
@@ -326,10 +346,6 @@ private fun PremiumHeroBackButton(
                 scaleX = scale
                 scaleY = scale
             }
-            .shadow(5.dp, CircleShape)
-            .clip(CircleShape)
-            .background(DetailsBackground.copy(alpha = 0.86f))
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)), CircleShape)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,

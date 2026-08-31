@@ -72,51 +72,33 @@ fun EntryBottomNavigation(
         Triple("My Bookings", Icons.Outlined.ConfirmationNumber, Icons.Outlined.ConfirmationNumber),
         Triple("Profile", Icons.Outlined.AccountCircle, Icons.Outlined.AccountCircle)
     )
-    val selectedIndex = items.indexOfFirst { it.first == selectedItem }.coerceAtLeast(0)
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .padding(top = 4.dp, bottom = 4.dp)
+            .offset(y = (-10).dp),
+        contentAlignment = Alignment.Center
     ) {
         BoxWithConstraints(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(64.dp)
+                .fillMaxWidth(0.90f)
+                .height(60.dp)
                 .shadow(
-                    elevation = 10.dp,
-                    shape = RoundedCornerShape(22.dp),
-                    ambientColor = Color.Black.copy(alpha = 0.18f),
-                    spotColor = Color.Black.copy(alpha = 0.24f)
+                    elevation = 22.dp,
+                    shape = RoundedCornerShape(26.dp),
+                    ambientColor = Color.Black.copy(alpha = 0.30f),
+                    spotColor = Color.Black.copy(alpha = 0.38f)
                 )
-                .clip(RoundedCornerShape(22.dp))
-                .background(EntryNavigationSurface.copy(alpha = 0.96f))
+                .clip(RoundedCornerShape(26.dp))
+                .background(EntryNavigationSurface.copy(alpha = 0.94f))
                 .border(
-                    BorderStroke(1.dp, EntryNavigationBorder.copy(alpha = 0.32f)),
-                    RoundedCornerShape(22.dp)
+                    BorderStroke(1.dp, EntryNavigationBorder.copy(alpha = 0.42f)),
+                    RoundedCornerShape(26.dp)
                 )
                 .padding(5.dp)
         ) {
-            val segmentWidth = maxWidth / items.size.toFloat()
-            val indicatorOffset by animateDpAsState(
-                targetValue = segmentWidth * selectedIndex.toFloat(),
-                animationSpec = tween(durationMillis = 240),
-                label = "entryNavigationIndicator"
-            )
-            Box(
-                modifier = Modifier
-                    .offset(x = indicatorOffset)
-                    .width(segmentWidth)
-                    .fillMaxHeight()
-                    .padding(horizontal = 3.dp)
-                    .clip(RoundedCornerShape(17.dp))
-                    .background(EntryCardAccent.copy(alpha = 0.13f))
-                    .border(
-                        BorderStroke(1.dp, EntryCardAccent.copy(alpha = 0.20f)),
-                        RoundedCornerShape(17.dp)
-                    )
-            )
             Row(modifier = Modifier.fillMaxSize()) {
                 items.forEach { item ->
                     EntryNavigationItem(

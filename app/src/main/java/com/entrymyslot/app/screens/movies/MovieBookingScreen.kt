@@ -13,6 +13,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -164,25 +165,12 @@ private fun PremiumTopBar(onBackClick: () -> Unit) {
             .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Surface(
-            onClick = onBackClick,
-            modifier = Modifier.size(40.dp),
-            shape = CircleShape,
-            color = MovieBlue.copy(alpha = 0.76f),
-            border = androidx.compose.foundation.BorderStroke(
-                1.dp,
-                Color.White.copy(alpha = 0.09f)
-            )
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                    contentDescription = "Back",
-                    tint = MovieWhite,
-                    modifier = Modifier.size(21.dp)
-                )
-            }
-        }
+        Icon(
+            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+            contentDescription = "Back",
+            tint = MovieWhite,
+            modifier = Modifier.size(40.dp).padding(9.dp).clickable(onClick = onBackClick)
+        )
         Spacer(modifier = Modifier.width(12.dp))
         Text(
             text = "Select Seats",

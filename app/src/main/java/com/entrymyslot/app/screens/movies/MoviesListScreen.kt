@@ -82,8 +82,6 @@ fun MoviesListScreen(
     onBackClick: () -> Unit,
     onMovieClick: (PopularEvent) -> Unit
 ) {
-    var favoriteMovies by remember { mutableStateOf(setOf<String>()) }
-
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -114,14 +112,6 @@ fun MoviesListScreen(
                 ) { movie ->
                     VerticalMovieCard(
                         movie = movie,
-                        isFavorite = favoriteMovies.contains(movie.id),
-                        onFavoriteClick = {
-                            favoriteMovies = if (favoriteMovies.contains(movie.id)) {
-                                favoriteMovies - movie.id
-                            } else {
-                                favoriteMovies + movie.id
-                            }
-                        },
                         onClick = { onMovieClick(movie) }
                     )
                 }
@@ -139,22 +129,12 @@ private fun MoviesTopBar(onBackClick: () -> Unit) {
             .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Surface(
-            onClick = onBackClick,
-            modifier = Modifier.size(40.dp),
-            shape = CircleShape,
-            color = MovieBlue.copy(alpha = 0.76f),
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.09f))
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                    contentDescription = "Back",
-                    tint = MovieWhite,
-                    modifier = Modifier.size(21.dp)
-                )
-            }
-        }
+        Icon(
+            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+            contentDescription = "Back",
+            tint = MovieWhite,
+            modifier = Modifier.size(40.dp).padding(9.dp).clickable(onClick = onBackClick)
+        )
         Spacer(modifier = Modifier.width(12.dp))
         Text(
             text = "Movies",
@@ -169,8 +149,6 @@ private fun MoviesTopBar(onBackClick: () -> Unit) {
 @Composable
 fun VerticalMovieCard(
     movie: PopularEvent,
-    isFavorite: Boolean,
-    onFavoriteClick: () -> Unit,
     onClick: () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -221,21 +199,13 @@ fun VerticalMovieCard(
             )
             .semantics { role = Role.Button }
     ) {
-        MoviePoster(
-            movie = movie,
-            isFavorite = isFavorite,
-            onFavoriteClick = onFavoriteClick
-        )
+        MoviePoster(movie = movie)
         MovieCardDetails(movie = movie)
     }
 }
 
 @Composable
-private fun MoviePoster(
-    movie: PopularEvent,
-    isFavorite: Boolean,
-    onFavoriteClick: () -> Unit
-) {
+private fun MoviePoster(movie: PopularEvent) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -268,14 +238,6 @@ private fun MoviePoster(
                 )
         )
 
-        FavoriteButton(
-            isFavorite = isFavorite,
-            movieTitle = movie.title,
-            onClick = onFavoriteClick,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(8.dp)
-        )
     }
 }
 
@@ -324,94 +286,6 @@ private fun MoviePosterFallback(title: String) {
                 modifier = Modifier.semantics {
                     contentDescription = "No poster available for $title"
                 }
-            )
-        }
-    }
-}
-
-@Composable
-private fun FavoriteButton(
-    isFavorite: Boolean,
-    movieTitle: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.9f else 1f,
-        animationSpec = tween(90),
-        label = "favoriteButtonScale"
-    )
-    val containerColor by animateColorAsState(
-        targetValue = if (isFavorite) {
-            MovieOrange.copy(alpha = 0.2f)
-        } else {
-            MovieBackground.copy(alpha = 0.76f)
-        },
-        animationSpec = tween(150),
-        label = "favoriteContainer"
-    )
-
-    Box(
-        modifier = modifier
-            .size(40.dp)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-            .clip(CircleShape)
-            .background(containerColor)
-            .border(
-                width = 1.dp,
-                color = if (isFavorite) {
-                    MovieOrange.copy(alpha = 0.44f)
-                } else {
-                    Color.White.copy(alpha = 0.16f)
-                },
-                shape = CircleShape
-            )
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                role = Role.Button,
-                onClickLabel = if (isFavorite) {
-                    "Remove $movieTitle from favorites"
-                } else {
-                    "Add $movieTitle to favorites"
-                },
-                onClick = onClick
-            )
-            .semantics {
-                contentDescription = if (isFavorite) {
-                    "Remove $movieTitle from favorites"
-                } else {
-                    "Add $movieTitle to favorites"
-                }
-                stateDescription = if (isFavorite) "Favorited" else "Not favorited"
-                role = Role.Button
-            },
-        contentAlignment = Alignment.Center
-    ) {
-        AnimatedContent(
-            targetState = isFavorite,
-            transitionSpec = {
-                (fadeIn(tween(120)) + scaleIn(tween(140), initialScale = 0.65f))
-                    .togetherWith(
-                        fadeOut(tween(90)) + scaleOut(tween(100), targetScale = 0.72f)
-                    )
-            },
-            label = "favoriteIcon"
-        ) { favorite ->
-            Icon(
-                imageVector = if (favorite) {
-                    Icons.Rounded.Favorite
-                } else {
-                    Icons.Outlined.FavoriteBorder
-                },
-                contentDescription = null,
-                tint = if (favorite) MovieOrange else MovieWhite,
-                modifier = Modifier.size(19.dp)
             )
         }
     }

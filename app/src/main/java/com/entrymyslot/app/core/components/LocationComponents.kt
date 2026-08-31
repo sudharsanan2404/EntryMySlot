@@ -86,7 +86,7 @@ fun rememberLocationFetcher(
                 runFetch()
             } else {
                 state = LocationFetchState.GpsDisabled
-                showGpsDialog = true
+                context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
             }
         } else {
             state = LocationFetchState.PermissionDenied
@@ -100,7 +100,7 @@ fun rememberLocationFetcher(
                     runFetch()
                 } else {
                     state = LocationFetchState.GpsDisabled
-                    showGpsDialog = true
+                    context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
                 }
             }
             else -> {

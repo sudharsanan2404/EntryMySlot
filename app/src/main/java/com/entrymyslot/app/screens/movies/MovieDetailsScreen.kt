@@ -40,6 +40,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -95,6 +97,10 @@ fun MovieDetailsScreen(
 
             item(key = "about") {
                 AboutMovieSection()
+            }
+
+            item(key = "interest") {
+                MovieInterestCard()
             }
 
             item(key = "cast_heading") {
@@ -208,15 +214,6 @@ private fun PremiumBackButton(
                 scaleX = scale
                 scaleY = scale
             }
-            .shadow(
-                elevation = 6.dp,
-                shape = CircleShape,
-                ambientColor = Color.Black.copy(alpha = 0.24f),
-                spotColor = Color.Black.copy(alpha = 0.26f)
-            )
-            .clip(CircleShape)
-            .background(MovieBackground.copy(alpha = 0.78f))
-            .border(1.dp, Color.White.copy(alpha = 0.15f), CircleShape)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -232,6 +229,40 @@ private fun PremiumBackButton(
             tint = MovieWhite,
             modifier = Modifier.size(21.dp)
         )
+    }
+}
+
+@Composable
+private fun MovieInterestCard() {
+    var interested by remember { mutableStateOf(false) }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 3.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(MovieBlueRaised)
+            .border(1.dp, MovieBlueEdge.copy(alpha = 0.38f), RoundedCornerShape(14.dp))
+            .padding(11.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text("Interested in this movie?", color = MovieWhite, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Text(
+                "Get updates when showtimes or booking information changes.",
+                color = MovieSecondary,
+                fontSize = 10.sp,
+                lineHeight = 14.sp,
+                modifier = Modifier.padding(top = 2.dp, end = 6.dp)
+            )
+        }
+        Button(
+            onClick = { interested = !interested },
+            modifier = Modifier.height(34.dp),
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (interested) MovieBlue else MovieOrange
+            )
+        ) { Text(if (interested) "Interested ✓" else "Interested", color = MovieWhite, fontSize = 10.sp) }
     }
 }
 
@@ -334,26 +365,31 @@ private fun SectionHeading(
 
 @Composable
 private fun CastRow() {
-    val castRoles = listOf("Lead Actor", "Lead Actress", "Director", "Producer")
+    val cast = listOf(
+        "Lead Actor" to "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=240&h=240&fit=crop",
+        "Lead Actress" to "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=240&h=240&fit=crop",
+        "Director" to "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=240&h=240&fit=crop",
+        "Producer" to "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=240&h=240&fit=crop"
+    )
 
     LazyRow(
         contentPadding = PaddingValues(horizontal = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        items(items = castRoles, key = { role -> role }) { role ->
-            CastMember(name = role)
+        items(items = cast, key = { member -> member.first }) { member ->
+            CastMember(name = member.first, imageUrl = member.second)
         }
     }
 }
 
 @Composable
-private fun CastMember(name: String) {
+private fun CastMember(name: String, imageUrl: String) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .width(76.dp)
             .semantics {
-                contentDescription = "$name profile placeholder"
+                contentDescription = "$name cast photo"
             }
     ) {
         Box(
@@ -379,13 +415,12 @@ private fun CastMember(name: String) {
                     color = MovieOrange.copy(alpha = 0.48f),
                     shape = CircleShape
                 ),
-            contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = name.take(1),
-                color = MovieWhite,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = "$name photo",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
             )
         }
         Spacer(modifier = Modifier.height(7.dp))

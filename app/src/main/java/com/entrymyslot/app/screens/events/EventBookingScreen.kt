@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -25,6 +26,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -43,6 +46,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -52,6 +56,8 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
@@ -138,6 +144,10 @@ fun EventBookingScreen(
                     BookingEventSummary(event = event)
                 }
 
+                item(key = "venue_map") {
+                    EventSeatMap()
+                }
+
                 item(key = "ticket_heading") {
                     Column(modifier = Modifier.padding(top = 8.dp, bottom = 2.dp)) {
                         Text(
@@ -188,9 +198,6 @@ fun EventBookingScreen(
                     }
                 }
 
-                item(key = "booking_policy") {
-                    BookingPolicyNote()
-                }
             }
 
             EventBookingBottomBar(
@@ -262,9 +269,6 @@ private fun BookingBackButton(onClick: () -> Unit) {
                 scaleX = scale
                 scaleY = scale
             }
-            .clip(CircleShape)
-            .background(BookingSurface.copy(alpha = 0.94f))
-            .border(BorderStroke(1.dp, BookingBorder), CircleShape)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -280,6 +284,132 @@ private fun BookingBackButton(onClick: () -> Unit) {
             tint = BookingPrimaryText,
             modifier = Modifier.size(22.dp)
         )
+    }
+}
+
+@Composable
+private fun EventSeatMap() {
+    var zoom by remember { mutableFloatStateOf(1f) }
+    var pan by remember { mutableStateOf(Offset.Zero) }
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
+            .background(
+                Brush.verticalGradient(
+                    listOf(BookingSurfaceRaised, BookingSurface)
+                )
+            )
+            .border(1.dp, BookingBorder.copy(alpha = 0.75f), RoundedCornerShape(22.dp))
+            .padding(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Choose your section", color = BookingPrimaryText, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                Text("Pinch to zoom · Drag to move", color = BookingSecondaryText, fontSize = 11.sp)
+            }
+            Box(
+                Modifier.clip(RoundedCornerShape(50))
+                    .background(BookingAccent.copy(alpha = 0.14f))
+                    .border(1.dp, BookingAccent.copy(alpha = 0.45f), RoundedCornerShape(50))
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+            ) {
+                Text("INTERACTIVE", color = BookingAccent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+        Text(
+            "STAGE VIEW",
+            color = BookingMutedText,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(top = 14.dp, bottom = 7.dp)
+        )
+        Box(
+            Modifier.fillMaxWidth().height(250.dp).clip(RoundedCornerShape(18.dp))
+                .background(BookingBackground)
+                .border(1.dp, BookingBorder.copy(alpha = 0.55f), RoundedCornerShape(18.dp))
+                .pointerInput(Unit) {
+                    detectTransformGestures(panZoomLock = true) { _, panChange, zoomChange, _ ->
+                        val nextZoom = (zoom * zoomChange).coerceIn(1f, 3f)
+                        zoom = nextZoom
+                        val limitX = 145f * (nextZoom - 1f)
+                        val limitY = 110f * (nextZoom - 1f)
+                        pan = if (nextZoom <= 1.01f) {
+                            Offset.Zero
+                        } else {
+                            Offset(
+                                (pan.x + panChange.x).coerceIn(-limitX, limitX),
+                                (pan.y + panChange.y).coerceIn(-limitY, limitY)
+                            )
+                        }
+                    }
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                Modifier.requiredSize(390.dp, 260.dp).graphicsLayer {
+                    scaleX = zoom
+                    scaleY = zoom
+                    translationX = pan.x
+                    translationY = pan.y
+                }.padding(horizontal = 15.dp, vertical = 13.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(7.dp)
+            ) {
+                Box(
+                    Modifier.width(154.dp).height(30.dp)
+                        .clip(RoundedCornerShape(topStart = 7.dp, topEnd = 7.dp, bottomStart = 22.dp, bottomEnd = 22.dp))
+                        .background(Brush.horizontalGradient(listOf(Color(0xFFFF793A), BookingAccent)))
+                        .shadow(8.dp, RoundedCornerShape(14.dp)),
+                    contentAlignment = Alignment.Center
+                ) { Text("STAGE", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold) }
+                SeatTierSection("VIP", "Closest view", BookingAccent, 210.dp, 6)
+                SeatTierSection("PLATINUM", "Premium", Color(0xFF6E8FE0), 255.dp, 8)
+                SeatTierSection("GOLD", "Great view", Color(0xFFD7A340), 300.dp, 10)
+                SeatTierSection("SILVER", "Standard", Color(0xFF8195AD), 335.dp, 12)
+                SeatTierSection("GENERAL", "Open seating", BookingMutedText, 360.dp, 14)
+            }
+        }
+        Row(
+            Modifier.fillMaxWidth().padding(top = 11.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(Modifier.size(7.dp).clip(CircleShape).background(BookingAccent))
+            Text("  Section color", color = BookingSecondaryText, fontSize = 10.sp)
+            Box(Modifier.padding(start = 16.dp).size(7.dp).clip(CircleShape).background(BookingPrimaryText.copy(alpha = 0.8f)))
+            Text("  Available seats", color = BookingSecondaryText, fontSize = 10.sp)
+        }
+    }
+}
+
+@Composable
+private fun SeatTierSection(
+    label: String,
+    detail: String,
+    color: Color,
+    width: androidx.compose.ui.unit.Dp,
+    seatCount: Int
+) {
+    Column(
+        Modifier.width(width).height(34.dp).clip(RoundedCornerShape(10.dp))
+            .background(color.copy(alpha = 0.18f))
+            .border(1.dp, color.copy(alpha = 0.8f), RoundedCornerShape(10.dp))
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.Center
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.width(3.dp).height(17.dp).clip(CircleShape).background(color))
+            Column(Modifier.padding(start = 6.dp)) {
+                Text(label, color = BookingPrimaryText, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                Text(detail, color = BookingSecondaryText, fontSize = 6.sp)
+            }
+            Spacer(Modifier.weight(1f))
+            repeat(seatCount) {
+                Box(Modifier.padding(horizontal = 1.5.dp).size(4.dp).clip(CircleShape).background(BookingPrimaryText.copy(alpha = 0.82f)))
+            }
+        }
     }
 }
 
@@ -726,33 +856,6 @@ private fun SummaryPriceRow(label: String, value: String) {
             color = BookingPrimaryText,
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium
-        )
-    }
-}
-
-@Composable
-private fun BookingPolicyNote() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(BookingSurface.copy(alpha = 0.62f))
-            .padding(13.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = Icons.Rounded.ConfirmationNumber,
-            contentDescription = null,
-            tint = BookingAccent,
-            modifier = Modifier.size(18.dp)
-        )
-        Spacer(modifier = Modifier.width(9.dp))
-        Text(
-            text = "Terms and booking policy will be shown before payment.",
-            modifier = Modifier.weight(1f),
-            color = BookingSecondaryText,
-            fontSize = 11.sp,
-            lineHeight = 16.sp
         )
     }
 }
