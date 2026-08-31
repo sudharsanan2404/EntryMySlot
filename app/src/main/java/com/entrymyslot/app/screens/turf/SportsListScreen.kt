@@ -31,6 +31,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.outlined.SportsSoccer
 import androidx.compose.material.icons.rounded.LocationOn
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -68,6 +69,7 @@ private val SportsMutedText = Color(0xFF7185A1)
 fun SportsListScreen(
     sports: List<PopularEvent>,
     onBackClick: () -> Unit,
+    onSearchClick: () -> Unit = {},
     onSportClick: (PopularEvent) -> Unit
 ) {
     Box(
@@ -80,7 +82,7 @@ fun SportsListScreen(
                 .fillMaxSize()
                 .statusBarsPadding()
         ) {
-            SportsHeader(onBackClick = onBackClick)
+            SportsHeader(onBackClick = onBackClick, onSearchClick = onSearchClick)
 
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -107,7 +109,7 @@ fun SportsListScreen(
 }
 
 @Composable
-private fun SportsHeader(onBackClick: () -> Unit) {
+private fun SportsHeader(onBackClick: () -> Unit, onSearchClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -119,7 +121,7 @@ private fun SportsHeader(onBackClick: () -> Unit) {
 
         Spacer(modifier = Modifier.width(14.dp))
 
-        Column(verticalArrangement = Arrangement.Center) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
             Text(
                 text = "Sports",
                 color = SportsPrimaryText,
@@ -135,6 +137,12 @@ private fun SportsHeader(onBackClick: () -> Unit) {
                 fontWeight = FontWeight.Medium
             )
         }
+        Icon(
+            imageVector = Icons.Rounded.Search,
+            contentDescription = "Search sports venues",
+            tint = SportsAccent,
+            modifier = Modifier.size(40.dp).padding(9.dp).clickable(onClick = onSearchClick)
+        )
     }
 }
 

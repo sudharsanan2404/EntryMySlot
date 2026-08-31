@@ -31,6 +31,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.Button
@@ -66,6 +67,7 @@ import coil3.compose.AsyncImage
 import com.entrymyslot.app.R
 import com.entrymyslot.app.screens.home.GlowBackground
 import com.entrymyslot.app.screens.home.PopularEvent
+import com.entrymyslot.app.screens.wishlist.WishlistStore
 
 private val MovieOrange = Color(0xFFFA580B)
 private val MovieBackground = Color(0xFF061A38)
@@ -100,7 +102,7 @@ fun MovieDetailsScreen(
             }
 
             item(key = "interest") {
-                MovieInterestCard()
+                MovieInterestCard(movie)
             }
 
             item(key = "cast_heading") {
@@ -233,8 +235,8 @@ private fun PremiumBackButton(
 }
 
 @Composable
-private fun MovieInterestCard() {
-    var interested by remember { mutableStateOf(false) }
+private fun MovieInterestCard(movie: PopularEvent) {
+    val interested = WishlistStore.contains(movie.id)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -256,7 +258,7 @@ private fun MovieInterestCard() {
             )
         }
         Button(
-            onClick = { interested = !interested },
+            onClick = { WishlistStore.toggle(movie, "MOVIE", Icons.Outlined.Movie) },
             modifier = Modifier.height(34.dp),
             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
             colors = ButtonDefaults.buttonColors(

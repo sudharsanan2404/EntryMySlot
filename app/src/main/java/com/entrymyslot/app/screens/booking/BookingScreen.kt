@@ -164,7 +164,7 @@ fun BookingScreen(
                     .fillMaxWidth(),
                 contentPadding = PaddingValues(
                     top = 2.dp,
-                    bottom = 20.dp
+                    bottom = 92.dp
                 ),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -211,11 +211,12 @@ fun BookingScreen(
                 }
             }
 
-            EntryBottomNavigation(
-                selectedItem = "My Bookings",
-                onItemSelected = onBottomNavigationClick
-            )
         }
+        EntryBottomNavigation(
+            selectedItem = "My Bookings",
+            onItemSelected = onBottomNavigationClick,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
     }
 }
 

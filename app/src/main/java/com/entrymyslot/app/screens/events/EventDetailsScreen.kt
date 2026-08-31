@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.entrymyslot.app.screens.home.GlowBackground
 import com.entrymyslot.app.screens.home.PopularEvent
+import com.entrymyslot.app.screens.wishlist.WishlistStore
 
 private val DetailsBackground = Color(0xFF061A38)
 private val DetailsSurface = Color(0xFF0B274F)
@@ -107,7 +108,7 @@ fun EventDetailsScreen(
 
 
             item(key = "interest") {
-                EventInterestCard()
+                EventInterestCard(event)
             }
 
             item(key = "about_event") {
@@ -234,8 +235,8 @@ private fun EventHero(
 }
 
 @Composable
-private fun EventInterestCard() {
-    var interested by remember { mutableStateOf(false) }
+private fun EventInterestCard(event: PopularEvent) {
+    val interested = WishlistStore.contains(event.id)
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 5.dp)
             .clip(RoundedCornerShape(14.dp)).background(DetailsSurface)
@@ -253,7 +254,7 @@ private fun EventInterestCard() {
             )
         }
         Button(
-            onClick = { interested = !interested },
+            onClick = { WishlistStore.toggle(event, "EVENT", Icons.Outlined.Event) },
             modifier = Modifier.height(34.dp),
             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
             colors = ButtonDefaults.buttonColors(containerColor = if (interested) DetailsSurfaceRaised else DetailsAccent)

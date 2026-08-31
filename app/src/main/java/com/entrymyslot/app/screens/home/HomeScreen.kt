@@ -191,6 +191,7 @@ fun HomeScreen(
     onSportClick: (PopularEvent) -> Unit = {},
     onMovieBookClick: (PopularEvent) -> Unit = {},
     onSearchClick: () -> Unit = {},
+    onWishlistClick: () -> Unit = {},
     onLocationClick: () -> Unit = {},
     homeViewModel: HomeViewModel = viewModel()
 ) {
@@ -206,6 +207,7 @@ fun HomeScreen(
         onSportClick = onSportClick,
         onMovieBookClick = onMovieBookClick,
         onSearchClick = onSearchClick,
+        onWishlistClick = onWishlistClick,
         onLocationClick = onLocationClick
     )
 }
@@ -285,6 +287,7 @@ internal fun PremiumHomeScreen(
     onSportClick: (PopularEvent) -> Unit,
     onMovieBookClick: (PopularEvent) -> Unit,
     onSearchClick: () -> Unit,
+    onWishlistClick: () -> Unit,
     onLocationClick: () -> Unit
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -327,6 +330,10 @@ internal fun PremiumHomeScreen(
                 onBookingsClick = {
                     scope.launch { drawerState.close() }
                     onBottomNavigationClick("My Bookings")
+                },
+                onWishlistClick = {
+                    scope.launch { drawerState.close() }
+                    onWishlistClick()
                 }
             )
         }
@@ -354,14 +361,15 @@ internal fun PremiumHomeScreen(
                     modifier = Modifier.weight(1f)
                 )
 
-                EntryBottomNavigation(
-                    selectedItem = selectedBottomItem,
-                    onItemSelected = { item ->
-                        selectedBottomItem = item
-                        onBottomNavigationClick(item)
-                    }
-                )
             }
+            EntryBottomNavigation(
+                selectedItem = selectedBottomItem,
+                onItemSelected = { item ->
+                    selectedBottomItem = item
+                    onBottomNavigationClick(item)
+                },
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
         }
     }
     if (showNotifications) {
@@ -392,7 +400,7 @@ private fun PremiumHomeContent(
 ) {
     LazyColumn(
         modifier = modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(bottom = 16.dp)
+        contentPadding = PaddingValues(bottom = 92.dp)
     ) {
         item(key = "header") {
             PremiumHomeHeader(
@@ -615,8 +623,7 @@ private fun NotificationPanel(
                                 .padding(12.dp),
                             verticalAlignment = Alignment.Top
                         ) {
-                            Box(Modifier.padding(top = 5.dp).size(7.dp).clip(CircleShape).background(PremiumOrange))
-                            Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
+                            Column(Modifier.weight(1f).padding(end = 10.dp)) {
                                 Text(notification.title, color = PremiumWhite, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
                                 Text(notification.message, color = PremiumSecondary, fontSize = 10.sp, lineHeight = 15.sp, modifier = Modifier.padding(top = 3.dp))
                             }
@@ -1266,107 +1273,10 @@ private fun PremiumContentCard(
 }
 
 @Composable
-private fun PremiumBottomNavigation(
-    selectedItem: String,
-    onItemSelected: (String) -> Unit
-) {
-    val navItems = listOf(
-        Triple("Home", Icons.Outlined.Home, Icons.Rounded.Home),
-        Triple("Search", Icons.Outlined.Search, Icons.Rounded.Search),
-        Triple("My Bookings", Icons.Outlined.ConfirmationNumber, Icons.Outlined.ConfirmationNumber),
-        Triple("Profile", Icons.Outlined.AccountCircle, Icons.Outlined.AccountCircle)
-    )
-    val selectedIndex = navItems.indexOfFirst { it.first == selectedItem }.coerceAtLeast(0)
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 6.dp)
-            .navigationBarsPadding()
-    ) {
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = Color(0xFF071A35).copy(alpha = 0.98f),
-            shape = RoundedCornerShape(22.dp),
-            border = BorderStroke(1.dp, PremiumBlueEdge.copy(alpha = 0.32f)),
-            shadowElevation = 10.dp
-        ) {
-            BoxWithConstraints(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp)
-                    .padding(5.dp)
-            ) {
-                val segmentWidth = maxWidth / navItems.size.toFloat()
-                val indicatorOffset by animateDpAsState(
-                    targetValue = segmentWidth * selectedIndex.toFloat(),
-                    animationSpec = tween(240),
-                    label = "bottomNavIndicator"
-                )
-                Box(
-                    modifier = Modifier
-                        .offset(x = indicatorOffset)
-                        .width(segmentWidth)
-                        .fillMaxHeight()
-                        .padding(horizontal = 3.dp)
-                        .clip(RoundedCornerShape(17.dp))
-                        .background(PremiumOrange.copy(alpha = 0.13f))
-                        .border(
-                            1.dp,
-                            PremiumOrange.copy(alpha = 0.2f),
-                            RoundedCornerShape(17.dp)
-                        )
-                )
-                Row(modifier = Modifier.fillMaxSize()) {
-                    navItems.forEach { item ->
-                        val isSelected = item.first == selectedItem
-                        val iconScale by animateFloatAsState(
-                            targetValue = if (isSelected) 1.08f else 0.96f,
-                            animationSpec = tween(180),
-                            label = "bottomNavIconScale"
-                        )
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                                .clip(RoundedCornerShape(16.dp))
-                                .clickable(
-                                    role = Role.Tab,
-                                    onClickLabel = item.first,
-                                    onClick = { onItemSelected(item.first) }
-                                )
-                                .semantics { selected = isSelected },
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = if (isSelected) item.third else item.second,
-                                contentDescription = item.first,
-                                tint = if (isSelected) PremiumOrange else PremiumMuted,
-                                modifier = Modifier
-                                    .size(19.dp)
-                                    .graphicsLayer { scaleX = iconScale; scaleY = iconScale }
-                            )
-                            Spacer(modifier = Modifier.height(3.dp))
-                            Text(
-                                text = item.first,
-                                color = if (isSelected) PremiumOrange else PremiumMuted,
-                                fontSize = if (item.first == "My Bookings") 8.sp else 9.sp,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                maxLines = 1
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun PremiumDrawer(
     onProfileClick: () -> Unit,
-    onBookingsClick: () -> Unit
+    onBookingsClick: () -> Unit,
+    onWishlistClick: () -> Unit
 ) {
     ModalDrawerSheet(
         modifier = Modifier.widthIn(max = 318.dp),
@@ -1402,7 +1312,7 @@ private fun PremiumDrawer(
                 Text("YOUR ACCOUNT", color = PremiumMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, modifier = Modifier.padding(start = 13.dp, bottom = 4.dp))
                 DrawerItem("Profile", Icons.Outlined.AccountCircle, onProfileClick)
                 DrawerItem("Offers", Icons.Outlined.LocalOffer, onClick = {})
-                DrawerItem("Wishlist", Icons.Outlined.FavoriteBorder, onClick = {})
+                DrawerItem("Wishlist", Icons.Outlined.FavoriteBorder, onClick = onWishlistClick)
                 DrawerItem("My Bookings", Icons.Outlined.ConfirmationNumber, onBookingsClick)
 
                 Spacer(modifier = Modifier.height(26.dp))

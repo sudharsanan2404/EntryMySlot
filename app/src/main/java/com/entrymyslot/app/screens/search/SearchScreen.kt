@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
@@ -73,6 +74,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -86,9 +88,11 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import com.entrymyslot.app.core.components.EntryBottomNavigation
 import com.entrymyslot.app.screens.home.PopularEvent
 import com.entrymyslot.app.screens.home.GlowBackground
+import kotlin.random.Random
 
 enum class SearchResultType { MOVIE, SPORT, EVENT }
 
@@ -126,20 +130,25 @@ fun SearchScreen(
     events: List<PopularEvent>,
     onBackClick: () -> Unit,
     onResultClick: (SearchResult) -> Unit,
+    initialType: SearchResultType? = null,
     onBottomNavigationClick: (String) -> Unit = {}
 ) {
     var query by remember { mutableStateOf("") }
     var showFilters by remember { mutableStateOf(false) }
-    var selectedTypes by remember { mutableStateOf(SearchResultType.entries.toSet()) }
+    var selectedTypes by remember(initialType) {
+        mutableStateOf(initialType?.let(::setOf) ?: SearchResultType.entries.toSet())
+    }
     var priceFilter by remember { mutableStateOf(PriceFilter.ANY) }
     var sort by remember { mutableStateOf(SearchSort.RELEVANCE) }
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
 
     val allResults = remember(movies, sports, events) {
-        movies.map { SearchResult(it, SearchResultType.MOVIE) } +
-            sports.map { SearchResult(it, SearchResultType.SPORT) } +
-            events.map { SearchResult(it, SearchResultType.EVENT) }
+        (
+            movies.map { SearchResult(it, SearchResultType.MOVIE) } +
+                sports.map { SearchResult(it, SearchResultType.SPORT) } +
+                events.map { SearchResult(it, SearchResultType.EVENT) }
+        ).shuffled(Random(2026))
     }
     val results = remember(query, selectedTypes, priceFilter, sort, allResults) {
         val term = query.trim()
@@ -170,6 +179,16 @@ fun SearchScreen(
             .toList()
             .let { if (term.isEmpty() && !showFilters) it.take(8) else it }
     }
+    val featuredForSearch = remember(query, results, selectedTypes, allResults) {
+        if (query.isBlank()) {
+            emptyList()
+        } else {
+            val matchedKeys = results.map { "${it.type}-${it.item.id}" }.toSet()
+            allResults.filter {
+                it.type in selectedTypes && "${it.type}-${it.item.id}" !in matchedKeys
+            }.take(3)
+        }
+    }
     val activeFilterCount =
         (if (selectedTypes.size < SearchResultType.entries.size) 1 else 0) +
             (if (priceFilter != PriceFilter.ANY) 1 else 0) +
@@ -194,7 +213,6 @@ fun SearchScreen(
                 onQueryChange = { query = it },
                 onClearQuery = { query = "" },
                 showFilters = showFilters,
-                activeFilterCount = activeFilterCount,
                 onFilterClick = { showFilters = !showFilters },
                 focusRequester = focusRequester,
                 onSearchAction = { focusManager.clearFocus() }
@@ -253,27 +271,65 @@ fun SearchScreen(
                     contentPadding = PaddingValues(
                         start = 16.dp,
                         end = 16.dp,
-                        bottom = 24.dp
+                        bottom = 92.dp
                     ),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(
-                        items = results,
-                        key = { "${it.type}-${it.item.id}" }
-                    ) { result ->
-                        SearchResultCard(
-                            result = result,
-                            onClick = { onResultClick(result) }
-                        )
+                    if (query.isNotBlank()) {
+                        results.chunked(3).forEachIndexed { sectionIndex, sectionResults ->
+                            item(key = "search-match-section-${sectionResults.joinToString { it.item.id }}") {
+                                SearchResultSection(
+                                    title = if (sectionIndex == 0) "Search results" else "More matches",
+                                    subtitle = "Matches for “${query.trim()}”",
+                                    results = sectionResults,
+                                    onResultClick = onResultClick
+                                )
+                            }
+                        }
+                        if (featuredForSearch.isNotEmpty()) {
+                            item(key = "search-featured-banner") { SearchDiscoveryBanner(slot = 1) }
+                            item(key = "search-featured-section") {
+                                SearchResultSection(
+                                    title = "Featured for you",
+                                    subtitle = "Recommendations beyond your search",
+                                    results = featuredForSearch,
+                                    onResultClick = onResultClick
+                                )
+                            }
+                        }
+                    } else {
+                        val discoverySections = results.chunked(3)
+                        discoverySections.forEachIndexed { sectionIndex, sectionResults ->
+                            val sectionTitle = when (sectionIndex) {
+                                0 -> "Featured for you"
+                                1 -> "Popular nearby"
+                                2 -> "More to explore"
+                                else -> "Discover more"
+                            }
+                            item(key = "result-section-${sectionResults.joinToString { it.item.id }}") {
+                                SearchResultSection(
+                                    title = sectionTitle,
+                                    subtitle = "A mix of movies, events and venues",
+                                    results = sectionResults,
+                                    onResultClick = onResultClick
+                                )
+                            }
+                            if (sectionIndex < discoverySections.lastIndex) {
+                                item(key = "discovery-banner-$sectionIndex") {
+                                    SearchDiscoveryBanner(slot = sectionIndex)
+                                }
+                            }
+                        }
                     }
                 }
             }
 
-            EntryBottomNavigation(
-                selectedItem = "Search",
-                onItemSelected = onBottomNavigationClick
-            )
         }
+        EntryBottomNavigation(
+            selectedItem = "Search",
+            onItemSelected = onBottomNavigationClick,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
     }
 }
 
@@ -347,7 +403,6 @@ private fun SearchControls(
     onQueryChange: (String) -> Unit,
     onClearQuery: () -> Unit,
     showFilters: Boolean,
-    activeFilterCount: Int,
     onFilterClick: () -> Unit,
     focusRequester: FocusRequester,
     onSearchAction: () -> Unit
@@ -369,7 +424,6 @@ private fun SearchControls(
         )
         FilterButton(
             expanded = showFilters,
-            activeFilterCount = activeFilterCount,
             onClick = onFilterClick
         )
     }
@@ -483,7 +537,6 @@ private fun PremiumSearchField(
 @Composable
 private fun FilterButton(
     expanded: Boolean,
-    activeFilterCount: Int,
     onClick: () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -543,28 +596,6 @@ private fun FilterButton(
             )
         }
 
-        AnimatedVisibility(
-            visible = activeFilterCount > 0,
-            modifier = Modifier.align(Alignment.TopEnd),
-            enter = fadeIn(tween(100)) + scaleIn(tween(130), initialScale = 0.7f),
-            exit = fadeOut(tween(80)) + scaleOut(tween(90), targetScale = 0.7f)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(18.dp)
-                    .clip(CircleShape)
-                    .background(SearchAccent)
-                    .border(2.dp, SearchBackground, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = activeFilterCount.toString(),
-                    color = Color.White,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.ExtraBold
-                )
-            }
-        }
     }
 }
 
@@ -872,15 +903,79 @@ private fun String.numericPrice(): Int {
 }
 
 @Composable
+private fun SearchResultSection(
+    title: String,
+    subtitle: String,
+    results: List<SearchResult>,
+    onResultClick: (SearchResult) -> Unit
+) {
+    Column(
+        Modifier.fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(SearchSurfaceRaised.copy(alpha = 0.38f))
+            .border(1.dp, SearchBorder.copy(alpha = 0.48f), RoundedCornerShape(24.dp))
+            .padding(11.dp)
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = 3.dp, end = 3.dp, bottom = 11.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(Modifier.width(4.dp).height(22.dp).clip(CircleShape).background(SearchAccent))
+            Column(Modifier.padding(start = 9.dp)) {
+                Text(title, color = SearchPrimaryText, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text(subtitle, color = SearchSecondaryText, fontSize = 9.sp)
+            }
+        }
+        results.forEachIndexed { index, result ->
+            SearchResultCard(result = result, onClick = { onResultClick(result) })
+            if (index < results.lastIndex) Spacer(Modifier.height(10.dp))
+        }
+    }
+}
+
+@Composable
+private fun SearchDiscoveryBanner(slot: Int) {
+    val isVenueOffer = slot % 2 == 0
+    val title = if (isVenueOffer) "Play more this weekend" else "Make your next plan count"
+    val subtitle = if (isVenueOffer) {
+        "Discover offers on nearby sports venues."
+    } else {
+        "Fresh movies and live events are waiting."
+    }
+    val label = if (isVenueOffer) "VENUE PICKS" else "TRENDING NOW"
+    val icon = if (isVenueOffer) Icons.Rounded.SportsSoccer else Icons.Rounded.Event
+    val colors = if (isVenueOffer) {
+        listOf(Color(0xFF123F77), Color(0xFF0B6A67))
+    } else {
+        listOf(Color(0xFF40235F), Color(0xFF102E64))
+    }
+
+    Box(
+        Modifier.fillMaxWidth().height(116.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(Brush.horizontalGradient(colors))
+            .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(22.dp))
+    ) {
+        Box(
+            Modifier.align(Alignment.CenterEnd).padding(end = 18.dp).size(78.dp)
+                .clip(CircleShape).background(Color.White.copy(alpha = 0.08f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, contentDescription = null, tint = Color.White.copy(alpha = 0.78f), modifier = Modifier.size(38.dp))
+        }
+        Column(Modifier.align(Alignment.CenterStart).padding(start = 18.dp, end = 105.dp)) {
+            Text(label, color = SearchAccent, fontSize = 8.sp, fontWeight = FontWeight.ExtraBold)
+            Text(title, color = SearchPrimaryText, fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp))
+            Text(subtitle, color = Color.White.copy(alpha = 0.72f), fontSize = 10.sp, lineHeight = 14.sp, modifier = Modifier.padding(top = 4.dp))
+        }
+    }
+}
+
+@Composable
 private fun SearchResultCard(
     result: SearchResult,
     onClick: () -> Unit
 ) {
-    val (icon, label) = when (result.type) {
-        SearchResultType.MOVIE -> Icons.Rounded.Movie to "Movie"
-        SearchResultType.SPORT -> Icons.Rounded.SportsSoccer to "Sports"
-        SearchResultType.EVENT -> Icons.Rounded.Event to "Event"
-    }
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
@@ -893,10 +988,17 @@ private fun SearchResultCard(
         animationSpec = tween(durationMillis = 110),
         label = "resultCardElevation"
     )
-    val cardShape = RoundedCornerShape(15.dp)
-
-    Row(
-        modifier = Modifier
+    val label = when (result.type) {
+        SearchResultType.MOVIE -> "Movie"
+        SearchResultType.SPORT -> "Sports venue"
+        SearchResultType.EVENT -> "Event"
+    }
+    val cardShape = when (result.type) {
+        SearchResultType.MOVIE -> RoundedCornerShape(17.dp)
+        SearchResultType.SPORT -> RoundedCornerShape(22.dp)
+        SearchResultType.EVENT -> RoundedCornerShape(20.dp)
+    }
+    val cardModifier = Modifier
             .fillMaxWidth()
             .graphicsLayer {
                 scaleX = scale
@@ -925,60 +1027,103 @@ private fun SearchResultCard(
                 onClickLabel = "Open ${result.item.title}",
                 onClick = onClick
             )
-            .padding(horizontal = 12.dp, vertical = 11.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+    when (result.type) {
+        SearchResultType.MOVIE -> MovieSearchCard(result.item, cardModifier)
+        SearchResultType.SPORT -> SportSearchCard(result.item, cardModifier)
+        SearchResultType.EVENT -> EventSearchCard(result.item, cardModifier)
+    }
+}
+
+@Composable
+private fun MovieSearchCard(item: PopularEvent, modifier: Modifier) {
+    Row(modifier.height(128.dp).padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(
-            modifier = Modifier
-                .size(44.dp)
-                .clip(RoundedCornerShape(13.dp))
-                .background(SearchAccent.copy(alpha = 0.13f))
-                .border(
-                    BorderStroke(1.dp, SearchAccent.copy(alpha = 0.24f)),
-                    RoundedCornerShape(13.dp)
-                ),
+            Modifier.width(78.dp).fillMaxHeight().clip(RoundedCornerShape(12.dp))
+                .background(Brush.verticalGradient(listOf(Color(0xFF173C70), Color(0xFF071A35)))),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = SearchAccent,
-                modifier = Modifier.size(22.dp)
-            )
+            ResultArtwork(item, Icons.Rounded.Movie)
         }
-
         Spacer(modifier = Modifier.width(12.dp))
-
         Column(modifier = Modifier.weight(1f)) {
+            Text("MOVIE", color = SearchAccent, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold)
             Text(
-                text = result.item.title,
+                text = item.title,
                 color = SearchPrimaryText,
-                fontSize = 14.sp,
+                fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "$label • ${result.item.location}",
+                text = item.date,
                 color = SearchSecondaryText,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium,
+                fontSize = 10.sp,
+                modifier = Modifier.padding(top = 5.dp),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+            Text(item.price, color = SearchAccent, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
         }
+    }
+}
 
-        Spacer(modifier = Modifier.width(10.dp))
+@Composable
+private fun SportSearchCard(item: PopularEvent, modifier: Modifier) {
+    Row(modifier.height(104.dp).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier.size(76.dp).clip(RoundedCornerShape(18.dp))
+                .background(SearchAccent.copy(alpha = 0.12f))
+                .border(1.dp, SearchAccent.copy(alpha = 0.25f), RoundedCornerShape(18.dp)),
+            contentAlignment = Alignment.Center
+        ) { ResultArtwork(item, Icons.Rounded.SportsSoccer) }
+        Column(Modifier.weight(1f).padding(start = 13.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("VENUE", color = SearchAccent, fontSize = 8.sp, fontWeight = FontWeight.ExtraBold)
+                Spacer(Modifier.weight(1f))
+                Text(item.price, color = SearchPrimaryText, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
+            Text(item.title, color = SearchPrimaryText, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+            Text(item.location, color = SearchSecondaryText, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+        }
+    }
+}
 
-        Text(
-            text = result.item.price,
-            color = SearchAccent,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.ExtraBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+@Composable
+private fun EventSearchCard(item: PopularEvent, modifier: Modifier) {
+    Column(modifier.height(178.dp)) {
+        Box(
+            Modifier.fillMaxWidth().height(104.dp)
+                .background(Brush.horizontalGradient(listOf(Color(0xFF173E72), Color(0xFF091D3D)))),
+            contentAlignment = Alignment.Center
+        ) {
+            ResultArtwork(item, Icons.Rounded.Event)
+            Box(
+                Modifier.align(Alignment.TopStart).padding(10.dp).clip(RoundedCornerShape(50))
+                    .background(Color.Black.copy(alpha = 0.58f)).padding(horizontal = 9.dp, vertical = 5.dp)
+            ) { Text("LIVE EVENT", color = SearchPrimaryText, fontSize = 8.sp, fontWeight = FontWeight.ExtraBold) }
+        }
+        Row(Modifier.fillMaxWidth().weight(1f).padding(horizontal = 13.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(item.title, color = SearchPrimaryText, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("${item.date}  •  ${item.location}", color = SearchSecondaryText, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+            }
+            Text(item.price, color = SearchAccent, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(start = 10.dp))
+        }
+    }
+}
+
+@Composable
+private fun ResultArtwork(item: PopularEvent, fallbackIcon: androidx.compose.ui.graphics.vector.ImageVector) {
+    if (item.imageUrl != null) {
+        AsyncImage(
+            model = item.imageUrl,
+            contentDescription = item.title,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
         )
+    } else {
+        Icon(fallbackIcon, contentDescription = null, tint = SearchAccent, modifier = Modifier.size(30.dp))
     }
 }
 

@@ -25,8 +25,10 @@ fun TermsAndPolicyBottomSheet(
     onDismiss: () -> Unit,
     onAccept: () -> Unit
 ) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        sheetState = sheetState,
         containerColor = Color(0xFF0E0B38),
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         dragHandle = {
@@ -64,7 +66,6 @@ fun TermsAndPolicyBottomSheet(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 300.dp)
                     .verticalScroll(rememberScrollState())
                     .padding(vertical = 8.dp)
             ) {

@@ -33,6 +33,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.LocationOn
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -69,6 +70,7 @@ fun EventsListScreen(
     title: String = "Events",
     events: List<PopularEvent>,
     onBackClick: () -> Unit,
+    onSearchClick: () -> Unit = {},
     onEventClick: (PopularEvent) -> Unit
 ) {
     Box(
@@ -83,7 +85,8 @@ fun EventsListScreen(
         ) {
             EventsHeader(
                 title = title,
-                onBackClick = onBackClick
+                onBackClick = onBackClick,
+                onSearchClick = onSearchClick
             )
 
             LazyColumn(
@@ -113,7 +116,8 @@ fun EventsListScreen(
 @Composable
 private fun EventsHeader(
     title: String,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onSearchClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -147,6 +151,12 @@ private fun EventsHeader(
                 fontWeight = FontWeight.Medium
             )
         }
+        Icon(
+            imageVector = Icons.Rounded.Search,
+            contentDescription = "Search events",
+            tint = EventsAccent,
+            modifier = Modifier.size(40.dp).padding(9.dp).clickable(onClick = onSearchClick)
+        )
     }
 }
 

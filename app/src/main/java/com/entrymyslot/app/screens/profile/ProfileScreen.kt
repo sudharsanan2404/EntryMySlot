@@ -76,7 +76,7 @@ private val ProfileAccent = Color(0xFFFA580B)
 private val ProfilePrimaryText = Color(0xFFF8FAFF)
 private val ProfileSecondaryText = Color(0xFFA8B8CF)
 private val ProfileMutedText = Color(0xFF7185A1)
-private val ProfileDestructive = Color(0xFFE17272)
+private val ProfileDestructive = Color(0xFFFF3B30)
 
 @Composable
 fun ProfileScreen(
@@ -98,7 +98,7 @@ fun ProfileScreen(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
-                contentPadding = PaddingValues(top = 4.dp, bottom = 18.dp),
+                contentPadding = PaddingValues(top = 4.dp, bottom = 92.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 item { ProfileHeaderSection() }
@@ -109,11 +109,12 @@ fun ProfileScreen(
                 item { LogoutButton(onClick = onLogoutClick) }
             }
 
-            EntryBottomNavigation(
-                selectedItem = "Profile",
-                onItemSelected = onBottomNavigationClick
-            )
         }
+        EntryBottomNavigation(
+            selectedItem = "Profile",
+            onItemSelected = onBottomNavigationClick,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
     }
 }
 
@@ -496,9 +497,9 @@ private fun LogoutButton(onClick: () -> Unit) {
     )
     val backgroundColor by animateColorAsState(
         targetValue = if (isPressed) {
-            ProfileDestructive.copy(alpha = 0.12f)
+            ProfileDestructive.copy(alpha = 0.22f)
         } else {
-            ProfileSurface.copy(alpha = 0.54f)
+            ProfileDestructive.copy(alpha = 0.12f)
         },
         animationSpec = tween(durationMillis = 110),
         label = "logoutColor"
@@ -546,57 +547,6 @@ private fun LogoutButton(onClick: () -> Unit) {
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold
         )
-    }
-}
-
-@Composable
-private fun ProfileBottomNavigation(
-    selectedItem: String,
-    onItemSelected: (String) -> Unit
-) {
-    val items = listOf(
-        Triple("Home", Icons.Outlined.Home, Icons.Rounded.Home),
-        Triple("Search", Icons.Outlined.Search, Icons.Outlined.Search),
-        Triple("My Bookings", Icons.Outlined.ConfirmationNumber, Icons.Outlined.ConfirmationNumber),
-        Triple("Profile", Icons.Outlined.AccountCircle, Icons.Outlined.AccountCircle)
-    )
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .navigationBarsPadding()
-            .padding(horizontal = 14.dp, vertical = 5.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .shadow(
-                    elevation = 8.dp,
-                    shape = RoundedCornerShape(18.dp),
-                    ambientColor = Color.Black.copy(alpha = 0.18f),
-                    spotColor = Color.Black.copy(alpha = 0.24f)
-                )
-                .clip(RoundedCornerShape(18.dp))
-                .background(ProfileSurface.copy(alpha = 0.96f))
-                .border(
-                    BorderStroke(1.dp, ProfileBorder.copy(alpha = 0.78f)),
-                    RoundedCornerShape(18.dp)
-                )
-                .padding(horizontal = 5.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            items.forEach { item ->
-                ProfileNavigationItem(
-                    label = item.first,
-                    unselectedIcon = item.second,
-                    selectedIcon = item.third,
-                    isSelected = selectedItem == item.first,
-                    onClick = { onItemSelected(item.first) },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-        }
     }
 }
 

@@ -1,5 +1,8 @@
 package com.entrymyslot.app.navigation
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Text
@@ -43,6 +46,7 @@ import com.entrymyslot.app.screens.search.SearchResultType
 import com.entrymyslot.app.screens.search.SearchScreen
 import com.entrymyslot.app.screens.ticket.TicketDetails
 import com.entrymyslot.app.screens.ticket.TicketScreen
+import com.entrymyslot.app.screens.wishlist.WishlistScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
@@ -64,7 +68,11 @@ fun AppNavigation(
 
     NavHost(
         navController = navController,
-        startDestination = if (accessToken != null) "home" else "auth"
+        startDestination = if (accessToken != null) "home" else "auth",
+        enterTransition = { slideInHorizontally(tween(280)) { it / 8 } },
+        exitTransition = { slideOutHorizontally(tween(240)) { -it / 10 } },
+        popEnterTransition = { slideInHorizontally(tween(280)) { -it / 8 } },
+        popExitTransition = { slideOutHorizontally(tween(240)) { it / 10 } }
     ) {
 
         composable("auth") {
@@ -90,7 +98,8 @@ fun AppNavigation(
                 onMovieBookClick = {
                     navController.navigate("movie_details/${it.id}")
                 },
-                onSearchClick = { navController.navigate("search") },
+                onSearchClick = { navController.navigate("search/all") },
+                onWishlistClick = { navController.navigate("wishlist") },
                 onLocationClick = { navController.navigate("location_selection") },
                 homeViewModel = homeViewModel,
                 onCategoryClick = { category ->
@@ -104,7 +113,7 @@ fun AppNavigation(
                     when (item) {
                         "My Bookings" -> navController.navigate("bookings")
                         "Profile" -> navController.navigate("profile")
-                        "Search" -> navController.navigate("search")
+                        "Search" -> navController.navigate("search/all")
                     }
                 }
             )
@@ -125,17 +134,25 @@ fun AppNavigation(
             MoviesListScreen(
                 movies = homeState.movies.map { it.toPopularEvent() }.ifEmpty { latestMovies },
                 onBackClick = { navController.popBackStack() },
+                onSearchClick = { navController.navigate("search/movie") },
                 onMovieClick = { movie ->
                     navController.navigate("movie_details/${movie.id}")
                 }
             )
         }
 
-        composable("search") {
+        composable("search/{type}") { backStackEntry ->
+            val initialType = when (backStackEntry.arguments?.getString("type")) {
+                "movie" -> SearchResultType.MOVIE
+                "sport" -> SearchResultType.SPORT
+                "event" -> SearchResultType.EVENT
+                else -> null
+            }
             SearchScreen(
                 movies = homeState.movies.map { it.toPopularEvent() }.ifEmpty { latestMovies },
                 sports = homeState.sports.map { it.toPopularEvent() }.ifEmpty { sportsNearYou },
                 events = homeState.events.map { it.toPopularEvent() }.ifEmpty { popularEvents },
+                initialType = initialType,
                 onBackClick = { navController.popBackStack() },
                 onResultClick = { result ->
                     when (result.type) {
@@ -169,6 +186,7 @@ fun AppNavigation(
             SportsListScreen(
                 sports = homeState.sports.map { it.toPopularEvent() }.ifEmpty { sportsNearYou },
                 onBackClick = { navController.popBackStack() },
+                onSearchClick = { navController.navigate("search/sport") },
                 onSportClick = { sport ->
                     navController.navigate("turf_details/${sport.id}")
                 }
@@ -180,6 +198,7 @@ fun AppNavigation(
                 title = "Upcoming Events",
                 events = homeState.events.map { it.toPopularEvent() }.ifEmpty { popularEvents },
                 onBackClick = { navController.popBackStack() },
+                onSearchClick = { navController.navigate("search/event") },
                 onEventClick = { event ->
                     navController.navigate("event_details/${event.id}")
                 }
@@ -221,7 +240,7 @@ fun AppNavigation(
                     when (item) {
                         "Home" -> navController.navigate("home")
                         "Profile" -> navController.navigate("profile")
-                        "Search" -> navController.navigate("search")
+                        "Search" -> navController.navigate("search/all")
                     }
                 },
                 onViewTicketClick = { booking ->
@@ -236,7 +255,7 @@ fun AppNavigation(
                     when (item) {
                         "Home" -> navController.navigate("home")
                         "My Bookings" -> navController.navigate("bookings")
-                        "Search" -> navController.navigate("search")
+                        "Search" -> navController.navigate("search/all")
                     }
                 },
                 onBookingClick = {
@@ -245,6 +264,27 @@ fun AppNavigation(
                 onLogoutClick = {
                     navController.navigate("auth") {
                         popUpTo("home") { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable("wishlist") {
+            WishlistScreen(
+                onBackClick = { navController.popBackStack() },
+                onItemClick = { item, category ->
+                    when (category) {
+                        "MOVIE" -> navController.navigate("movie_details/${item.id}")
+                        "SPORT" -> navController.navigate("turf_details/${item.id}")
+                        else -> navController.navigate("event_details/${item.id}")
+                    }
+                },
+                onBottomNavigationClick = { item ->
+                    when (item) {
+                        "Home" -> navController.navigate("home")
+                        "Search" -> navController.navigate("search/all")
+                        "My Bookings" -> navController.navigate("bookings")
+                        "Profile" -> navController.navigate("profile")
                     }
                 }
             )

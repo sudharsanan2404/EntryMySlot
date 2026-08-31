@@ -40,6 +40,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -80,6 +81,7 @@ private val MovieSecondary = Color(0xFFA8B8CF)
 fun MoviesListScreen(
     movies: List<PopularEvent>,
     onBackClick: () -> Unit,
+    onSearchClick: () -> Unit = {},
     onMovieClick: (PopularEvent) -> Unit
 ) {
     Box(
@@ -92,7 +94,7 @@ fun MoviesListScreen(
                 .fillMaxSize()
                 .statusBarsPadding()
         ) {
-            MoviesTopBar(onBackClick = onBackClick)
+            MoviesTopBar(onBackClick = onBackClick, onSearchClick = onSearchClick)
 
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
@@ -121,7 +123,7 @@ fun MoviesListScreen(
 }
 
 @Composable
-private fun MoviesTopBar(onBackClick: () -> Unit) {
+private fun MoviesTopBar(onBackClick: () -> Unit, onSearchClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -142,6 +144,13 @@ private fun MoviesTopBar(onBackClick: () -> Unit) {
             fontSize = 20.sp,
             fontWeight = FontWeight.SemiBold,
             letterSpacing = 0.1.sp
+        )
+        Spacer(modifier = Modifier.weight(1f))
+        Icon(
+            imageVector = Icons.Rounded.Search,
+            contentDescription = "Search movies",
+            tint = MovieOrange,
+            modifier = Modifier.size(40.dp).padding(9.dp).clickable(onClick = onSearchClick)
         )
     }
 }

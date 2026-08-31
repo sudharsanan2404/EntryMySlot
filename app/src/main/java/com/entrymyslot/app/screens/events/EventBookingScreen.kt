@@ -289,128 +289,14 @@ private fun BookingBackButton(onClick: () -> Unit) {
 
 @Composable
 private fun EventSeatMap() {
-    var zoom by remember { mutableFloatStateOf(1f) }
-    var pan by remember { mutableStateOf(Offset.Zero) }
-    Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
-            .background(
-                Brush.verticalGradient(
-                    listOf(BookingSurfaceRaised, BookingSurface)
-                )
-            )
-            .border(1.dp, BookingBorder.copy(alpha = 0.75f), RoundedCornerShape(22.dp))
-            .padding(16.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text("Choose your section", color = BookingPrimaryText, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                Text("Pinch to zoom · Drag to move", color = BookingSecondaryText, fontSize = 11.sp)
-            }
-            Box(
-                Modifier.clip(RoundedCornerShape(50))
-                    .background(BookingAccent.copy(alpha = 0.14f))
-                    .border(1.dp, BookingAccent.copy(alpha = 0.45f), RoundedCornerShape(50))
-                    .padding(horizontal = 10.dp, vertical = 6.dp)
-            ) {
-                Text("INTERACTIVE", color = BookingAccent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-            }
-        }
-        Text(
-            "STAGE VIEW",
-            color = BookingMutedText,
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(top = 14.dp, bottom = 7.dp)
-        )
-        Box(
-            Modifier.fillMaxWidth().height(250.dp).clip(RoundedCornerShape(18.dp))
-                .background(BookingBackground)
-                .border(1.dp, BookingBorder.copy(alpha = 0.55f), RoundedCornerShape(18.dp))
-                .pointerInput(Unit) {
-                    detectTransformGestures(panZoomLock = true) { _, panChange, zoomChange, _ ->
-                        val nextZoom = (zoom * zoomChange).coerceIn(1f, 3f)
-                        zoom = nextZoom
-                        val limitX = 145f * (nextZoom - 1f)
-                        val limitY = 110f * (nextZoom - 1f)
-                        pan = if (nextZoom <= 1.01f) {
-                            Offset.Zero
-                        } else {
-                            Offset(
-                                (pan.x + panChange.x).coerceIn(-limitX, limitX),
-                                (pan.y + panChange.y).coerceIn(-limitY, limitY)
-                            )
-                        }
-                    }
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                Modifier.requiredSize(390.dp, 260.dp).graphicsLayer {
-                    scaleX = zoom
-                    scaleY = zoom
-                    translationX = pan.x
-                    translationY = pan.y
-                }.padding(horizontal = 15.dp, vertical = 13.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(7.dp)
-            ) {
-                Box(
-                    Modifier.width(154.dp).height(30.dp)
-                        .clip(RoundedCornerShape(topStart = 7.dp, topEnd = 7.dp, bottomStart = 22.dp, bottomEnd = 22.dp))
-                        .background(Brush.horizontalGradient(listOf(Color(0xFFFF793A), BookingAccent)))
-                        .shadow(8.dp, RoundedCornerShape(14.dp)),
-                    contentAlignment = Alignment.Center
-                ) { Text("STAGE", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold) }
-                SeatTierSection("VIP", "Closest view", BookingAccent, 210.dp, 6)
-                SeatTierSection("PLATINUM", "Premium", Color(0xFF6E8FE0), 255.dp, 8)
-                SeatTierSection("GOLD", "Great view", Color(0xFFD7A340), 300.dp, 10)
-                SeatTierSection("SILVER", "Standard", Color(0xFF8195AD), 335.dp, 12)
-                SeatTierSection("GENERAL", "Open seating", BookingMutedText, 360.dp, 14)
-            }
-        }
-        Row(
-            Modifier.fillMaxWidth().padding(top = 11.dp),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(Modifier.size(7.dp).clip(CircleShape).background(BookingAccent))
-            Text("  Section color", color = BookingSecondaryText, fontSize = 10.sp)
-            Box(Modifier.padding(start = 16.dp).size(7.dp).clip(CircleShape).background(BookingPrimaryText.copy(alpha = 0.8f)))
-            Text("  Available seats", color = BookingSecondaryText, fontSize = 10.sp)
-        }
-    }
-}
-
-@Composable
-private fun SeatTierSection(
-    label: String,
-    detail: String,
-    color: Color,
-    width: androidx.compose.ui.unit.Dp,
-    seatCount: Int
-) {
-    Column(
-        Modifier.width(width).height(34.dp).clip(RoundedCornerShape(10.dp))
-            .background(color.copy(alpha = 0.18f))
-            .border(1.dp, color.copy(alpha = 0.8f), RoundedCornerShape(10.dp))
-            .padding(horizontal = 10.dp, vertical = 4.dp),
-        verticalArrangement = Arrangement.Center
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.width(3.dp).height(17.dp).clip(CircleShape).background(color))
-            Column(Modifier.padding(start = 6.dp)) {
-                Text(label, color = BookingPrimaryText, fontSize = 8.sp, fontWeight = FontWeight.Bold)
-                Text(detail, color = BookingSecondaryText, fontSize = 6.sp)
-            }
-            Spacer(Modifier.weight(1f))
-            repeat(seatCount) {
-                Box(Modifier.padding(horizontal = 1.5.dp).size(4.dp).clip(CircleShape).background(BookingPrimaryText.copy(alpha = 0.82f)))
-            }
-        }
-    }
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(210.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(BookingSurfaceRaised)
+            .border(1.dp, BookingBorder.copy(alpha = 0.65f), RoundedCornerShape(20.dp))
+    )
 }
 
 @Composable

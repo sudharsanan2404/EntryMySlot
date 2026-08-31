@@ -73,6 +73,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.entrymyslot.app.screens.home.GlowBackground
+import com.entrymyslot.app.screens.home.PopularEvent
+import com.entrymyslot.app.screens.wishlist.WishlistStore
 
 private val TurfBackground = Color(0xFF061A38)
 private val TurfSurface = Color(0xFF0B274F)
@@ -171,7 +173,15 @@ fun TurfScreen(
             }
 
             item(key = "interest") {
-                TurfInterestCard()
+                TurfInterestCard(
+                    PopularEvent(
+                        id = sportId,
+                        title = title,
+                        date = venueType,
+                        location = venueLocation,
+                        price = price
+                    )
+                )
                 Spacer(modifier = Modifier.height(20.dp))
             }
 
@@ -243,8 +253,8 @@ private fun TurfHeader(
 }
 
 @Composable
-private fun TurfInterestCard() {
-    var interested by remember { mutableStateOf(false) }
+private fun TurfInterestCard(venue: PopularEvent) {
+    val interested = WishlistStore.contains(venue.id)
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 18.dp)
             .clip(RoundedCornerShape(14.dp)).background(TurfSurface)
@@ -262,7 +272,7 @@ private fun TurfInterestCard() {
             )
         }
         Button(
-            onClick = { interested = !interested },
+            onClick = { WishlistStore.toggle(venue, "SPORT", Icons.Outlined.SportsSoccer) },
             modifier = Modifier.height(34.dp),
             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
             colors = ButtonDefaults.buttonColors(containerColor = if (interested) TurfSurfaceRaised else TurfAccent)
