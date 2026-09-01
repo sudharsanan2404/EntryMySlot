@@ -38,11 +38,14 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Theaters
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,6 +53,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
@@ -65,10 +69,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.entrymyslot.app.EntryMySlotApp
 import com.entrymyslot.app.screens.home.GlowBackground
-import com.entrymyslot.app.data.FakeData
+import com.entrymyslot.app.data.booking.ShowtimeDto
 import com.entrymyslot.app.data.model.Cinema
 import java.text.SimpleDateFormat
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Calendar
 import java.util.Locale
 
@@ -86,13 +99,34 @@ private val MovieDivider = Color(0xFF24476F)
 fun CinemaSelectionScreen(
     movieId: String,
     onBackClick: () -> Unit,
-    onTimeSelected: (Cinema, String, Calendar) -> Unit
+    onTimeSelected: (Int) -> Unit
 ) {
-    var selectedDate by remember { mutableStateOf(Calendar.getInstance()) }
+    val app = LocalContext.current.applicationContext as EntryMySlotApp
+    val movieBookingViewModel: MovieBookingViewModel = viewModel(
+        key = "movie_cinemas_$movieId",
+        factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                MovieBookingViewModel(
+                    bookingApi = app.appContainer.bookingApi,
+                    detailsApi = app.appContainer.detailsApi,
+                    networkMonitor = app.appContainer.networkMonitor,
+                    pendingCheckoutStore = app.appContainer.pendingCheckoutStore
+                ) as T
+        }
+    )
+    val state by movieBookingViewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(movieId) { movieBookingViewModel.loadCinemaOptions(movieId) }
+
     var searchQuery by remember { mutableStateOf("") }
-    val filteredCinemas = remember(searchQuery) {
-        FakeData.cinemas.filter { cinema ->
-            cinema.name.contains(searchQuery.trim(), ignoreCase = true)
+    val filteredCinemas = remember(searchQuery, state.cinemas) {
+        state.cinemas.filter { option ->
+            option.cinema.name.contains(searchQuery.trim(), ignoreCase = true)
+        }
+    }
+    val selectedCalendar = remember(state.selectedDate) {
+        Calendar.getInstance().apply {
+            set(state.selectedDate.year, state.selectedDate.monthValue - 1, state.selectedDate.dayOfMonth)
         }
     }
 
@@ -127,8 +161,16 @@ fun CinemaSelectionScreen(
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         DateSelector(
-                            selectedDate = selectedDate,
-                            onDateSelected = { selectedDate = it }
+                            selectedDate = selectedCalendar,
+                            onDateSelected = { calendar ->
+                                movieBookingViewModel.changeCinemaDate(
+                                    LocalDate.of(
+                                        calendar.get(Calendar.YEAR),
+                                        calendar.get(Calendar.MONTH) + 1,
+                                        calendar.get(Calendar.DAY_OF_MONTH)
+                                    )
+                                )
+                            }
                         )
                     }
                 }
@@ -171,20 +213,58 @@ fun CinemaSelectionScreen(
                     Spacer(Modifier.height(10.dp))
                 }
 
+                if (state.errorMessage != null) {
+                    item(key = "booking_error") {
+                        CinemaBookingMessage(
+                            message = state.errorMessage.orEmpty(),
+                            showProgress = false,
+                            onRetry = movieBookingViewModel::retry
+                        )
+                    }
+                } else if (state.isLoading) {
+                    item(key = "booking_loading") {
+                        CinemaBookingMessage("Loading cinemas and showtimes…", true, null)
+                    }
+                } else if (filteredCinemas.isEmpty()) {
+                    item(key = "booking_empty") {
+                        CinemaBookingMessage("No showtimes are available for this date.", false, null)
+                    }
+                }
+
                 items(
                     items = filteredCinemas,
-                    key = { cinema -> cinema.id }
-                ) { cinema ->
+                    key = { option -> option.cinema.id }
+                ) { option ->
                     CinemaCard(
-                        cinema = cinema,
-                        showTimes = FakeData.getCinemaShowTimes(cinema.id, movieId),
-                        onTimeClick = { time ->
-                            onTimeSelected(cinema, time, selectedDate)
-                        }
+                        cinema = Cinema(
+                            id = option.cinema.id.toString(),
+                            name = option.cinema.name,
+                            location = listOf(option.cinema.address, option.cinema.city)
+                                .filter(String::isNotBlank).joinToString(", ")
+                        ),
+                        showTimes = option.showtimes,
+                        onTimeClick = { showtime -> onTimeSelected(showtime.id) }
                     )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun CinemaBookingMessage(
+    message: String,
+    showProgress: Boolean,
+    onRetry: (() -> Unit)?
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        if (showProgress) CircularProgressIndicator(color = MovieOrange)
+        Text(message, color = MovieSecondary)
+        if (onRetry != null) Button(onClick = onRetry) { Text("Retry") }
     }
 }
 
@@ -372,8 +452,8 @@ private fun DateCard(
 @Composable
 private fun CinemaCard(
     cinema: Cinema,
-    showTimes: List<String>,
-    onTimeClick: (String) -> Unit
+    showTimes: List<ShowtimeDto>,
+    onTimeClick: (ShowtimeDto) -> Unit
 ) {
     val shape = RoundedCornerShape(20.dp)
 
@@ -479,23 +559,28 @@ private fun CinemaCard(
 @Composable
 private fun CinemaShowTimes(
     cinema: Cinema,
-    showTimes: List<String>,
-    onTimeClick: (String) -> Unit
+    showTimes: List<ShowtimeDto>,
+    onTimeClick: (ShowtimeDto) -> Unit
 ) {
     FlowRow(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        showTimes.forEach { time ->
+        showTimes.forEach { showtime ->
             ShowtimeChip(
                 cinemaName = cinema.name,
-                time = time,
-                onClick = { onTimeClick(time) }
+                time = showtime.displayTime(),
+                onClick = { onTimeClick(showtime) }
             )
         }
     }
 }
+
+private fun ShowtimeDto.displayTime(): String = runCatching {
+    DateTimeFormatter.ofPattern("h:mm a", Locale.ENGLISH)
+        .format(Instant.parse(showDatetime).atZone(ZoneId.systemDefault()))
+}.getOrDefault(showDatetime)
 
 @Composable
 private fun ShowtimeChip(

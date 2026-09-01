@@ -1075,51 +1075,6 @@ private fun BannerAction(text: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun PremiumSectionTitle(text: String) {
-    Text(
-        text = text,
-        color = PremiumWhite,
-        fontSize = 18.sp,
-        fontWeight = FontWeight.Bold,
-        modifier = Modifier
-            .padding(horizontal = 16.dp)
-            .semantics { heading() }
-    )
-}
-
-@Composable
-private fun CategorySection(onCategoryClick: (String) -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        CategoryTile(
-            title = "Movies",
-            subtitle = "Cinema",
-            icon = Icons.Outlined.ConfirmationNumber,
-            onClick = { onCategoryClick("Movies") },
-            modifier = Modifier.weight(1f)
-        )
-        CategoryTile(
-            title = "Sports",
-            subtitle = "Play",
-            icon = Icons.Outlined.SportsSoccer,
-            onClick = { onCategoryClick("Sports") },
-            modifier = Modifier.weight(1f)
-        )
-        CategoryTile(
-            title = "Events",
-            subtitle = "Live",
-            icon = Icons.Outlined.Event,
-            onClick = { onCategoryClick("Events") },
-            modifier = Modifier.weight(1f)
-        )
-    }
-}
-
-@Composable
 private fun CategoryTile(
     title: String,
     subtitle: String,

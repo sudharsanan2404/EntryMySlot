@@ -16,7 +16,10 @@ data class Turf(
     val availableDate: String = "2026-08-31",
     val imageUrls: List<String> = emptyList(),
     val specifications: List<Pair<String, String>> = emptyList(),
-    val rules: List<String> = emptyList()
+    val rules: List<String> = emptyList(),
+    val venueId: String? = null,
+    val resourceType: String = "slot_based",
+    val reviewCount: Int = 0
 ) : CatalogItem
 
 data class TurfSlot(

@@ -10,6 +10,8 @@ data class Event(
     val description: String,
     val category: String,
     val time: String,
+    val endTime: String = "",
+    val remainingCapacity: Int? = null,
     val interested: Boolean = false
 ) : CatalogItem
 

@@ -49,11 +49,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -72,13 +75,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
+import com.entrymyslot.app.EntryMySlotApp
 import com.entrymyslot.app.R
 import com.entrymyslot.app.screens.home.GlowBackground
-import com.entrymyslot.app.data.FakeData
 import com.entrymyslot.app.data.model.Turf
-import com.entrymyslot.app.screens.home.PopularEvent
-import com.entrymyslot.app.data.model.BookingType
 
 private val TurfBackground = Color(0xFF061A38)
 private val TurfSurface = Color(0xFF0B274F)
@@ -93,9 +98,49 @@ private val TurfMutedText = Color(0xFF7185A1)
 fun TurfScreen(
     onBackClick: () -> Unit = {},
     onBookNowClick: () -> Unit = {},
-    sportId: String = FakeData.turfs.first().id
+    sportId: String
 ) {
-    val turf = FakeData.getTurfById(sportId) ?: FakeData.turfs.first()
+    val app = LocalContext.current.applicationContext as EntryMySlotApp
+    val turfViewModel: TurfViewModel = viewModel(
+        key = "turf_details_$sportId",
+        factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                TurfViewModel(
+                    detailsApi = app.appContainer.detailsApi,
+                    networkMonitor = app.appContainer.networkMonitor
+                ) as T
+        }
+    )
+    val state by turfViewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(sportId) {
+        turfViewModel.loadTurf(sportId)
+    }
+
+    val turf = state.turf
+    when {
+        turf != null -> TurfDetailsContent(
+            turf = turf,
+            onBackClick = onBackClick,
+            onBookNowClick = onBookNowClick
+        )
+        state.isLoading -> TurfDetailLoadingState(onBackClick)
+        else -> TurfDetailErrorState(
+            message = state.errorMessage ?: "Turf details are unavailable.",
+            onBackClick = onBackClick,
+            onRetry = turfViewModel::retry
+        )
+    }
+}
+
+@Composable
+private fun TurfDetailsContent(
+    turf: Turf,
+    onBackClick: () -> Unit,
+    onBookNowClick: () -> Unit
+) {
+    val sportId = turf.id
     val title = turf.title
     val venueType = turf.venueType
     val price = "₹${turf.pricePerHour} / hour"
@@ -227,8 +272,8 @@ private fun TurfHeader(
 }
 
 @Composable
-private fun TurfInterestCard(venue: PopularEvent) {
-    val interested = FakeData.isWishlisted(venue.id)
+private fun TurfInterestCard(venue: Turf) {
+    var interested by rememberSaveable(venue.id) { mutableStateOf(false) }
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 18.dp)
             .clip(RoundedCornerShape(14.dp)).background(TurfSurface)
@@ -246,7 +291,7 @@ private fun TurfInterestCard(venue: PopularEvent) {
             )
         }
         Button(
-            onClick = { FakeData.toggleWishlist(venue.id, BookingType.TURF) },
+            onClick = { interested = !interested },
             modifier = Modifier.height(34.dp),
             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
             colors = ButtonDefaults.buttonColors(containerColor = if (interested) TurfSurfaceRaised else TurfAccent)
@@ -255,7 +300,72 @@ private fun TurfInterestCard(venue: PopularEvent) {
 }
 
 @Composable
-private fun HeaderBackButton(onClick: () -> Unit) {
+private fun TurfDetailLoadingState(onBackClick: () -> Unit) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        GlowBackground()
+        HeaderBackButton(
+            onClick = onBackClick,
+            modifier = Modifier
+                .statusBarsPadding()
+                .padding(16.dp)
+                .align(Alignment.TopStart)
+        )
+        Column(
+            modifier = Modifier.align(Alignment.Center),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            CircularProgressIndicator(color = TurfAccent)
+            Spacer(modifier = Modifier.height(14.dp))
+            Text("Loading Turf details…", color = TurfSecondaryText)
+        }
+    }
+}
+
+@Composable
+private fun TurfDetailErrorState(
+    message: String,
+    onBackClick: () -> Unit,
+    onRetry: () -> Unit
+) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        GlowBackground()
+        HeaderBackButton(
+            onClick = onBackClick,
+            modifier = Modifier
+                .statusBarsPadding()
+                .padding(16.dp)
+                .align(Alignment.TopStart)
+        )
+        Column(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .padding(horizontal = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                Icons.Outlined.SportsSoccer,
+                contentDescription = null,
+                tint = TurfAccent,
+                modifier = Modifier.size(42.dp)
+            )
+            Spacer(modifier = Modifier.height(14.dp))
+            Text(message, color = TurfPrimaryText, fontSize = 15.sp, lineHeight = 21.sp)
+            Spacer(modifier = Modifier.height(18.dp))
+            Button(
+                onClick = onRetry,
+                colors = ButtonDefaults.buttonColors(containerColor = TurfAccent)
+            ) {
+                Text("Retry", color = TurfPrimaryText)
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeaderBackButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
@@ -265,7 +375,7 @@ private fun HeaderBackButton(onClick: () -> Unit) {
     )
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .size(48.dp)
             .graphicsLayer {
                 scaleX = scale

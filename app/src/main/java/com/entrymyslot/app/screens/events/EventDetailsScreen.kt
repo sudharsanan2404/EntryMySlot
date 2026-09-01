@@ -37,12 +37,14 @@ import androidx.compose.material.icons.rounded.ConfirmationNumber
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.ui.Alignment
@@ -60,12 +62,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
+import com.entrymyslot.app.EntryMySlotApp
 import com.entrymyslot.app.R
 import com.entrymyslot.app.screens.home.GlowBackground
 import com.entrymyslot.app.data.model.Event
-import com.entrymyslot.app.data.FakeData
-import com.entrymyslot.app.data.model.BookingType
 
 private val DetailsBackground = Color(0xFF061A38)
 private val DetailsSurface = Color(0xFF0B274F)
@@ -78,6 +83,46 @@ private val DetailsMutedText = Color(0xFF7185A1)
 
 @Composable
 fun EventDetailsScreen(
+    eventId: String,
+    onBackClick: () -> Unit,
+    onBookTicketsClick: () -> Unit
+) {
+    val app = LocalContext.current.applicationContext as EntryMySlotApp
+    val eventViewModel: EventViewModel = viewModel(
+        key = "event_details_$eventId",
+        factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                EventViewModel(
+                    detailsApi = app.appContainer.detailsApi,
+                    networkMonitor = app.appContainer.networkMonitor
+                ) as T
+        }
+    )
+    val state by eventViewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(eventId) {
+        eventViewModel.loadEvent(eventId)
+    }
+
+    val event = state.event
+    when {
+        event != null -> EventDetailsContent(
+            event = event,
+            onBackClick = onBackClick,
+            onBookTicketsClick = onBookTicketsClick
+        )
+        state.isLoading -> EventDetailLoadingState(onBackClick)
+        else -> EventDetailErrorState(
+            message = state.errorMessage ?: "Event details are unavailable.",
+            onBackClick = onBackClick,
+            onRetry = eventViewModel::retry
+        )
+    }
+}
+
+@Composable
+private fun EventDetailsContent(
     event: Event,
     onBackClick: () -> Unit,
     onBookTicketsClick: () -> Unit
@@ -236,7 +281,7 @@ private fun EventHero(
 
 @Composable
 private fun EventInterestCard(event: Event) {
-    val interested = FakeData.isWishlisted(event.id)
+    var interested by rememberSaveable(event.id) { mutableStateOf(false) }
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 5.dp)
             .clip(RoundedCornerShape(14.dp)).background(DetailsSurface)
@@ -254,11 +299,65 @@ private fun EventInterestCard(event: Event) {
             )
         }
         Button(
-            onClick = { FakeData.toggleWishlist(event.id, BookingType.EVENT) },
+            onClick = { interested = !interested },
             modifier = Modifier.height(34.dp),
             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
             colors = ButtonDefaults.buttonColors(containerColor = if (interested) DetailsSurfaceRaised else DetailsAccent)
         ) { Text(if (interested) "Interested ✓" else "Interested", color = DetailsPrimaryText, fontSize = 10.sp) }
+    }
+}
+
+@Composable
+private fun EventDetailLoadingState(onBackClick: () -> Unit) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        GlowBackground()
+        PremiumHeroBackButton(
+            onClick = onBackClick,
+            modifier = Modifier
+                .statusBarsPadding()
+                .padding(16.dp)
+                .align(Alignment.TopStart)
+        )
+        Column(
+            modifier = Modifier.align(Alignment.Center),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            CircularProgressIndicator(color = DetailsAccent)
+            Spacer(modifier = Modifier.height(14.dp))
+            Text("Loading event details…", color = DetailsSecondaryText)
+        }
+    }
+}
+
+@Composable
+private fun EventDetailErrorState(
+    message: String,
+    onBackClick: () -> Unit,
+    onRetry: () -> Unit
+) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        GlowBackground()
+        PremiumHeroBackButton(
+            onClick = onBackClick,
+            modifier = Modifier
+                .statusBarsPadding()
+                .padding(16.dp)
+                .align(Alignment.TopStart)
+        )
+        Column(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .padding(horizontal = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(Icons.Outlined.Event, contentDescription = null, tint = DetailsAccent, modifier = Modifier.size(42.dp))
+            Spacer(modifier = Modifier.height(14.dp))
+            Text(message, color = DetailsPrimaryText, fontSize = 15.sp, lineHeight = 21.sp)
+            Spacer(modifier = Modifier.height(18.dp))
+            Button(onClick = onRetry, colors = ButtonDefaults.buttonColors(containerColor = DetailsAccent)) {
+                Text("Retry", color = DetailsPrimaryText)
+            }
+        }
     }
 }
 

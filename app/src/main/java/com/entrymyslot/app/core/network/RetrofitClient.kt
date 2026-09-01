@@ -6,6 +6,7 @@ import com.entrymyslot.app.core.storage.AuthTokenStore
 import com.entrymyslot.app.data.auth.AuthApi
 import com.entrymyslot.app.data.auth.RefreshTokenRequest
 import com.entrymyslot.app.data.booking.BookingApi
+import com.entrymyslot.app.data.details.DetailsApi
 import com.entrymyslot.app.data.home.HomeApi
 import com.entrymyslot.app.data.search.SearchApi
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
@@ -85,6 +86,9 @@ object RetrofitClient {
 
     val bookingApi: BookingApi
         get() = retrofit.create(BookingApi::class.java)
+
+    val detailsApi: DetailsApi
+        get() = retrofit.create(DetailsApi::class.java)
 
     private class SessionAuthenticator(
         private val tokenStore: AuthTokenStore,

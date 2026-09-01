@@ -1,5 +1,7 @@
 package com.entrymyslot.app.screens.turf
 
+import androidx.activity.compose.BackHandler
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
@@ -40,6 +42,8 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -56,6 +60,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.disabled
@@ -67,12 +72,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.entrymyslot.app.EntryMySlotApp
 import com.entrymyslot.app.core.components.TermsAndPolicyBottomSheet
 import com.entrymyslot.app.screens.home.GlowBackground
-import com.entrymyslot.app.data.FakeData
 import com.entrymyslot.app.data.model.Turf
 import com.entrymyslot.app.data.model.TurfSlot
 import java.text.SimpleDateFormat
+import java.time.LocalDate
 import java.util.Calendar
 
 private val TurfBookingBackground = Color(0xFF061A38)
@@ -94,18 +104,40 @@ fun TurfBookingScreen(
     onBackClick: () -> Unit = {},
     onContinueClick: () -> Unit = {}
 ) {
-    var selectedDate by remember {
-        mutableStateOf(Calendar.getInstance())
-    }
-    var selectedSlots by remember {
-        mutableStateOf(setOf<Int>())
-    }
+    val app = LocalContext.current.applicationContext as EntryMySlotApp
+    val turfBookingViewModel: TurfBookingViewModel = viewModel(
+        key = "turf_booking_$turfId",
+        factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                TurfBookingViewModel(
+                    bookingApi = app.appContainer.bookingApi,
+                    detailsApi = app.appContainer.detailsApi,
+                    networkMonitor = app.appContainer.networkMonitor,
+                    pendingCheckoutStore = app.appContainer.pendingCheckoutStore
+                ) as T
+        }
+    )
+    BackHandler { turfBookingViewModel.releaseAndGoBack(onBackClick) }
+    val state by turfBookingViewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(turfId) { turfBookingViewModel.loadTurf(turfId) }
     var showTerms by remember { mutableStateOf(false) }
-
-    val turf = FakeData.getTurfById(turfId) ?: FakeData.turfs.first()
-    val slots = FakeData.getSlots(turf.id)
-    val pricePerHour = turf.pricePerHour
-    val totalPrice = selectedSlots.size * pricePerHour
+    val selectedDate = remember(state.selectedDate) {
+        Calendar.getInstance().apply {
+            set(state.selectedDate.year, state.selectedDate.monthValue - 1, state.selectedDate.dayOfMonth)
+        }
+    }
+    val slots = state.slots.map { slot ->
+        TurfSlot(
+            turfId = turfId,
+            date = state.selectedDate.toString(),
+            hour = slot.unit_id,
+            time = slot.formatted_time,
+            booked = slot.status != "available" && slot.unit_id != state.selectedUnitId
+        )
+    }
+    val selectedSlots = state.selectedUnitId?.let { setOf(it) }.orEmpty()
+    val totalPrice = state.selectedSlot?.price?.toInt() ?: state.turf?.pricePerHour ?: 0
 
     Box(
         modifier = Modifier.fillMaxSize()
@@ -114,16 +146,25 @@ fun TurfBookingScreen(
 
         Column(modifier = Modifier.fillMaxSize()) {
             TurfBookingTopBar(
-                onBackClick = onBackClick,
+                onBackClick = { turfBookingViewModel.releaseAndGoBack(onBackClick) },
                 modifier = Modifier.statusBarsPadding()
             )
 
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(bottom = 24.dp)
-            ) {
+            when {
+                state.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = TurfBookingAccent)
+                }
+                state.turf == null -> TurfBookingError(
+                    state.errorMessage ?: "Turf availability is unavailable.",
+                    turfBookingViewModel::retry
+                )
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(bottom = 24.dp)
+                    ) {
                 item(key = "venue_summary") {
-                    VenueSummary(turf)
+                    VenueSummary(state.turf!!)
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
@@ -135,9 +176,14 @@ fun TurfBookingScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     DateSelector(
                         selectedDate = selectedDate,
-                        onDateSelected = {
-                            selectedDate = it
-                            selectedSlots = emptySet()
+                        onDateSelected = { calendar ->
+                            turfBookingViewModel.changeDate(
+                                LocalDate.of(
+                                    calendar.get(Calendar.YEAR),
+                                    calendar.get(Calendar.MONTH) + 1,
+                                    calendar.get(Calendar.DAY_OF_MONTH)
+                                )
+                            )
                         }
                     )
                     Spacer(modifier = Modifier.height(18.dp))
@@ -147,7 +193,7 @@ fun TurfBookingScreen(
                     BookingSectionHeader(
                         icon = Icons.Outlined.Schedule,
                         title = "Select Time Slot",
-                        trailingText = "24 Slots"
+                        trailingText = "${slots.size} Slots"
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     SlotLegend()
@@ -159,25 +205,36 @@ fun TurfBookingScreen(
                         slots = slots,
                         selectedSlots = selectedSlots,
                         onSlotClick = { slot ->
-                            if (!slot.booked) {
-                                selectedSlots = if (selectedSlots.contains(slot.hour)) {
-                                    selectedSlots - slot.hour
-                                } else {
-                                    selectedSlots + slot.hour
-                                }
-                            }
+                            state.slots.firstOrNull { it.unit_id == slot.hour }
+                                ?.let(turfBookingViewModel::onSlotClicked)
                         }
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     BookingNote()
+                    if (state.holdSecondsRemaining > 0) {
+                        Text(
+                            "Slot held for ${state.holdSecondsRemaining / 60}:${(state.holdSecondsRemaining % 60).toString().padStart(2, '0')}",
+                            color = TurfBookingAccent,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 13.sp,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
+                        )
+                    }
+                    state.errorMessage?.let { message ->
+                        Text(message, color = Color(0xFFFFC4B0), fontSize = 12.sp, modifier = Modifier.padding(horizontal = 20.dp))
+                    }
+                }
+                    }
+
+                    TurfBottomBookingBar(
+                        selectedSlots = selectedSlots.size,
+                        totalPrice = totalPrice,
+                        onContinueClick = {
+                            if (turfBookingViewModel.validateSelection()) showTerms = true
+                        }
+                    )
                 }
             }
-
-            TurfBottomBookingBar(
-                selectedSlots = selectedSlots.size,
-                totalPrice = totalPrice,
-                onContinueClick = { showTerms = true }
-            )
         }
 
         if (showTerms) {
@@ -186,10 +243,23 @@ fun TurfBookingScreen(
                 onDismiss = { showTerms = false },
                 onAccept = {
                     showTerms = false
-                    onContinueClick()
+                    turfBookingViewModel.createHoldAndPrepareCheckout(onContinueClick)
                 }
             )
         }
+    }
+}
+
+@Composable
+private fun TurfBookingError(message: String, onRetry: () -> Unit) {
+    Column(
+        Modifier.fillMaxSize().padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(message, color = TurfBookingSecondaryText)
+        Spacer(Modifier.height(12.dp))
+        Button(onClick = onRetry) { Text("Retry") }
     }
 }
 

@@ -1,5 +1,7 @@
 package com.entrymyslot.app.screens.events
 
+import androidx.activity.compose.BackHandler
+
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
@@ -42,8 +44,13 @@ import androidx.compose.material.icons.rounded.ConfirmationNumber
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableFloatStateOf
@@ -59,6 +66,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
@@ -68,11 +76,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
+import com.entrymyslot.app.EntryMySlotApp
 import com.entrymyslot.app.R
 import com.entrymyslot.app.core.components.TermsAndPolicyBottomSheet
 import com.entrymyslot.app.screens.home.GlowBackground
-import com.entrymyslot.app.data.FakeData
 import com.entrymyslot.app.data.model.Event
 import com.entrymyslot.app.data.model.TicketTier
 
@@ -87,24 +99,44 @@ private val BookingMutedText = Color(0xFF7185A1)
 
 @Composable
 fun EventBookingScreen(
-    event: Event,
+    eventId: String,
     onBackClick: () -> Unit = {},
-    onContinueClick: (Map<String, Int>) -> Unit = {}
+    onContinueClick: () -> Unit = {}
 ) {
-    val tiers = remember(event.id) { FakeData.getTicketTiers(event.id) }
-
-    var selectedQuantities by remember(event.id) {
-        mutableStateOf(mapOf<String, Int>())
-    }
+    val app = LocalContext.current.applicationContext as EntryMySlotApp
+    val eventBookingViewModel: EventBookingViewModel = viewModel(
+        key = "event_booking_$eventId",
+        factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                EventBookingViewModel(
+                    bookingApi = app.appContainer.bookingApi,
+                    detailsApi = app.appContainer.detailsApi,
+                    networkMonitor = app.appContainer.networkMonitor,
+                    pendingCheckoutStore = app.appContainer.pendingCheckoutStore
+                ) as T
+        }
+    )
+    BackHandler { eventBookingViewModel.releaseAndGoBack(onBackClick) }
+    val state by eventBookingViewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(eventId) { eventBookingViewModel.loadEvent(eventId) }
     var showTerms by remember { mutableStateOf(false) }
-
-    val totalTickets = selectedQuantities.values.sum()
-    val subtotal = tiers.sumOf { tier ->
-        (selectedQuantities[tier.id] ?: 0) * tier.price
+    val tiers = state.options.map { option ->
+        TicketTier(
+            id = option.id,
+            eventId = eventId,
+            name = option.name,
+            price = option.pricePaise / 100,
+            description = option.description,
+            available = option.remaining,
+            isSoldOut = option.remaining <= 0
+        )
     }
-    val convenienceFee = if (totalTickets > 0) 150 else 0
-    val taxes = (subtotal * 0.05).toInt()
-    val totalAmount = subtotal + convenienceFee + taxes
+    val selectedQuantities = state.selectedOptionId?.let { id ->
+        if (state.quantity > 0) mapOf(id to state.quantity) else emptyMap()
+    }.orEmpty()
+    val totalTickets = state.quantity
+    val subtotal = state.subtotalPaise / 100
 
     Box(
         modifier = Modifier.fillMaxSize()
@@ -113,26 +145,31 @@ fun EventBookingScreen(
 
         Column(modifier = Modifier.fillMaxSize()) {
             BookingHeader(
-                onBackClick = onBackClick,
+                onBackClick = { eventBookingViewModel.releaseAndGoBack(onBackClick) },
                 modifier = Modifier.statusBarsPadding()
             )
 
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(
-                    start = 16.dp,
-                    top = 8.dp,
-                    end = 16.dp,
-                    bottom = 24.dp
-                ),
-                verticalArrangement = Arrangement.spacedBy(11.dp)
-            ) {
-                item(key = "event_summary") {
-                    BookingEventSummary(event = event)
+            when {
+                state.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = BookingAccent)
                 }
-
-                item(key = "venue_map") {
-                    EventSeatMap()
+                state.event == null -> EventBookingError(
+                    state.errorMessage ?: "Event booking is unavailable.",
+                    eventBookingViewModel::retry
+                )
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(
+                            start = 16.dp,
+                            top = 8.dp,
+                            end = 16.dp,
+                            bottom = 24.dp
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(11.dp)
+                    ) {
+                item(key = "event_summary") {
+                    BookingEventSummary(event = state.event!!)
                 }
 
                 item(key = "ticket_heading") {
@@ -145,7 +182,11 @@ fun EventBookingScreen(
                         )
                         Spacer(modifier = Modifier.height(3.dp))
                         Text(
-                            text = "Choose a category and the number of tickets",
+                            text = if (state.options.any { it.zoneId != null }) {
+                                "Choose one server-managed zone and ticket count"
+                            } else {
+                                "General Admission — seats are not assigned for this event"
+                            },
                             color = BookingSecondaryText,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium
@@ -161,15 +202,57 @@ fun EventBookingScreen(
                         tier = tier,
                         quantity = selectedQuantities[tier.id] ?: 0,
                         onQuantityChange = { newQuantity ->
-                            selectedQuantities = selectedQuantities.toMutableMap().apply {
-                                if (newQuantity > 0) {
-                                    put(tier.id, newQuantity)
-                                } else {
-                                    remove(tier.id)
-                                }
-                            }
+                            eventBookingViewModel.selectOption(tier.id)
+                            eventBookingViewModel.setQuantity(newQuantity)
                         }
                     )
+                }
+
+                if (state.attendees.isNotEmpty()) {
+                    item(key = "attendee_heading") {
+                        Text(
+                            "Attendee details",
+                            color = BookingPrimaryText,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                    items(state.attendees.size, key = { "attendee_$it" }) { index ->
+                        val attendee = state.attendees[index]
+                        Column(
+                            Modifier.fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(BookingSurface)
+                                .border(1.dp, BookingBorder, RoundedCornerShape(16.dp))
+                                .padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text("Attendee ${index + 1}", color = BookingSecondaryText, fontWeight = FontWeight.SemiBold)
+                            OutlinedTextField(
+                                value = attendee.fullName,
+                                onValueChange = { eventBookingViewModel.updateAttendee(index, fullName = it) },
+                                label = { Text("Full name") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = eventFieldColors()
+                            )
+                            OutlinedTextField(
+                                value = attendee.phone,
+                                onValueChange = { eventBookingViewModel.updateAttendee(index, phone = it) },
+                                label = { Text("Phone") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = eventFieldColors()
+                            )
+                        }
+                    }
+                }
+
+                state.validationMessage?.let { validation ->
+                    item(key = "validation") {
+                        Text(validation, color = Color(0xFFFFC4B0), fontSize = 13.sp)
+                    }
                 }
 
                 if (totalTickets > 0) {
@@ -178,20 +261,24 @@ fun EventBookingScreen(
                             tiers = tiers,
                             selectedQuantities = selectedQuantities,
                             subtotal = subtotal,
-                            fee = convenienceFee,
-                            taxes = taxes,
-                            total = totalAmount
+                            fee = 0,
+                            taxes = 0,
+                            total = subtotal
                         )
                     }
                 }
 
-            }
+                    }
 
-            EventBookingBottomBar(
-                count = totalTickets,
-                total = totalAmount,
-                onContinueClick = { showTerms = true }
-            )
+                    EventBookingBottomBar(
+                        count = totalTickets,
+                        total = subtotal,
+                        onContinueClick = {
+                            if (eventBookingViewModel.validateSelection()) showTerms = true
+                        }
+                    )
+                }
+            }
         }
 
         if (showTerms) {
@@ -200,7 +287,7 @@ fun EventBookingScreen(
                 onDismiss = { showTerms = false },
                 onAccept = {
                     showTerms = false
-                    onContinueClick(selectedQuantities)
+                    eventBookingViewModel.createHoldAndPrepareCheckout(onContinueClick)
                 }
             )
         }
@@ -273,6 +360,30 @@ private fun BookingBackButton(onClick: () -> Unit) {
         )
     }
 }
+
+@Composable
+private fun EventBookingError(message: String, onRetry: () -> Unit) {
+    Column(
+        Modifier.fillMaxSize().padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(message, color = BookingSecondaryText)
+        Spacer(Modifier.height(12.dp))
+        Button(onClick = onRetry) { Text("Retry") }
+    }
+}
+
+@Composable
+private fun eventFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedTextColor = BookingPrimaryText,
+    unfocusedTextColor = BookingPrimaryText,
+    focusedBorderColor = BookingAccent,
+    unfocusedBorderColor = BookingBorder,
+    focusedLabelColor = BookingAccent,
+    unfocusedLabelColor = BookingSecondaryText,
+    cursorColor = BookingAccent
+)
 
 @Composable
 private fun EventSeatMap() {

@@ -1,5 +1,7 @@
 package com.entrymyslot.app.screens.movies
 
+import androidx.activity.compose.BackHandler
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animate
@@ -46,6 +48,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.disabled
@@ -58,13 +61,22 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.entrymyslot.app.EntryMySlotApp
 import com.entrymyslot.app.core.components.TermsAndPolicyBottomSheet
-import com.entrymyslot.app.data.FakeData
+import com.entrymyslot.app.data.booking.MovieSeatRowDto
+import com.entrymyslot.app.data.booking.ShowtimeDto
 import com.entrymyslot.app.data.model.Cinema
 import com.entrymyslot.app.screens.home.GlowBackground
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import java.util.Calendar
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import kotlin.math.max
 import kotlin.math.min
 
@@ -89,26 +101,33 @@ private val SeatMapHeight = 360.dp
 @Composable
 fun MovieBookingScreen(
     movieId: String,
-    cinema: Cinema,
-    initialTime: String,
-    selectedDate: Calendar,
+    showtimeId: Int,
     onBackClick: () -> Unit = {},
     onContinueClick: () -> Unit = {}
 ) {
-    var selectedTime by remember { mutableStateOf(initialTime) }
-    var seatCountToBook by remember { mutableIntStateOf(1) }
-    var selectedSeats by remember { mutableStateOf(setOf<String>()) }
-    var showTerms by remember { mutableStateOf(false) }
+    val app = LocalContext.current.applicationContext as EntryMySlotApp
+    val movieBookingViewModel: MovieBookingViewModel = viewModel(
+        key = "movie_booking_${movieId}_$showtimeId",
+        factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                MovieBookingViewModel(
+                    bookingApi = app.appContainer.bookingApi,
+                    detailsApi = app.appContainer.detailsApi,
+                    networkMonitor = app.appContainer.networkMonitor,
+                    pendingCheckoutStore = app.appContainer.pendingCheckoutStore
+                ) as T
+        }
+    )
+    BackHandler { movieBookingViewModel.releaseAndGoBack(onBackClick) }
+    val state by movieBookingViewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(movieId, showtimeId) {
+        movieBookingViewModel.loadSeatBooking(movieId, showtimeId)
+    }
 
-    val movie = FakeData.getMovieById(movieId) ?: FakeData.movies.first()
-    val ticketPrice = movie.ticketPrice
-    val totalPrice = selectedSeats.size * ticketPrice
-    val showTimes = FakeData.getCinemaShowTimes(cinema.id, movie.id)
-    val selectedShow = FakeData.getShows(movie.id, cinema.id).find { it.time == selectedTime }
-    val showSeats = selectedShow?.let { FakeData.getSeats(it.id) }.orEmpty()
-    val bookedSeats = showSeats.filter { it.booked }
-        .mapTo(mutableSetOf()) { it.label }
-    val seatLabels = showSeats.map { it.label }
+    var showTerms by remember { mutableStateOf(false) }
+    val cinema = state.cinema?.let { Cinema(it.id.toString(), it.name, listOf(it.address, it.city).filter(String::isNotBlank).joinToString(", ")) }
+    val currentTime = state.showtime?.displayTime().orEmpty()
 
     Box(
         modifier = Modifier.fillMaxSize()
@@ -120,39 +139,55 @@ fun MovieBookingScreen(
                 .fillMaxSize()
                 .statusBarsPadding()
         ) {
-            PremiumTopBar(onBackClick = onBackClick)
-            CinemaMetadata(cinema = cinema)
-            ShowTimeSelector(
-                showTimes = showTimes,
-                selectedTime = selectedTime,
-                onTimeSelected = { time ->
-                    selectedTime = time
-                    selectedSeats = emptySet()
+            PremiumTopBar(onBackClick = { movieBookingViewModel.releaseAndGoBack(onBackClick) })
+            when {
+                state.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = MovieOrange)
                 }
-            )
-            SeatCountSelector(
-                selectedCount = seatCountToBook,
-                onCountSelected = { count ->
-                    seatCountToBook = count
-                    selectedSeats = emptySet()
+                state.errorMessage != null && state.seatLayout == null -> BookingErrorState(
+                    message = state.errorMessage.orEmpty(),
+                    onRetry = movieBookingViewModel::retry
+                )
+                cinema != null && state.seatLayout != null -> {
+                    CinemaMetadata(cinema = cinema)
+                    ShowTimeSelector(
+                        showTimes = listOf(currentTime),
+                        selectedTime = currentTime,
+                        onTimeSelected = {}
+                    )
+                    SeatCountSelector(
+                        selectedCount = state.desiredSeatCount,
+                        onCountSelected = movieBookingViewModel::setDesiredSeatCount
+                    )
+                    if (state.holdSecondsRemaining > 0) {
+                        Text(
+                            text = "Seats held for ${state.holdSecondsRemaining / 60}:${(state.holdSecondsRemaining % 60).toString().padStart(2, '0')}",
+                            color = MovieOrange,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 2.dp)
+                        )
+                    }
+                    state.errorMessage?.let { message ->
+                        Text(message, color = Color(0xFFFFC4B0), fontSize = 12.sp, modifier = Modifier.padding(horizontal = 20.dp))
+                    }
+                    SeatLegend(modifier = Modifier.padding(top = 8.dp, bottom = 6.dp))
+                    SeatMapViewport(
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                        rows = state.seatLayout!!.rows,
+                        selectedSeatIds = state.selectedSeatIds,
+                        isHolding = state.isHolding,
+                        onSeatClick = movieBookingViewModel::onSeatClicked
+                    )
+                    MovieBottomBar(
+                        count = state.selectedSeatIds.size,
+                        total = state.totalPaise / 100,
+                        onContinueClick = {
+                            if (movieBookingViewModel.validateSelection()) showTerms = true
+                        }
+                    )
                 }
-            )
-            SeatLegend(modifier = Modifier.padding(top = 10.dp, bottom = 6.dp))
-            SeatMapViewport(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                selectedSeats = selectedSeats,
-                bookedSeats = bookedSeats,
-                seatLabels = seatLabels,
-                countToBook = seatCountToBook,
-                onSeatClick = { newSelection -> selectedSeats = newSelection }
-            )
-            MovieBottomBar(
-                count = selectedSeats.size,
-                total = totalPrice,
-                onContinueClick = { showTerms = true }
-            )
+            }
         }
 
         if (showTerms) {
@@ -161,10 +196,23 @@ fun MovieBookingScreen(
                 onDismiss = { showTerms = false },
                 onAccept = {
                     showTerms = false
-                    onContinueClick()
+                    movieBookingViewModel.createHoldAndPrepareCheckout(onContinueClick)
                 }
             )
         }
+    }
+}
+
+@Composable
+private fun BookingErrorState(message: String, onRetry: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(32.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(message, color = MovieSecondary)
+        Spacer(Modifier.height(12.dp))
+        Button(onClick = onRetry) { Text("Retry") }
     }
 }
 
@@ -392,11 +440,10 @@ private fun LegendItem(state: SeatVisualState, text: String) {
 
 @Composable
 private fun SeatMapViewport(
-    selectedSeats: Set<String>,
-    bookedSeats: Set<String>,
-    seatLabels: List<String>,
-    countToBook: Int,
-    onSeatClick: (Set<String>) -> Unit,
+    rows: List<MovieSeatRowDto>,
+    selectedSeatIds: Set<Int>,
+    isHolding: Boolean,
+    onSeatClick: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val density = LocalDensity.current
@@ -484,7 +531,7 @@ private fun SeatMapViewport(
                     transformOrigin = TransformOrigin.Center
                 }
         ) {
-            SeatMapContent(selectedSeats, bookedSeats, seatLabels, countToBook, onSeatClick)
+            SeatMapContent(rows, selectedSeatIds, isHolding, onSeatClick)
         }
 
         AnimatedVisibility(
@@ -518,13 +565,11 @@ private fun SeatMapViewport(
 
 @Composable
 private fun SeatMapContent(
-    selectedSeats: Set<String>,
-    bookedSeats: Set<String>,
-    seatLabels: List<String>,
-    countToBook: Int,
-    onSeatClick: (Set<String>) -> Unit
+    rows: List<MovieSeatRowDto>,
+    selectedSeatIds: Set<Int>,
+    isHolding: Boolean,
+    onSeatClick: (Int) -> Unit
 ) {
-    val rows = seatLabels.mapNotNull { it.firstOrNull()?.toString() }.distinct()
     Column(
         modifier = Modifier.fillMaxSize().padding(top = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -535,18 +580,14 @@ private fun SeatMapContent(
             rows.forEach { row ->
                 Row(modifier = Modifier.height(32.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = row,
+                        text = row.rowLabel,
                         color = MovieMuted,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.width(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    SeatGroup(row, 1..2, bookedSeats, selectedSeats, countToBook, onSeatClick)
-                    Spacer(modifier = Modifier.width(14.dp))
-                    SeatGroup(row, 3..6, bookedSeats, selectedSeats, countToBook, onSeatClick)
-                    Spacer(modifier = Modifier.width(14.dp))
-                    SeatGroup(row, 7..8, bookedSeats, selectedSeats, countToBook, onSeatClick)
+                    SeatGroup(row, selectedSeatIds, isHolding, onSeatClick)
                 }
             }
         }
@@ -599,38 +640,26 @@ private fun CinemaScreen() {
 
 @Composable
 private fun SeatGroup(
-    row: String,
-    seatNumbers: IntRange,
-    bookedSeats: Set<String>,
-    selectedSeats: Set<String>,
-    countToBook: Int,
-    onSeatClick: (Set<String>) -> Unit
+    row: MovieSeatRowDto,
+    selectedSeatIds: Set<Int>,
+    isHolding: Boolean,
+    onSeatClick: (Int) -> Unit
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        seatNumbers.forEach { seatNum ->
-            val seatId = "$row$seatNum"
-            val isBooked = seatId in bookedSeats
-            val isSelected = seatId in selectedSeats
-            SeatItem(seatId, isSelected, isBooked) {
-                if (!isBooked) {
-                    // Preserve the existing consecutive-seat selection rule.
-                    val newSelection = mutableSetOf<String>()
-                    var possible = true
-                    for (i in 0 until countToBook) {
-                        val nextSeatNum = seatNum + i
-                        if (nextSeatNum > 8) {
-                            possible = false
-                            break
-                        }
-                        val nextSeatId = "$row$nextSeatNum"
-                        if (nextSeatId in bookedSeats) {
-                            possible = false
-                            break
-                        }
-                        newSelection.add(nextSeatId)
-                    }
-                    if (possible) onSeatClick(newSelection)
+        row.seats.sortedBy { it.seatNumber }.forEachIndexed { index, seat ->
+            val previous = row.seats.sortedBy { it.seatNumber }.getOrNull(index - 1)
+            if (previous != null) {
+                val coordinateGap = if (seat.xPosition != null && previous.xPosition != null) {
+                    seat.xPosition - previous.xPosition
+                } else 0.0
+                if (seat.seatNumber - previous.seatNumber > 1 || coordinateGap > 1.5) {
+                    Spacer(Modifier.width(12.dp))
                 }
+            }
+            val isSelected = seat.seatId in selectedSeatIds
+            val isUnavailable = seat.status != "available" && !isSelected
+            SeatItem("${row.rowLabel}${seat.seatNumber}", isSelected, isUnavailable) {
+                if (!isHolding) onSeatClick(seat.seatId)
             }
         }
     }
@@ -845,3 +874,8 @@ private enum class SeatVisualState {
     Selected,
     Booked
 }
+
+private fun ShowtimeDto.displayTime(): String = runCatching {
+    DateTimeFormatter.ofPattern("h:mm a", Locale.ENGLISH)
+        .format(Instant.parse(showDatetime).atZone(ZoneId.systemDefault()))
+}.getOrDefault(showDatetime)

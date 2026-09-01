@@ -36,13 +36,16 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,6 +56,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -63,11 +68,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
+import com.entrymyslot.app.EntryMySlotApp
 import com.entrymyslot.app.R
 import com.entrymyslot.app.screens.home.GlowBackground
-import com.entrymyslot.app.data.FakeData
-import com.entrymyslot.app.data.model.BookingType
 import com.entrymyslot.app.data.model.Movie
 
 private val MovieOrange = Color(0xFFFA580B)
@@ -81,6 +89,46 @@ private val MovieDivider = Color(0xFF24476F)
 
 @Composable
 fun MovieDetailsScreen(
+    movieId: String,
+    onBackClick: () -> Unit,
+    onBookClick: () -> Unit
+) {
+    val app = LocalContext.current.applicationContext as EntryMySlotApp
+    val movieViewModel: MovieViewModel = viewModel(
+        key = "movie_details_$movieId",
+        factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                MovieViewModel(
+                    detailsApi = app.appContainer.detailsApi,
+                    networkMonitor = app.appContainer.networkMonitor
+                ) as T
+        }
+    )
+    val state by movieViewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(movieId) {
+        movieViewModel.loadMovie(movieId)
+    }
+
+    val movie = state.movie
+    when {
+        movie != null -> MovieDetailsContent(
+            movie = movie,
+            onBackClick = onBackClick,
+            onBookClick = onBookClick
+        )
+        state.isLoading -> MovieDetailLoadingState(onBackClick)
+        else -> MovieDetailErrorState(
+            message = state.errorMessage ?: "Movie details are unavailable.",
+            onBackClick = onBackClick,
+            onRetry = movieViewModel::retry
+        )
+    }
+}
+
+@Composable
+private fun MovieDetailsContent(
     movie: Movie,
     onBackClick: () -> Unit,
     onBookClick: () -> Unit
@@ -106,20 +154,24 @@ fun MovieDetailsScreen(
                 MovieInterestCard(movie)
             }
 
-            item(key = "cast_heading") {
-                SectionHeading(
-                    text = "Cast",
-                    modifier = Modifier.padding(start = 20.dp, top = 26.dp, end = 20.dp)
-                )
-                Spacer(modifier = Modifier.height(13.dp))
+            if (movie.castNames.isNotEmpty() || !movie.director.isNullOrBlank()) {
+                item(key = "cast_heading") {
+                    SectionHeading(
+                        text = "Cast & Crew",
+                        modifier = Modifier.padding(start = 20.dp, top = 26.dp, end = 20.dp)
+                    )
+                    Spacer(modifier = Modifier.height(13.dp))
+                }
+
+                item(key = "cast") {
+                    CastRow(movie)
+                }
             }
 
-            item(key = "cast") {
-                CastRow(movie)
-            }
-
-            item(key = "trailer") {
-                TrailerSection()
+            if (!movie.trailerUrl.isNullOrBlank()) {
+                item(key = "trailer") {
+                    TrailerSection(movie.trailerUrl)
+                }
             }
         }
 
@@ -237,7 +289,7 @@ private fun PremiumBackButton(
 
 @Composable
 private fun MovieInterestCard(movie: Movie) {
-    val interested = FakeData.isWishlisted(movie.id)
+    var interested by rememberSaveable(movie.id) { mutableStateOf(false) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -259,7 +311,7 @@ private fun MovieInterestCard(movie: Movie) {
             )
         }
         Button(
-            onClick = { FakeData.toggleWishlist(movie.id, BookingType.MOVIE) },
+            onClick = { interested = !interested },
             modifier = Modifier.height(34.dp),
             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
             colors = ButtonDefaults.buttonColors(
@@ -368,13 +420,16 @@ private fun SectionHeading(
 
 @Composable
 private fun CastRow(movie: Movie) {
-    val cast = FakeData.getCast(movie)
+    val cast = buildList {
+        addAll(movie.castNames)
+        movie.director?.takeIf(String::isNotBlank)?.let { add("$it · Director") }
+    }.distinct()
     LazyRow(
         contentPadding = PaddingValues(horizontal = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        items(items = cast, key = { member -> member.id }) { member ->
-            CastMemberCard(name = member.name, imageUrl = member.imageUrl)
+        items(items = cast, key = { name -> name }) { name ->
+            CastMemberCard(name = name, imageUrl = null)
         }
     }
 }
@@ -436,7 +491,8 @@ private fun CastMemberCard(name: String, imageUrl: String?) {
 }
 
 @Composable
-private fun TrailerSection() {
+private fun TrailerSection(trailerUrl: String) {
+    val uriHandler = LocalUriHandler.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -461,7 +517,11 @@ private fun TrailerSection() {
                     width = 1.dp,
                     color = MovieBlueEdge.copy(alpha = 0.28f),
                     shape = RoundedCornerShape(20.dp)
-                ),
+                )
+                .clickable(
+                    role = Role.Button,
+                    onClickLabel = "Open movie trailer"
+                ) { runCatching { uriHandler.openUri(trailerUrl) } },
             contentAlignment = Alignment.Center
         ) {
             Box(
@@ -484,6 +544,60 @@ private fun TrailerSection() {
                     tint = MovieWhite,
                     modifier = Modifier.size(29.dp)
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MovieDetailLoadingState(onBackClick: () -> Unit) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        GlowBackground()
+        PremiumBackButton(
+            onClick = onBackClick,
+            modifier = Modifier
+                .statusBarsPadding()
+                .padding(16.dp)
+                .align(Alignment.TopStart)
+        )
+        Column(
+            modifier = Modifier.align(Alignment.Center),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            CircularProgressIndicator(color = MovieOrange)
+            Spacer(modifier = Modifier.height(14.dp))
+            Text("Loading movie details…", color = MovieSecondary)
+        }
+    }
+}
+
+@Composable
+private fun MovieDetailErrorState(
+    message: String,
+    onBackClick: () -> Unit,
+    onRetry: () -> Unit
+) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        GlowBackground()
+        PremiumBackButton(
+            onClick = onBackClick,
+            modifier = Modifier
+                .statusBarsPadding()
+                .padding(16.dp)
+                .align(Alignment.TopStart)
+        )
+        Column(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .padding(horizontal = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(Icons.Outlined.Movie, contentDescription = null, tint = MovieOrange, modifier = Modifier.size(42.dp))
+            Spacer(modifier = Modifier.height(14.dp))
+            Text(message, color = MovieWhite, fontSize = 15.sp, lineHeight = 21.sp)
+            Spacer(modifier = Modifier.height(18.dp))
+            Button(onClick = onRetry, colors = ButtonDefaults.buttonColors(containerColor = MovieOrange)) {
+                Text("Retry", color = MovieWhite)
             }
         }
     }

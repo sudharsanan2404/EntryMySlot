@@ -21,12 +21,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.entrymyslot.app.core.components.EntryBottomNavigation
 import com.entrymyslot.app.AppAuthState
+import com.entrymyslot.app.EntryMySlotApp
+import com.entrymyslot.app.data.booking.PendingCheckout
+import com.entrymyslot.app.data.booking.PendingMovieCheckout
+import com.entrymyslot.app.data.booking.PendingEventCheckout
+import com.entrymyslot.app.data.booking.PendingTurfCheckout
 import com.entrymyslot.app.data.FakeData
 import com.entrymyslot.app.data.model.BookingDetails
 import com.entrymyslot.app.data.model.BookingType
@@ -57,6 +63,7 @@ fun AppNavigation(
 ) {
 
     val navController = rememberNavController()
+    val app = LocalContext.current.applicationContext as EntryMySlotApp
 
     if (authState == AppAuthState.Loading) {
         return
@@ -171,37 +178,34 @@ fun AppNavigation(
         }
 
         composable("movie_details/{movieId}") { backStackEntry ->
-            val movieId = backStackEntry.arguments?.getString("movieId")
-            val movie = movieId?.let(FakeData::getMovieById) ?: FakeData.movies.first()
+            val movieId = backStackEntry.arguments?.getString("movieId").orEmpty()
             MovieDetailsScreen(
-                movie = movie,
+                movieId = movieId,
                 onBackClick = { navController.popBackStack() },
-                onBookClick = { navController.navigate("cinema_selection/${movie.id}") }
+                onBookClick = { navController.navigate("cinema_selection/$movieId") }
             )
         }
 
         composable("event_details/{eventId}") { backStackEntry ->
-            val eventId = backStackEntry.arguments?.getString("eventId")
-            val event = eventId?.let(FakeData::getEventById) ?: FakeData.events.first()
+            val eventId = backStackEntry.arguments?.getString("eventId").orEmpty()
 
             EventDetailsScreen(
-                event = event,
+                eventId = eventId,
                 onBackClick = { navController.popBackStack() },
                 onBookTicketsClick = {
-                    navController.navigate("event_booking/${event.id}")
+                    navController.navigate("event_booking/$eventId")
                 }
             )
         }
 
         composable("event_booking/{eventId}") { backStackEntry ->
-            val eventId = backStackEntry.arguments?.getString("eventId")
-            val event = eventId?.let(FakeData::getEventById) ?: FakeData.events.first()
+            val eventId = backStackEntry.arguments?.getString("eventId").orEmpty()
 
             EventBookingScreen(
-                event = event,
+                eventId = eventId,
                 onBackClick = { navController.popBackStack() },
-                onContinueClick = { _ ->
-                    navController.navigate("payment/EVENT/${event.id}")
+                onContinueClick = {
+                    navController.navigate("payment/EVENT/$eventId")
                 }
             )
         }
@@ -272,7 +276,7 @@ fun AppNavigation(
         }
 
         composable("turf_details/{sportId}") { backStackEntry ->
-            val sportId = backStackEntry.arguments?.getString("sportId") ?: FakeData.turfs.first().id
+            val sportId = backStackEntry.arguments?.getString("sportId").orEmpty()
             TurfScreen(
                 sportId = sportId,
                 onBackClick = { navController.popBackStack() },
@@ -283,7 +287,7 @@ fun AppNavigation(
         }
 
         composable("turf_booking/{sportId}") { backStackEntry ->
-            val sportId = backStackEntry.arguments?.getString("sportId") ?: FakeData.turfs.first().id
+            val sportId = backStackEntry.arguments?.getString("sportId").orEmpty()
             TurfBookingScreen(
                 turfId = sportId,
                 onBackClick = { navController.popBackStack() },
@@ -294,27 +298,23 @@ fun AppNavigation(
         }
 
         composable("cinema_selection/{movieId}") { backStackEntry ->
-            val movieId = backStackEntry.arguments?.getString("movieId") ?: FakeData.movies.first().id
+            val movieId = backStackEntry.arguments?.getString("movieId").orEmpty()
             CinemaSelectionScreen(
                 movieId = movieId,
                 onBackClick = { navController.popBackStack() },
-                onTimeSelected = { cinema, time, _ ->
-                    navController.navigate("movie_booking/$movieId/${cinema.id}/$time")
+                onTimeSelected = { showtimeId ->
+                    navController.navigate("movie_booking/$movieId/$showtimeId")
                 }
             )
         }
 
-        composable("movie_booking/{movieId}/{cinemaId}/{time}") { backStackEntry ->
-            val movieId = backStackEntry.arguments?.getString("movieId") ?: FakeData.movies.first().id
-            val cinemaId = backStackEntry.arguments?.getString("cinemaId")
-            val time = backStackEntry.arguments?.getString("time") ?: ""
-            val cinema = cinemaId?.let(FakeData::getCinemaById) ?: FakeData.cinemas.first()
+        composable("movie_booking/{movieId}/{showtimeId}") { backStackEntry ->
+            val movieId = backStackEntry.arguments?.getString("movieId").orEmpty()
+            val showtimeId = backStackEntry.arguments?.getString("showtimeId")?.toIntOrNull() ?: -1
 
             MovieBookingScreen(
                 movieId = movieId,
-                cinema = cinema,
-                initialTime = time,
-                selectedDate = java.util.Calendar.getInstance(), 
+                showtimeId = showtimeId,
                 onBackClick = { navController.popBackStack() },
                 onContinueClick = {
                     navController.navigate("payment/MOVIE/$movieId")
@@ -326,7 +326,8 @@ fun AppNavigation(
             val type = backStackEntry.arguments?.getString("type") ?: "MOVIE"
             val itemId = backStackEntry.arguments?.getString("itemId").orEmpty()
             val bookingType = runCatching { BookingType.valueOf(type) }.getOrDefault(BookingType.MOVIE)
-            val details = FakeData.createBookingDetails(itemId, bookingType)
+            val details = app.appContainer.pendingCheckoutStore.current.value?.toBookingDetails()
+                ?: return@composable
 
             PaymentScreen(
                 bookingDetails = details,
@@ -401,4 +402,27 @@ fun AppNavigation(
             )
         }
     }
+}
+
+private fun PendingCheckout.toBookingDetails(): BookingDetails = when (this) {
+    is PendingMovieCheckout -> BookingDetails(
+        itemId = itemId, title = movieTitle, category = BookingType.MOVIE,
+        date = showDatetime.substringBefore('T'), time = showDatetime.substringAfter('T').take(5),
+        location = cinemaName, details = seatLabels.joinToString(", "),
+        baseAmount = bill.subtotalPaise / 100, convenienceFee = bill.platformFeePaise / 100,
+        taxes = bill.gstTotalPaise / 100
+    )
+    is PendingEventCheckout -> BookingDetails(
+        itemId = itemId, title = title, category = BookingType.EVENT,
+        date = "", time = "", location = zoneName,
+        details = "${bill.quantity} ticket${if (bill.quantity == 1) "" else "s"}",
+        baseAmount = bill.subtotalPaise / 100, convenienceFee = bill.platformFeePaise / 100,
+        taxes = bill.gstTotalPaise / 100
+    )
+    is PendingTurfCheckout -> BookingDetails(
+        itemId = itemId, title = resourceName, category = BookingType.TURF,
+        date = startsAt.substringBefore('T'), time = formattedTime, location = resourceName,
+        details = formattedTime, baseAmount = bill.subtotalPaise / 100,
+        convenienceFee = bill.platformFeePaise / 100, taxes = bill.gstTotalPaise / 100
+    )
 }
