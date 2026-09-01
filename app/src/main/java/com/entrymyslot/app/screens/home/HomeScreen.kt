@@ -17,6 +17,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -111,6 +112,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -121,6 +123,7 @@ import com.entrymyslot.app.core.components.GpsDisabledDialog
 import com.entrymyslot.app.core.components.LocationFetchState
 import com.entrymyslot.app.core.components.rememberLocationFetcher
 import com.entrymyslot.app.data.FakeData
+import com.entrymyslot.app.data.IndiaCities
 import com.entrymyslot.app.data.model.AppNotification
 import com.entrymyslot.app.data.model.CatalogItem
 import com.entrymyslot.app.data.model.HomePromotion
@@ -138,6 +141,21 @@ private val PremiumBlueEdge = Color(0xFF3976A8)
 private val PremiumWhite = Color(0xFFF8FAFF)
 private val PremiumSecondary = Color(0xFFA8B8CF)
 private val PremiumMuted = Color(0xFF7185A1)
+
+private data class PopularCity(val name: String, val iconRes: Int)
+
+private val popularIndiaCities = listOf(
+    PopularCity("Mysuru", R.drawable.popular_city_1),
+    PopularCity("Chennai", R.drawable.popular_city_2),
+    PopularCity("Bengaluru", R.drawable.popular_city_3),
+    PopularCity("Mumbai", R.drawable.popular_city_4),
+    PopularCity("Hyderabad", R.drawable.popular_city_5),
+    PopularCity("Kochi", R.drawable.popular_city_6),
+    PopularCity("Madurai", R.drawable.popular_city_7),
+    PopularCity("Visakhapatnam", R.drawable.popular_city_8),
+    PopularCity("Pune", R.drawable.popular_city_9),
+    PopularCity("Delhi", R.drawable.popular_city_10)
+)
 
 typealias PopularEvent = CatalogItem
 
@@ -285,12 +303,11 @@ internal fun PremiumHomeScreen(
         }
     }
     LaunchedEffect(drawerState) {
-        snapshotFlow { drawerState.currentValue to drawerState.targetValue }
-            .collect { (current, target) ->
-                onDrawerVisibilityChange(
-                    current != DrawerValue.Closed || target != DrawerValue.Closed
-                )
-            }
+        snapshotFlow {
+            drawerState.currentValue != DrawerValue.Closed ||
+                drawerState.targetValue != DrawerValue.Closed ||
+                showNotifications
+        }.collect(onDrawerVisibilityChange)
     }
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -1521,13 +1538,13 @@ fun LocationSelectionScreen(
     var searchQuery by remember { mutableStateOf("") }
     val locationFetcher = rememberLocationFetcher(onCityResolved = onCitySelected)
     val cityOptions = remember(selectedCity, availableCities) {
-        (listOf(selectedCity) + availableCities.ifEmpty { FakeData.cities })
+        (listOf(selectedCity) + availableCities + IndiaCities.all + FakeData.cities)
             .filter(String::isNotBlank)
-            .distinct()
+            .distinctBy { it.lowercase() }
             .sorted()
     }
-    val filteredDistricts = remember(searchQuery, cityOptions) {
-        cityOptions.filter { it.contains(searchQuery, ignoreCase = true) }
+    val filteredCities = remember(searchQuery, cityOptions) {
+        cityOptions.filter { it.contains(searchQuery.trim(), ignoreCase = true) }
     }
 
     if (locationFetcher.showGpsDialog) {
@@ -1554,24 +1571,6 @@ fun LocationSelectionScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp)
             ) {
-                Text(
-                    text = "Choose your city",
-                    color = PremiumWhite,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Find movies, events and venues near you.",
-                    color = PremiumSecondary,
-                    fontSize = 12.sp
-                )
-                Spacer(modifier = Modifier.height(18.dp))
-                CurrentLocationCard(
-                    state = locationFetcher.state,
-                    onClick = locationFetcher.onStart
-                )
-                Spacer(modifier = Modifier.height(18.dp))
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
@@ -1579,7 +1578,7 @@ fun LocationSelectionScreen(
                     singleLine = true,
                     shape = RoundedCornerShape(15.dp),
                     placeholder = {
-                        Text("Search city or district", color = PremiumMuted, fontSize = 13.sp)
+                        Text("Search cities across India", color = PremiumMuted, fontSize = 13.sp)
                     },
                     leadingIcon = {
                         Icon(Icons.Outlined.Search, contentDescription = null, tint = PremiumSecondary)
@@ -1594,9 +1593,44 @@ fun LocationSelectionScreen(
                         unfocusedContainerColor = PremiumSurface
                     )
                 )
+                Spacer(modifier = Modifier.height(10.dp))
+                CurrentLocationCard(
+                    state = locationFetcher.state,
+                    onClick = locationFetcher.onStart
+                )
                 Spacer(modifier = Modifier.height(14.dp))
                 Text(
-                    text = "AVAILABLE CITIES",
+                    text = "POPULAR CITIES",
+                    color = PremiumMuted,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    popularIndiaCities.chunked(5).forEach { cityRow ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(7.dp)
+                        ) {
+                            cityRow.forEach { city ->
+                                PopularCityCard(
+                                    city = city,
+                                    isSelected = city.name.equals(selectedCity, ignoreCase = true),
+                                    onClick = { onCitySelected(city.name) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(13.dp))
+                Text(
+                    text = if (searchQuery.isBlank()) {
+                        "ALL INDIA CITIES  •  ${cityOptions.size}"
+                    } else {
+                        "${filteredCities.size} MATCHING CITIES"
+                    },
                     color = PremiumMuted,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
@@ -1609,15 +1643,73 @@ fun LocationSelectionScreen(
                 modifier = Modifier.weight(1f),
                 contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp)
             ) {
-                items(items = filteredDistricts, key = { district -> district }) { district ->
+                items(items = filteredCities, key = { city -> city }) { city ->
                     CityRow(
-                        city = district,
-                        isSelected = district == selectedCity,
-                        onClick = { onCitySelected(district) }
+                        city = city,
+                        isSelected = city.equals(selectedCity, ignoreCase = true),
+                        onClick = { onCitySelected(city) }
                     )
+                }
+                if (filteredCities.isEmpty()) {
+                    item {
+                        Text(
+                            text = "No Indian city matches your search.",
+                            color = PremiumSecondary,
+                            fontSize = 13.sp,
+                            modifier = Modifier.padding(vertical = 24.dp)
+                        )
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun PopularCityCard(
+    city: PopularCity,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .height(82.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                if (isSelected) PremiumOrange.copy(alpha = 0.14f)
+                else PremiumSurface.copy(alpha = 0.9f)
+            )
+            .border(
+                width = 1.dp,
+                color = if (isSelected) PremiumOrange else PremiumBlueEdge.copy(alpha = 0.24f),
+                shape = RoundedCornerShape(16.dp)
+            )
+            .clickable(
+                role = Role.RadioButton,
+                onClickLabel = "Select ${city.name}",
+                onClick = onClick
+            )
+            .semantics { selected = isSelected }
+            .padding(horizontal = 3.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Image(
+            painter = painterResource(city.iconRes),
+            contentDescription = "${city.name} landmark",
+            contentScale = ContentScale.Fit,
+            modifier = Modifier.size(42.dp)
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = city.name,
+            color = if (isSelected) PremiumOrange else PremiumWhite,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2,
+            textAlign = TextAlign.Center,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
@@ -1626,7 +1718,7 @@ private fun LocationTopBar(onBackClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(58.dp)
+            .height(52.dp)
             .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -1651,41 +1743,42 @@ private fun CurrentLocationCard(
     onClick: () -> Unit
 ) {
     val loading = state is LocationFetchState.Loading
-    Button(
-        onClick = onClick,
-        enabled = !loading,
+    Row(
         modifier = Modifier
-            .fillMaxWidth()
-            .height(54.dp),
-        shape = RoundedCornerShape(15.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = PremiumOrange,
-            contentColor = PremiumWhite,
-            disabledContainerColor = PremiumOrange.copy(alpha = 0.72f),
-            disabledContentColor = PremiumWhite
-        )
+            .widthIn(max = 250.dp)
+            .height(32.dp)
+            .clickable(enabled = !loading, role = Role.Button, onClick = onClick)
+            .padding(horizontal = 2.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         if (loading) {
             CircularProgressIndicator(
-                modifier = Modifier.size(19.dp),
-                color = PremiumWhite,
+                modifier = Modifier.size(15.dp),
+                color = PremiumOrange,
                 strokeWidth = 2.dp
             )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Detecting location...", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.width(7.dp))
+            Text("Detecting your location...", color = PremiumOrange, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
         } else {
-            Icon(Icons.Rounded.LocationOn, contentDescription = null, modifier = Modifier.size(19.dp))
-            Spacer(modifier = Modifier.width(8.dp))
+            Icon(
+                Icons.Rounded.LocationOn,
+                contentDescription = null,
+                tint = PremiumOrange,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(7.dp))
             Text(
                 text = if (state is LocationFetchState.Success) {
-                    "Using ${state.cityName}"
+                    "Current location: ${state.cityName}"
                 } else {
                     "Use my current location"
                 },
-                fontSize = 13.sp,
+                color = PremiumOrange,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
             )
         }
     }
