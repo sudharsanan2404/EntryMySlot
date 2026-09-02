@@ -27,7 +27,9 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Text
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -59,7 +61,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.entrymyslot.app.R
+import com.entrymyslot.app.EntryMySlotApp
 import com.entrymyslot.app.data.model.TicketDetails
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
@@ -80,11 +84,79 @@ private val TicketMono = FontFamily.Monospace
 
 @Composable
 fun TicketScreen(
-    ticket: TicketDetails,
+    type: String,
+    itemId: String,
+    bookingKey: String,
+    ticketUuid: String,
     onBackClick: () -> Unit,
     onDoneClick: () -> Unit,
     onDownloadClick: () -> Unit = {},
     onShareClick: () -> Unit = {}
+) {
+    val context = LocalContext.current
+    val app = context.applicationContext as EntryMySlotApp
+    val viewModel: TicketViewModel = viewModel(
+        key = "$type:$bookingKey:$ticketUuid",
+        factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T =
+                TicketViewModel(
+                    type = type,
+                    itemId = itemId,
+                    bookingKey = bookingKey,
+                    ticketUuid = ticketUuid,
+                    bookingApi = app.appContainer.bookingApi,
+                    detailsApi = app.appContainer.detailsApi,
+                    pendingCheckoutStore = app.appContainer.pendingCheckoutStore
+                ) as T
+        }
+    )
+    val uiState by viewModel.uiState.collectAsState()
+
+    when {
+        uiState.isLoading -> Box(
+            Modifier.fillMaxSize().background(TicketNight),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(color = TicketOrange)
+        }
+        uiState.ticket == null -> Box(
+            Modifier.fillMaxSize().background(TicketNight).padding(24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(uiState.errorMessage ?: "Unable to load ticket.", color = Color.White)
+                Spacer(Modifier.height(18.dp))
+                Text(
+                    "RETRY",
+                    color = TicketOrange,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.clickable { viewModel.loadTicket() }
+                )
+                Spacer(Modifier.height(14.dp))
+                Text(
+                    "BACK",
+                    color = TicketWhite60,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.clickable(onClick = onBackClick)
+                )
+            }
+        }
+        else -> TicketContent(
+            ticket = requireNotNull(uiState.ticket),
+            onBackClick = onBackClick,
+            onDownloadClick = onDownloadClick,
+            onShareClick = onShareClick
+        )
+    }
+}
+
+@Composable
+private fun TicketContent(
+    ticket: TicketDetails,
+    onBackClick: () -> Unit,
+    onDownloadClick: () -> Unit,
+    onShareClick: () -> Unit
 ) {
     BackHandler(onBack = onBackClick)
     val ticketTilt = rememberTicketTilt()

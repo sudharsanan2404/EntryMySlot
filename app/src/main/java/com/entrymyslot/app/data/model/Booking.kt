@@ -58,6 +58,7 @@ data class BookingDetails(
 
 data class TicketDetails(
     val bookingId: String,
+    val ticketUuid: String = bookingId,
     val title: String,
     val category: String,
     val venue: String,
@@ -70,5 +71,5 @@ data class TicketDetails(
     val slots: List<String>
         get() = time.split(" - ", ",").map(String::trim).filter(String::isNotEmpty)
     val qrPayload: String
-        get() = "$bookingId|$title|$venue|$date|$time|$admission"
+        get() = ticketUuid
 }

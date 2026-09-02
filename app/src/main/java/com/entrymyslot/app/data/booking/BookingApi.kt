@@ -1,6 +1,8 @@
 package com.entrymyslot.app.data.booking
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.json.JsonPrimitive
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -91,7 +93,243 @@ interface BookingApi {
     suspend fun releaseTurfHold(
         @Path("token") token: String
     ): TurfHoldReleaseResponse
+
+    @POST("movies/bookings")
+    suspend fun createMovieBooking(@Body request: MovieBookingCreateRequest): MovieBookingCreateResponse
+
+    @POST("movies/bookings/confirm")
+    suspend fun confirmMovieBooking(@Body request: MovieBookingConfirmRequest): MovieBookingDetailsResponse
+
+    @GET("movies/bookings/{reference}")
+    suspend fun getMovieBooking(@Path("reference") reference: String): MovieBookingDetailsResponse
+
+    @GET("movies/bookings/{reference}/tickets")
+    suspend fun getMovieTickets(@Path("reference") reference: String): MovieTicketsResponse
+
+    @POST("bookings")
+    suspend fun createEventBooking(@Body request: EventBookingCreateRequest): EventBookingCreateResponse
+
+    @POST("bookings/{bookingId}/verify")
+    suspend fun verifyEventBooking(@Path("bookingId") bookingId: Int): EventBookingVerifyResponse
+
+    @GET("bookings/{bookingId}")
+    suspend fun getEventBooking(@Path("bookingId") bookingId: Int): EventBookingDetailsResponse
+
+    @POST("turf/bookings")
+    suspend fun createTurfBooking(@Body request: TurfBookingCreateRequest): TurfBookingCreateResponse
+
+    @POST("turf/payments/create-order")
+    suspend fun createTurfPaymentOrder(@Body request: TurfPaymentCreateRequest): TurfPaymentCreateResponse
+
+    @POST("turf/payments/verify")
+    suspend fun verifyTurfPayment(@Body request: TurfPaymentVerifyRequest): TurfPaymentVerifyResponse
+
+    @GET("turf/my/bookings/{bookingId}")
+    suspend fun getTurfBooking(@Path("bookingId") bookingId: Int): TurfBookingDetailsResponse
 }
+
+@Serializable
+data class MovieBookingCreateRequest(
+    val holdKey: String,
+    val idempotencyKey: String,
+    val customerEmail: String = "",
+    val customerPhone: String = "",
+    val customerName: String = ""
+)
+
+@Serializable
+data class MovieBookingConfirmRequest(
+    val bookingReference: String,
+    val paymentOrderId: String? = null
+)
+
+@Serializable
+data class MovieBookingCreateResponse(val success: Boolean, val data: MovieBookingCreateDto)
+
+@Serializable
+data class MovieBookingCreateDto(
+    val booking: MovieBookingServerDto,
+    val paymentOrderId: String,
+    val paymentSessionId: String = ""
+)
+
+@Serializable
+data class MovieBookingDetailsResponse(val success: Boolean, val data: MovieBookingDetailsDto)
+
+@Serializable
+data class MovieBookingDetailsDto(
+    val booking: MovieBookingServerDto,
+    val movie: MovieBookingMovieDto,
+    val cinema: MovieBookingCinemaDto,
+    val showtime: MovieBookingShowtimeDto,
+    val items: List<MovieBookingItemDto> = emptyList()
+)
+
+@Serializable
+data class MovieBookingServerDto(
+    val id: Int,
+    @SerialName("booking_reference") val bookingReference: String,
+    val amount: JsonPrimitive = JsonPrimitive(0),
+    val currency: String = "INR",
+    val status: String = "",
+    @SerialName("seat_count") val seatCount: Int = 0
+)
+
+@Serializable
+data class MovieBookingMovieDto(
+    val id: Int,
+    @SerialName("movie_title") val title: String
+)
+
+@Serializable
+data class MovieBookingCinemaDto(
+    val id: Int,
+    @SerialName("cinema_name") val name: String,
+    @SerialName("cinema_address") val address: String = "",
+    @SerialName("cinema_city") val city: String = ""
+)
+
+@Serializable
+data class MovieBookingShowtimeDto(
+    val id: Int,
+    @SerialName("show_datetime") val showDatetime: String,
+    @SerialName("end_datetime") val endDatetime: String = ""
+)
+
+@Serializable
+data class MovieBookingItemDto(
+    @SerialName("seat_label") val seatLabel: String,
+    val ticket: MovieTicketDto? = null
+)
+
+@Serializable
+data class MovieTicketsResponse(val success: Boolean, val data: List<MovieTicketDto> = emptyList())
+
+@Serializable
+data class MovieTicketDto(
+    val ticketUuid: String,
+    val seatLabel: String,
+    val status: String = "valid"
+)
+
+@Serializable
+data class EventBookingCreateRequest(
+    @SerialName("event_id") val eventId: Int,
+    val attendees: List<EventBookingAttendeeRequest>,
+    @SerialName("zone_id") val zoneId: Int? = null,
+    val holdKey: String
+)
+
+@Serializable
+data class EventBookingAttendeeRequest(
+    @SerialName("full_name") val fullName: String,
+    val phone: String
+)
+
+@Serializable
+data class EventBookingCreateResponse(val success: Boolean, val data: EventBookingCreateDto)
+
+@Serializable
+data class EventBookingCreateDto(
+    val bookingId: Int,
+    val status: String,
+    val ticketCount: Int = 0,
+    val tickets: List<EventTicketSummaryDto> = emptyList(),
+    val payment: EventPaymentDto? = null
+)
+
+@Serializable
+data class EventTicketSummaryDto(
+    val ticketUuid: String,
+    val attendeeName: String = "",
+    val attendeePhone: String = ""
+)
+
+@Serializable
+data class EventPaymentDto(val orderId: String, val amount: Int = 0, val currency: String = "INR")
+
+@Serializable
+data class EventBookingVerifyResponse(val success: Boolean, val data: EventBookingVerifyDto)
+
+@Serializable
+data class EventBookingVerifyDto(val bookingId: Int, val status: String, val message: String = "")
+
+@Serializable
+data class EventBookingDetailsResponse(val success: Boolean, val data: EventBookingDetailsDto)
+
+@Serializable
+data class EventBookingDetailsDto(
+    val booking: EventBookingServerDto,
+    val tickets: List<EventTicketDto> = emptyList()
+)
+
+@Serializable
+data class EventBookingServerDto(
+    val id: Int,
+    @SerialName("event_id") val eventId: Int,
+    @SerialName("ticket_count") val ticketCount: Int,
+    val status: String
+)
+
+@Serializable
+data class EventTicketDto(
+    @SerialName("ticket_uuid") val ticketUuid: String,
+    @SerialName("attendee_name") val attendeeName: String,
+    @SerialName("attendee_phone") val attendeePhone: String = ""
+)
+
+@Serializable
+data class TurfBookingCreateRequest(
+    @SerialName("availability_unit_id") val availabilityUnitId: Int,
+    @SerialName("hold_token") val holdToken: String,
+    val quantity: Int = 1,
+    @SerialName("booking_type") val bookingType: String = "online"
+)
+
+@Serializable
+data class TurfBookingCreateResponse(val success: Boolean, val data: TurfBookingCreateDto)
+
+@Serializable
+data class TurfBookingCreateDto(val booking: TurfBookingServerDto)
+
+@Serializable
+data class TurfPaymentCreateRequest(val bookingId: Int)
+
+@Serializable
+data class TurfPaymentCreateResponse(val success: Boolean, val data: TurfPaymentCreateDto)
+
+@Serializable
+data class TurfPaymentCreateDto(val order: PaymentOrderDto, val paymentSessionId: String = "")
+
+@Serializable
+data class PaymentOrderDto(@SerialName("order_id") val orderId: String)
+
+@Serializable
+data class TurfPaymentVerifyRequest(val bookingId: Int, val gatewayOrderId: String)
+
+@Serializable
+data class TurfPaymentVerifyResponse(val success: Boolean, val data: TurfPaymentVerifyDto)
+
+@Serializable
+data class TurfPaymentVerifyDto(val status: String, val booking: TurfBookingServerDto)
+
+@Serializable
+data class TurfBookingDetailsResponse(val success: Boolean, val data: TurfBookingServerDto)
+
+@Serializable
+data class TurfBookingServerDto(
+    val id: Int,
+    @SerialName("booking_reference") val bookingReference: String,
+    val amount: JsonPrimitive = JsonPrimitive(0),
+    val currency: String = "INR",
+    val status: String,
+    @SerialName("venue_name") val venueName: String = "",
+    @SerialName("resource_name") val resourceName: String = "",
+    @SerialName("slot_start") val slotStart: String = "",
+    @SerialName("slot_end") val slotEnd: String = "",
+    @SerialName("qr_token") val qrToken: String? = null,
+    @SerialName("customer_name") val customerName: String? = null
+)
 
 @Serializable
 data class BasicSuccessResponse(

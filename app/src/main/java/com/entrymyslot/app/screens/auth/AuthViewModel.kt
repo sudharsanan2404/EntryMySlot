@@ -13,7 +13,9 @@ data class AuthUiState(
     val isOtpMode: Boolean = false,
     val errorMessage: String? = null,
     val successMessage: String? = null,
-    val isLoggedIn: Boolean = false
+    val isLoggedIn: Boolean = false,
+    val passwordResetRequested: Boolean = false,
+    val passwordResetComplete: Boolean = false
 )
 
 class AuthScreenViewModel(
@@ -220,6 +222,64 @@ class AuthScreenViewModel(
         }
     }
 
+    fun forgotPassword(email: String) {
+        if (email.isBlank()) {
+            setError("Email is required")
+            return
+        }
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null, successMessage = null)
+            repository.forgotPassword(email)
+                .onSuccess { message ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        passwordResetRequested = true,
+                        passwordResetComplete = false,
+                        successMessage = message
+                    )
+                }
+                .onFailure { error ->
+                    _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = getErrorMessage(error))
+                }
+        }
+    }
+
+    fun resetPassword(tokenOrLink: String, newPassword: String, confirmPassword: String) {
+        val token = extractResetToken(tokenOrLink)
+        when {
+            token.isBlank() -> setError("Paste the reset link or token from your email")
+            newPassword.length < 8 -> setError("Password must be at least 8 characters")
+            !newPassword.contains(Regex("[A-Z]")) -> setError("Must contain at least one uppercase letter")
+            !newPassword.contains(Regex("[a-z]")) -> setError("Must contain at least one lowercase letter")
+            !newPassword.contains(Regex("[0-9]")) -> setError("Must contain at least one number")
+            !newPassword.contains(Regex("[!@#\$%^&*(),.?\":{}|<>]")) -> setError("Must contain at least one special character")
+            newPassword != confirmPassword -> setError("Passwords do not match")
+            else -> viewModelScope.launch {
+                _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null, successMessage = null)
+                repository.resetPassword(token, newPassword)
+                    .onSuccess { message ->
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            passwordResetComplete = true,
+                            successMessage = message
+                        )
+                    }
+                    .onFailure { error ->
+                        _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = getErrorMessage(error))
+                    }
+            }
+        }
+    }
+
+    fun clearPasswordRecovery() {
+        _uiState.value = _uiState.value.copy(
+            passwordResetRequested = false,
+            passwordResetComplete = false,
+            errorMessage = null,
+            successMessage = null
+        )
+    }
+
     // ------------------------------------------------------------
     // LOGOUT
     // ------------------------------------------------------------
@@ -296,5 +356,17 @@ class AuthScreenViewModel(
                 "Server is currently undergoing maintenance. Please try later"
             else -> message.takeIf { it.isNotBlank() && it.length < 50 } ?: "An unexpected error occurred. Please try again"
         }
+    }
+
+    private fun extractResetToken(value: String): String {
+        val trimmed = value.trim()
+        val raw = if (trimmed.contains("token=")) {
+            trimmed.substringAfter("token=").substringBefore('&').substringBefore('#')
+        } else {
+            trimmed
+        }
+        return runCatching {
+            java.net.URLDecoder.decode(raw, Charsets.UTF_8.name())
+        }.getOrDefault(raw)
     }
 }

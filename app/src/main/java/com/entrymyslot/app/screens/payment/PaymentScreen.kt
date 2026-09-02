@@ -1,11 +1,5 @@
 package com.entrymyslot.app.screens.payment
 
-import android.app.Activity
-import android.content.ActivityNotFoundException
-import android.content.Intent
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -30,7 +24,6 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,6 +42,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.entrymyslot.app.screens.home.GlowBackground
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.entrymyslot.app.EntryMySlotApp
 import com.entrymyslot.app.data.FakeData
 import com.entrymyslot.app.data.model.BookingDetails
 import com.entrymyslot.app.data.model.BookingType
@@ -75,61 +70,46 @@ typealias BookingCategory = BookingType
 fun PaymentScreen(
     bookingDetails: BookingDetails,
     onBackClick: () -> Unit = {},
-    onPaySuccess: () -> Unit = {}
+    onPaySuccess: (ConfirmedBookingRoute) -> Unit = {}
 ) {
     val context = LocalContext.current
+    val app = context.applicationContext as EntryMySlotApp
+    val viewModel: PaymentViewModel = viewModel(
+        factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T =
+                PaymentViewModel(
+                    bookingApi = app.appContainer.bookingApi,
+                    pendingCheckoutStore = app.appContainer.pendingCheckoutStore,
+                    networkMonitor = app.appContainer.networkMonitor
+                ) as T
+        }
+    )
+    val uiState by viewModel.uiState.collectAsState()
     var selectedMethodId by remember { mutableStateOf("upi") }
-    var paymentSuccessful by rememberSaveable { mutableStateOf(false) }
-    var paymentProcessing by rememberSaveable { mutableStateOf(false) }
-    var paymentError by remember { mutableStateOf<String?>(null) }
+    var selectionError by remember { mutableStateOf<String?>(null) }
 
     val ticketPrice = bookingDetails.baseAmount
     val convenienceFee = bookingDetails.convenienceFee
     val taxes = bookingDetails.taxes
     val totalAmount = ticketPrice + convenienceFee + taxes
     val methods = FakeData.paymentMethods
-    val upiPaymentLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        paymentProcessing = false
-        if (result.resultCode == Activity.RESULT_OK && upiPaymentSucceeded(result.data)) {
-            paymentSuccessful = true
-            paymentError = null
+    val launchTestPayment = {
+        if (selectedMethodId == "upi") {
+            selectionError = null
+            viewModel.completeFakePayment()
         } else {
-            paymentError = "Payment was not completed. Please try again."
-        }
-    }
-    val launchUpiPayment = {
-        if (selectedMethodId != "upi") {
-            paymentError = "Select UPI to complete payment using a UPI app."
-        } else {
-            val paymentUri = Uri.Builder()
-                .scheme("upi")
-                .authority("pay")
-                .appendQueryParameter("pa", "entrymyslot@upi")
-                .appendQueryParameter("pn", "EntryMySlot")
-                .appendQueryParameter("tn", bookingDetails.title)
-                .appendQueryParameter("am", totalAmount.toString())
-                .appendQueryParameter("cu", "INR")
-                .build()
-            val upiIntent = Intent(Intent.ACTION_VIEW, paymentUri)
-            try {
-                paymentProcessing = true
-                paymentError = null
-                upiPaymentLauncher.launch(Intent.createChooser(upiIntent, "Pay with UPI"))
-            } catch (_: ActivityNotFoundException) {
-                paymentProcessing = false
-                paymentError = "No UPI app was found on this device."
-            }
+            selectionError = "Select UPI to run the test payment flow."
         }
     }
 
-    if (paymentSuccessful) {
+    val confirmedBooking = uiState.confirmedBooking
+    if (confirmedBooking != null) {
         PaymentSuccessfulScreen(
             bookingDetails = bookingDetails,
             totalAmount = totalAmount,
             paymentMethod = methods.firstOrNull { it.id == selectedMethodId }?.name ?: "Online payment",
-            onViewTicket = onPaySuccess
+            onViewTicket = { onPaySuccess(confirmedBooking) }
         )
         return
     }
@@ -149,10 +129,10 @@ fun PaymentScreen(
         bottomBar = {
             PaymentFloatingBar(
                 amount = totalAmount,
-                enabled = !paymentProcessing,
-                processing = paymentProcessing,
-                error = paymentError,
-                onPayClick = launchUpiPayment
+                enabled = !uiState.isProcessing,
+                processing = uiState.isProcessing,
+                error = selectionError ?: uiState.errorMessage,
+                onPayClick = launchTestPayment
             )
         },
         containerColor = Color.Transparent
@@ -168,7 +148,8 @@ fun PaymentScreen(
                 item {
                     PaymentOptionsSection(methods, selectedMethodId) {
                         selectedMethodId = it
-                        paymentError = null
+                        selectionError = null
+                        viewModel.clearError()
                     }
                 }
                 item {
@@ -791,16 +772,4 @@ private fun paymentMethodIcon(type: PaymentMethodType): ImageVector = when (type
     PaymentMethodType.UPI -> Icons.Rounded.AccountBalanceWallet
     PaymentMethodType.CARD -> Icons.Rounded.CreditCard
     PaymentMethodType.NET_BANKING -> Icons.Rounded.AccountBalance
-}
-
-private fun upiPaymentSucceeded(data: Intent?): Boolean {
-    val response = data?.getStringExtra("response")
-        ?: data?.getStringExtra("Response")
-        ?: data?.dataString
-        ?: return false
-    return response.split('&').any { part ->
-        val pieces = part.split('=', limit = 2)
-        pieces.size == 2 && pieces[0].equals("status", ignoreCase = true) &&
-            pieces[1].equals("success", ignoreCase = true)
-    }
 }

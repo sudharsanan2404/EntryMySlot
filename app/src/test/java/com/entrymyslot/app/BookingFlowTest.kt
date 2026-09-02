@@ -2,10 +2,29 @@ package com.entrymyslot.app
 
 import com.entrymyslot.app.data.booking.MovieSeatDto
 import com.entrymyslot.app.screens.movies.selectMovieSeatBlock
+import com.entrymyslot.app.data.model.TicketDetails
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class BookingFlowTest {
+    @Test
+    fun ticketQrEncodesExactServerTicketUuid() {
+        val ticket = TicketDetails(
+            bookingId = "MV-BOOKING-1",
+            ticketUuid = "mov_server_ticket_123",
+            title = "Test Movie",
+            category = "MOVIE",
+            venue = "Test Cinema",
+            date = "02 Sep 2026",
+            time = "07:00 PM",
+            admission = "A1",
+            attendee = "Tester",
+            amount = "₹200"
+        )
+
+        assertEquals("mov_server_ticket_123", ticket.qrPayload)
+    }
+
     @Test
     fun isolatedTwoSeatBlockCanBeCompletedWithThreeSeatsInSameTierRow() {
         val rows = listOf(

@@ -118,6 +118,8 @@ fun AuthScreen(
     var passwordVisible by remember { mutableStateOf(false) }
     var confirmPasswordVisible by remember { mutableStateOf(false) }
     var otpValue by remember { mutableStateOf("") }
+    var showPasswordRecovery by remember { mutableStateOf(false) }
+    var resetToken by remember { mutableStateOf("") }
     var fieldErrors by remember { mutableStateOf(AuthFormErrors()) }
     
     val focusManager = LocalFocusManager.current
@@ -164,13 +166,17 @@ fun AuthScreen(
         if (!showSuccessOverlay) {
             Box(modifier = Modifier.fillMaxSize()) {
                 // Absolute Top Back Button
-                if (uiState.isOtpMode) {
+                if (uiState.isOtpMode || showPasswordRecovery) {
                     Row(
                         modifier = Modifier
                             .align(Alignment.TopStart)
                             .statusBarsPadding()
                             .padding(16.dp)
-                            .clickable { viewModel.clearOtpMode() },
+                            .clickable {
+                                if (uiState.isOtpMode) viewModel.clearOtpMode()
+                                showPasswordRecovery = false
+                                viewModel.clearPasswordRecovery()
+                            },
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
@@ -218,14 +224,18 @@ fun AuthScreen(
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
                         AnimatedContent(
-                            targetState = uiState.isOtpMode,
+                            targetState = when {
+                                uiState.isOtpMode -> "otp"
+                                showPasswordRecovery -> "recovery"
+                                else -> "auth"
+                            },
                             transitionSpec = {
                                 fadeIn(animationSpec = tween(400)) + slideInHorizontally { it } togetherWith
                                 fadeOut(animationSpec = tween(400)) + slideOutHorizontally { -it }
                             },
                             label = "AuthModeTransition"
-                        ) { isOtp ->
-                            if (isOtp) {
+                        ) { mode ->
+                            if (mode == "otp") {
                                 OtpVerificationView(
                                     otpValue = otpValue,
                                     onOtpChange = {
@@ -246,6 +256,37 @@ fun AuthScreen(
                                         if (otpError == null) viewModel.verifyOtp(email = email, otp = otpValue)
                                     }
                                 )
+                            } else if (mode == "recovery") {
+                                PasswordRecoveryView(
+                                    email = email,
+                                    onEmailChange = { email = it; viewModel.clearMessages() },
+                                    tokenOrLink = resetToken,
+                                    onTokenChange = { resetToken = it; viewModel.clearMessages() },
+                                    newPassword = password,
+                                    onNewPasswordChange = { password = it; viewModel.clearMessages() },
+                                    confirmPassword = confirmPassword,
+                                    onConfirmPasswordChange = { confirmPassword = it; viewModel.clearMessages() },
+                                    passwordVisible = passwordVisible,
+                                    onPasswordVisibilityChange = { passwordVisible = !passwordVisible },
+                                    confirmPasswordVisible = confirmPasswordVisible,
+                                    onConfirmPasswordVisibilityChange = { confirmPasswordVisible = !confirmPasswordVisible },
+                                    resetRequested = uiState.passwordResetRequested,
+                                    resetComplete = uiState.passwordResetComplete,
+                                    isLoading = uiState.isLoading,
+                                    errorMessage = uiState.errorMessage,
+                                    successMessage = uiState.successMessage,
+                                    onRequestReset = { viewModel.forgotPassword(email) },
+                                    onResetPassword = {
+                                        viewModel.resetPassword(resetToken, password, confirmPassword)
+                                    },
+                                    onBackToLogin = {
+                                        showPasswordRecovery = false
+                                        password = ""
+                                        confirmPassword = ""
+                                        resetToken = ""
+                                        viewModel.clearPasswordRecovery()
+                                    }
+                                )
                             } else {
                                 LoginRegisterView(
                                     isLogin = isLogin,
@@ -264,6 +305,13 @@ fun AuthScreen(
                                     fieldErrors = fieldErrors,
                                     serverError = uiState.errorMessage,
                                     isLoading = uiState.isLoading,
+                                    onForgotPassword = {
+                                        showPasswordRecovery = true
+                                        password = ""
+                                        confirmPassword = ""
+                                        fieldErrors = AuthFormErrors()
+                                        viewModel.clearPasswordRecovery()
+                                    },
                                     onTabSwitch = {
                                         isLogin = it
                                         email = ""
@@ -429,6 +477,141 @@ private fun OtpVerificationView(
 }
 
 @Composable
+private fun PasswordRecoveryView(
+    email: String,
+    onEmailChange: (String) -> Unit,
+    tokenOrLink: String,
+    onTokenChange: (String) -> Unit,
+    newPassword: String,
+    onNewPasswordChange: (String) -> Unit,
+    confirmPassword: String,
+    onConfirmPasswordChange: (String) -> Unit,
+    passwordVisible: Boolean,
+    onPasswordVisibilityChange: () -> Unit,
+    confirmPasswordVisible: Boolean,
+    onConfirmPasswordVisibilityChange: () -> Unit,
+    resetRequested: Boolean,
+    resetComplete: Boolean,
+    isLoading: Boolean,
+    errorMessage: String?,
+    successMessage: String?,
+    onRequestReset: () -> Unit,
+    onResetPassword: () -> Unit,
+    onBackToLogin: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            imageVector = if (resetComplete) Icons.Default.CheckCircle else Icons.Default.LockReset,
+            contentDescription = null,
+            modifier = Modifier.size(48.dp),
+            tint = EntryOrange
+        )
+        Spacer(Modifier.height(14.dp))
+        Text(
+            text = when {
+                resetComplete -> "PASSWORD UPDATED"
+                resetRequested -> "CREATE NEW PASSWORD"
+                else -> "FORGOT PASSWORD"
+            },
+            color = Color.Black,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = when {
+                resetComplete -> "Your password was reset securely. You can now log in."
+                resetRequested -> "Paste the reset link or token from your email."
+                else -> "Enter your registered email address to receive a secure reset link."
+            },
+            color = LabelGrey,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(22.dp))
+
+        if (!resetComplete) {
+            if (!resetRequested) {
+                AuthLabel("EMAIL ADDRESS")
+                Spacer(Modifier.height(6.dp))
+                AuthTextField(
+                    value = email,
+                    onValueChange = onEmailChange,
+                    placeholder = "you@example.com",
+                    leadingIcon = Icons.Default.Email,
+                    keyboardType = KeyboardType.Email
+                )
+            } else {
+                AuthLabel("RESET LINK OR TOKEN")
+                Spacer(Modifier.height(6.dp))
+                AuthTextField(
+                    value = tokenOrLink,
+                    onValueChange = onTokenChange,
+                    placeholder = "Paste the email link or token",
+                    leadingIcon = Icons.Default.Link
+                )
+                Spacer(Modifier.height(14.dp))
+                AuthLabel("NEW PASSWORD")
+                Spacer(Modifier.height(6.dp))
+                AuthTextField(
+                    value = newPassword,
+                    onValueChange = onNewPasswordChange,
+                    placeholder = "Create a secure password",
+                    leadingIcon = Icons.Default.Lock,
+                    isPassword = true,
+                    passwordVisible = passwordVisible,
+                    onPasswordVisibilityChange = onPasswordVisibilityChange
+                )
+                Spacer(Modifier.height(14.dp))
+                AuthLabel("CONFIRM PASSWORD")
+                Spacer(Modifier.height(6.dp))
+                AuthTextField(
+                    value = confirmPassword,
+                    onValueChange = onConfirmPasswordChange,
+                    placeholder = "Confirm your password",
+                    leadingIcon = Icons.Default.Lock,
+                    isPassword = true,
+                    passwordVisible = confirmPasswordVisible,
+                    onPasswordVisibilityChange = onConfirmPasswordVisibilityChange
+                )
+            }
+            FieldError(errorMessage)
+            successMessage?.takeIf(String::isNotBlank)?.let {
+                Spacer(Modifier.height(8.dp))
+                Text(it, color = EntryBlue, fontSize = 12.sp, textAlign = TextAlign.Center)
+            }
+            Spacer(Modifier.height(20.dp))
+            Button(
+                onClick = if (resetRequested) onResetPassword else onRequestReset,
+                enabled = !isLoading,
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = EntryOrange)
+            ) {
+                Text(
+                    if (isLoading) "PLEASE WAIT..." else if (resetRequested) "RESET PASSWORD" else "SEND RESET LINK",
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        Spacer(Modifier.height(14.dp))
+        Text(
+            text = "Back to Login",
+            color = EntryOrange,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.clickable(onClick = onBackToLogin)
+        )
+    }
+}
+
+@Composable
 private fun LoginRegisterView(
     isLogin: Boolean,
     email: String,
@@ -446,6 +629,7 @@ private fun LoginRegisterView(
     fieldErrors: AuthFormErrors,
     serverError: String?,
     isLoading: Boolean,
+    onForgotPassword: () -> Unit,
     onTabSwitch: (Boolean) -> Unit,
     onSubmit: () -> Unit
 ) {
@@ -503,6 +687,16 @@ private fun LoginRegisterView(
                     passwordVisible = passwordVisible,
                     onPasswordVisibilityChange = onPasswordVisibilityChange,
                     error = fieldErrors.password
+                )
+                Text(
+                    text = "Forgot password?",
+                    color = EntryOrange,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .padding(top = 8.dp)
+                        .clickable(onClick = onForgotPassword)
                 )
                 FieldError(serverError)
             } else {

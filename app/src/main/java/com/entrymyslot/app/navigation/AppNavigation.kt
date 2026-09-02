@@ -1,5 +1,6 @@
 package com.entrymyslot.app.navigation
 
+import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
@@ -73,7 +74,7 @@ fun AppNavigation(
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentBackStackEntry?.destination?.route
     val navbarRoutes = setOf("home", "search/{type}", "bookings", "profile", "wishlist")
-    BackHandler(enabled = currentRoute != null && currentRoute !in setOf("home", "auth", "ticket/{bookingId}")) {
+    BackHandler(enabled = currentRoute != null && currentRoute !in setOf("home", "auth", "ticket/{type}/{itemId}/{bookingKey}/{ticketUuid}")) {
         navController.popBackStack()
     }
     var isHomeDrawerOpen by remember { mutableStateOf(false) }
@@ -221,7 +222,17 @@ fun AppNavigation(
                     }
                 },
                 onViewTicketClick = { booking ->
-                    navController.navigate("ticket/${booking.id}")
+                    val bookingKey = when (booking.type) {
+                        BookingType.EVENT -> booking.id.substringAfter(':')
+                        BookingType.MOVIE, BookingType.TURF -> booking.bookingReference
+                    }
+                    val ticketRoute = listOf(
+                        booking.type.name,
+                        booking.itemId,
+                        bookingKey,
+                        "_"
+                    ).joinToString("/") { Uri.encode(it) }
+                    navController.navigate("ticket/$ticketRoute")
                 }
             )
         }
@@ -332,8 +343,14 @@ fun AppNavigation(
             PaymentScreen(
                 bookingDetails = details,
                 onBackClick = { navController.popBackStack() },
-                onPaySuccess = {
-                    navController.navigate("ticket/confirmed") {
+                onPaySuccess = { confirmed ->
+                    val ticketRoute = listOf(
+                        confirmed.type,
+                        confirmed.itemId,
+                        confirmed.bookingKey,
+                        confirmed.ticketUuid
+                    ).joinToString("/") { Uri.encode(it) }
+                    navController.navigate("ticket/$ticketRoute") {
                         popUpTo(backStackEntry.destination.id) { inclusive = true }
                         launchSingleTop = true
                     }
@@ -341,19 +358,21 @@ fun AppNavigation(
             )
         }
 
-        composable("ticket/{bookingId}") { backStackEntry ->
-            val bookingId = backStackEntry.arguments?.getString("bookingId") ?: "confirmed"
-            val booking = FakeData.bookings.find { it.id == bookingId }
-            val ticket = booking?.let(FakeData::getTicket) ?: FakeData.confirmedTicket
+        composable("ticket/{type}/{itemId}/{bookingKey}/{ticketUuid}") { backStackEntry ->
             TicketScreen(
-                ticket = ticket,
+                type = backStackEntry.arguments?.getString("type").orEmpty(),
+                itemId = backStackEntry.arguments?.getString("itemId").orEmpty(),
+                bookingKey = backStackEntry.arguments?.getString("bookingKey").orEmpty(),
+                ticketUuid = backStackEntry.arguments?.getString("ticketUuid").orEmpty(),
                 onBackClick = {
+                    app.appContainer.pendingCheckoutStore.clear()
                     navController.navigate("home") {
                         popUpTo("home") { inclusive = false }
                         launchSingleTop = true
                     }
                 },
                 onDoneClick = {
+                    app.appContainer.pendingCheckoutStore.clear()
                     navController.navigate("home") { popUpTo("home") { inclusive = true } }
                 }
             )
