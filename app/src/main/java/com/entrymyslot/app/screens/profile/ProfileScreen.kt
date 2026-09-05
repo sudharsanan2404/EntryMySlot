@@ -73,12 +73,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.entrymyslot.app.EntryMySlotApp
 import com.entrymyslot.app.R
 import com.entrymyslot.app.screens.home.GlowBackground
 import com.entrymyslot.app.data.FakeData
 import com.entrymyslot.app.data.model.BookingStatus
-import com.entrymyslot.app.data.auth.User
+import com.entrymyslot.app.data.model.UserProfile
 
 private val ProfileBackground = Color(0xFF061A38)
 private val ProfileSurface = Color(0xFF0B274F)
@@ -95,16 +94,10 @@ fun ProfileScreen(
     onBottomNavigationClick: (String) -> Unit = {},
     onBookingClick: () -> Unit = {},
     onUsernameClick: () -> Unit = {},
-    onLogoutClick: () -> Unit = {}
+    onLogoutClick: () -> Unit = {},
+    onPartnerClick: () -> Unit = {}
 ) {
-    val app = LocalContext.current.applicationContext as EntryMySlotApp
-    val viewModel: ProfileViewModel = viewModel(
-        factory = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                ProfileViewModel(app.appContainer.authRepository) as T
-        }
-    )
+    val viewModel: ProfileViewModel = viewModel()
     val profileState by viewModel.profileState.collectAsStateWithLifecycle()
 
     Box(
@@ -146,7 +139,7 @@ fun ProfileScreen(
                 item { StatisticsRow() }
                 item { QuickActionsSection(onBookingClick = onBookingClick) }
                 item { AccountSettingsSection(profileState.user) }
-                item { PartnerSection() }
+                item { PartnerSection(onPartnerClick = onPartnerClick) }
                 item {
                     LogoutButton(
                         onClick = {
@@ -164,7 +157,7 @@ fun ProfileScreen(
 
 @Composable
 private fun ProfileHeaderSection(
-    user: User?,
+    user: UserProfile?,
     onUsernameClick: () -> Unit
 ) {
     Column(
@@ -211,7 +204,7 @@ private fun ProfileHeaderSection(
 
         Spacer(modifier = Modifier.height(10.dp))
         Text(
-            text = user?.username ?: "Loading profile...",
+            text = user?.fullName ?: "Loading profile...",
             color = ProfilePrimaryText,
             fontSize = 20.sp,
             fontWeight = FontWeight.ExtraBold,
@@ -391,7 +384,7 @@ private fun QuickActionCard(
 }
 
 @Composable
-private fun AccountSettingsSection(user: User?) {
+private fun AccountSettingsSection(user: UserProfile?) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -427,11 +420,11 @@ private fun AccountSettingsSection(user: User?) {
 }
 
 @Composable
-private fun PersonalInformationDetails(user: User?) {
+private fun PersonalInformationDetails(user: UserProfile?) {
     val details = listOf(
-        "Full Name" to (user?.username ?: "—"),
+        "Full Name" to (user?.fullName ?: "—"),
         "Email" to (user?.email ?: "—"),
-        "Member Since" to (user?.createdAt?.take(10) ?: "—")
+        "Member Since" to (user?.memberSince ?: "—")
     )
     Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
         details.forEach { (label, value) ->
@@ -444,7 +437,7 @@ private fun PersonalInformationDetails(user: User?) {
 }
 
 @Composable
-private fun PartnerSection() {
+private fun PartnerSection(onPartnerClick: () -> Unit) {
     Column(
         Modifier.fillMaxWidth().padding(horizontal = 16.dp)
             .clip(RoundedCornerShape(18.dp)).background(ProfileSurface)
@@ -458,7 +451,7 @@ private fun PartnerSection() {
             modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
         )
         Button(
-            onClick = { },
+            onClick = onPartnerClick,
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(containerColor = ProfileAccent)
         ) { Text("Partner With Us", color = Color.White, fontWeight = FontWeight.Bold) }

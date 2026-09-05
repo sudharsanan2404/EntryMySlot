@@ -110,9 +110,6 @@ fun EventBookingScreen(
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
                 EventBookingViewModel(
-                    bookingApi = app.appContainer.bookingApi,
-                    detailsApi = app.appContainer.detailsApi,
-                    networkMonitor = app.appContainer.networkMonitor,
                     pendingCheckoutStore = app.appContainer.pendingCheckoutStore
                 ) as T
         }
@@ -183,7 +180,7 @@ fun EventBookingScreen(
                         Spacer(modifier = Modifier.height(3.dp))
                         Text(
                             text = if (state.options.any { it.zoneId != null }) {
-                                "Choose one server-managed zone and ticket count"
+                                "Choose a ticket zone and ticket count"
                             } else {
                                 "General Admission — seats are not assigned for this event"
                             },

@@ -1,7 +1,6 @@
 package com.entrymyslot.app
 
 import android.app.Application
-import com.entrymyslot.app.core.network.RetrofitClient
 
 class EntryMySlotApp : Application() {
 
@@ -10,8 +9,6 @@ class EntryMySlotApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-
-        RetrofitClient.initialize(this)
 
         appContainer = AppContainer(this)
     }

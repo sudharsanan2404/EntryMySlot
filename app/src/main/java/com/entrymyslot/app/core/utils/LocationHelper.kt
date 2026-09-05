@@ -76,8 +76,11 @@ object LocationHelper {
                 val city = address?.locality
                     ?: address?.subAdminArea
                     ?: address?.adminArea
-                    ?: "Unknown"
-                cont.resume(city)
+                if (city.isNullOrBlank()) {
+                    cont.resumeWithException(Exception("Unable to identify your city"))
+                } else {
+                    cont.resume(city)
+                }
             } catch (e: Exception) {
                 cont.resumeWithException(e)
             }

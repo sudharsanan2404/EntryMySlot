@@ -92,6 +92,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.entrymyslot.app.core.components.PremiumLoadingState
+import com.entrymyslot.app.core.components.PremiumErrorState
+import com.entrymyslot.app.core.components.PremiumEmptyState
 import coil3.compose.AsyncImage
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -142,15 +145,7 @@ fun SearchScreen(
     initialType: SearchResultType? = null,
     onBottomNavigationClick: (String) -> Unit = {}
 ) {
-    val context = LocalContext.current
-    val app = context.applicationContext as EntryMySlotApp
-    val searchViewModel: SearchViewModel = viewModel(
-        factory = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                SearchViewModel(app.appContainer.searchApi) as T
-        }
-    )
+    val searchViewModel: SearchViewModel = viewModel()
     val state by searchViewModel.uiState.collectAsStateWithLifecycle()
     var showFilters by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
@@ -1081,24 +1076,10 @@ private fun ResultArtwork(item: PopularEvent, fallbackImage: Int) {
 
 @Composable
 private fun SearchLoadingState(modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        CircularProgressIndicator(
-            color = SearchAccent,
-            strokeWidth = 3.dp,
-            modifier = Modifier.size(34.dp)
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(
-            text = "Loading latest results…",
-            color = SearchSecondaryText,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium
-        )
-    }
+    PremiumLoadingState(
+        modifier = modifier,
+        message = "Loading latest results..."
+    )
 }
 
 @Composable
@@ -1107,44 +1088,20 @@ private fun SearchErrorState(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier.fillMaxWidth().padding(horizontal = 28.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Icon(
-            imageVector = Icons.Rounded.SearchOff,
-            contentDescription = null,
-            tint = SearchAccent,
-            modifier = Modifier.size(34.dp)
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(
-            text = message,
-            color = SearchPrimaryText,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold
-        )
-        Spacer(modifier = Modifier.height(14.dp))
-        RetrySearchButton(onRetry = onRetry)
-    }
+    PremiumErrorState(
+        modifier = modifier,
+        title = "Search failed",
+        message = message,
+        onRetry = onRetry
+    )
 }
 
 @Composable
 private fun SearchRefreshingIndicator() {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        CircularProgressIndicator(
-            color = SearchAccent,
-            strokeWidth = 2.dp,
-            modifier = Modifier.size(16.dp)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text("Updating results…", color = SearchSecondaryText, fontSize = 10.sp)
-    }
+    PremiumLoadingState(
+        modifier = Modifier.fillMaxWidth().height(100.dp),
+        message = "Updating results..."
+    )
 }
 
 @Composable
@@ -1178,63 +1135,13 @@ private fun SearchInlineError(message: String, onRetry: () -> Unit) {
 }
 
 @Composable
-private fun RetrySearchButton(onRetry: () -> Unit) {
-    Text(
-        text = "RETRY",
-        color = Color.White,
-        fontSize = 12.sp,
-        fontWeight = FontWeight.Bold,
-        modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(SearchAccent)
-            .clickable(role = Role.Button, onClick = onRetry)
-            .padding(horizontal = 22.dp, vertical = 11.dp)
-    )
-}
-
-@Composable
 private fun EmptySearch(
     query: String,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Box(
-            modifier = Modifier
-                .size(54.dp)
-                .clip(CircleShape)
-                .background(SearchSurfaceRaised.copy(alpha = 0.74f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.SearchOff,
-                contentDescription = null,
-                tint = SearchSecondaryText,
-                modifier = Modifier.size(27.dp)
-            )
-        }
-        Spacer(modifier = Modifier.height(13.dp))
-        Text(
-            text = if (query.isBlank()) {
-                "No results match these filters"
-            } else {
-                "No matches for “$query”"
-            },
-            color = SearchPrimaryText,
-            fontSize = 17.sp,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.height(5.dp))
-        Text(
-            text = "Try changing your search or filters.",
-            color = SearchSecondaryText,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium
-        )
-    }
+    PremiumEmptyState(
+        modifier = modifier,
+        title = if (query.isBlank()) "No results found" else "No matches for \"$query\"",
+        message = "Try changing your search or filters."
+    )
 }

@@ -37,11 +37,6 @@ data class PaymentMethod(
     val badge: String? = null
 )
 
-data class WishlistItem(
-    val itemId: String,
-    val type: BookingType
-)
-
 data class BookingDetails(
     val itemId: String,
     val title: String,

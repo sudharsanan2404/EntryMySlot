@@ -79,9 +79,7 @@ fun PaymentScreen(
             @Suppress("UNCHECKED_CAST")
             override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T =
                 PaymentViewModel(
-                    bookingApi = app.appContainer.bookingApi,
-                    pendingCheckoutStore = app.appContainer.pendingCheckoutStore,
-                    networkMonitor = app.appContainer.networkMonitor
+                    pendingCheckoutStore = app.appContainer.pendingCheckoutStore
                 ) as T
         }
     )

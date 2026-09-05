@@ -30,7 +30,6 @@ data class Movie(
     val trailerUrl: String? = null,
     val censorRating: String? = null,
     val ticketPrice: Int = 180,
-    val interested: Boolean = false
 ) : CatalogItem
 
 data class CastMember(

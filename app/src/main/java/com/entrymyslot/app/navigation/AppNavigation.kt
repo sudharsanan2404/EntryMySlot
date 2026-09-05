@@ -8,10 +8,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -21,14 +18,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.entrymyslot.app.core.components.EntryBottomNavigation
-import com.entrymyslot.app.AppAuthState
 import com.entrymyslot.app.EntryMySlotApp
 import com.entrymyslot.app.data.booking.PendingCheckout
 import com.entrymyslot.app.data.booking.PendingMovieCheckout
@@ -49,34 +46,49 @@ import com.entrymyslot.app.screens.turf.TurfBookingScreen
 import com.entrymyslot.app.screens.events.EventDetailsScreen
 import com.entrymyslot.app.screens.events.EventBookingScreen
 import com.entrymyslot.app.screens.profile.ProfileScreen
-import com.entrymyslot.app.screens.test.TestScreen
 import com.entrymyslot.app.screens.booking.BookingScreen
 import com.entrymyslot.app.screens.search.SearchResultType
 import com.entrymyslot.app.screens.search.SearchScreen
 import com.entrymyslot.app.screens.ticket.TicketScreen
-import com.entrymyslot.app.screens.wishlist.WishlistScreen
+import com.entrymyslot.app.screens.onboarding.PermissionsScreen
+import com.entrymyslot.app.screens.onboarding.SplashScreen
+import com.entrymyslot.app.screens.manager.ManagerDashboardScreen
 
 @Composable
-fun AppNavigation(
-    authState: AppAuthState,
-    onAuthenticated: () -> Unit,
-    onLoggedOut: () -> Unit
-) {
+fun AppNavigation() {
 
     val navController = rememberNavController()
-    val app = LocalContext.current.applicationContext as EntryMySlotApp
-
-    if (authState == AppAuthState.Loading) {
-        return
+    val context = LocalContext.current
+    val app = context.applicationContext as EntryMySlotApp
+    val locationPreferences = remember {
+        context.getSharedPreferences("entry_my_slot_preferences", android.content.Context.MODE_PRIVATE)
     }
 
-    var selectedCity by remember { mutableStateOf(FakeData.currentUser.city) }
+    var selectedCity by remember {
+        mutableStateOf(locationPreferences.getString("selected_city", "").orEmpty())
+    }
+    var isLoggedIn by remember {
+        mutableStateOf(locationPreferences.getBoolean("is_logged_in", false))
+    }
+    var hasCompletedOnboarding by remember {
+        mutableStateOf(
+            locationPreferences.getBoolean("onboarding_completed", false) || selectedCity.isNotBlank()
+        )
+    }
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentBackStackEntry?.destination?.route
-    val navbarRoutes = setOf("home", "search/{type}", "bookings", "profile", "wishlist")
-    BackHandler(enabled = currentRoute != null && currentRoute !in setOf("home", "auth", "ticket/{type}/{itemId}/{bookingKey}/{ticketUuid}")) {
-        navController.popBackStack()
+    val navbarRoutes = setOf("home", "search/{type}", "bookings", "profile")
+    
+    var showForcedLocationDialog by remember { mutableStateOf(false) }
+
+    BackHandler(enabled = currentRoute != null && currentRoute !in setOf("splash", "home", "auth", "permissions", "ticket/{type}/{itemId}/{bookingKey}/{ticketUuid}")) {
+        if (currentRoute == "location_selection" && selectedCity.isBlank()) {
+            showForcedLocationDialog = true
+        } else {
+            navController.popBackStack()
+        }
     }
+    
     var isHomeDrawerOpen by remember { mutableStateOf(false) }
 
     LaunchedEffect(currentRoute) {
@@ -86,21 +98,72 @@ fun AppNavigation(
     Box(modifier = Modifier.fillMaxSize()) {
         NavHost(
             navController = navController,
-            startDestination = if (authState == AppAuthState.Unauthenticated) "auth" else "home",
+            startDestination = "splash",
             enterTransition = { slideInHorizontally(tween(150)) { it / 12 } },
             exitTransition = { slideOutHorizontally(tween(120)) { -it / 14 } },
             popEnterTransition = { slideInHorizontally(tween(150)) { -it / 12 } },
             popExitTransition = { slideOutHorizontally(tween(120)) { it / 14 } }
         ) {
 
+        composable("splash") {
+            SplashScreen(
+                onFinished = {
+                    val destination = when {
+                        !isLoggedIn -> "auth"
+                        hasCompletedOnboarding && selectedCity.isNotBlank() -> "home"
+                        else -> "permissions"
+                    }
+                    navController.navigate(destination) {
+                        popUpTo("splash") { inclusive = true }
+                    }
+                }
+            )
+        }
+
         composable("auth") {
             AuthScreen(
                 onAuthSuccess = {
-                    onAuthenticated()
-                    navController.navigate("home") {
+                    isLoggedIn = true
+                    locationPreferences.edit().putBoolean("is_logged_in", true).apply()
+                    val destination = if (hasCompletedOnboarding && selectedCity.isNotBlank()) {
+                        "home"
+                    } else {
+                        "permissions"
+                    }
+                    navController.navigate(destination) {
                         popUpTo("auth") {
                             inclusive = true
                         }
+                    }
+                }
+            )
+        }
+
+        composable("permissions") {
+            PermissionsScreen(
+                onPermissionsComplete = { detectedCity ->
+                    if (!detectedCity.isNullOrBlank()) {
+                        selectedCity = detectedCity
+                        hasCompletedOnboarding = true
+                        FakeData.currentUser = FakeData.currentUser.copy(city = detectedCity)
+                        locationPreferences.edit()
+                            .putString("selected_city", detectedCity)
+                            .putBoolean("onboarding_completed", true)
+                            .apply()
+                        navController.navigate("home") {
+                            popUpTo("permissions") { inclusive = true }
+                        }
+                    } else {
+                        selectedCity = ""
+                        navController.navigate("location_selection") {
+                            popUpTo("permissions") { inclusive = true }
+                        }
+                    }
+                },
+                onDeclineLocation = {
+                    selectedCity = ""
+                    navController.navigate("location_selection") {
+                        popUpTo("permissions") { inclusive = true }
                     }
                 }
             )
@@ -118,9 +181,9 @@ fun AppNavigation(
                     navController.navigate("movie_details/${it.id}")
                 },
                 onSearchClick = { navController.navigate("search/all") },
-                onWishlistClick = { navController.navigate("wishlist") },
                 onLocationClick = { navController.navigate("location_selection") },
                 onDrawerVisibilityChange = { isHomeDrawerOpen = it },
+                onPartnerClick = { navController.navigate("manager_dashboard") },
                 selectedCity = selectedCity,
                 onCategoryClick = { category ->
                     when (category) {
@@ -130,10 +193,18 @@ fun AppNavigation(
                     }
                 },
                 onBottomNavigationClick = { item ->
-                    when (item) {
-                        "My Bookings" -> navController.navigate("bookings")
-                        "Profile" -> navController.navigate("profile")
-                        "Search" -> navController.navigate("search/all")
+                    val destination = when (item) {
+                        "My Bookings" -> "bookings"
+                        "Profile" -> "profile"
+                        "Search" -> "search/all"
+                        else -> "home"
+                    }
+                    navController.navigate(destination) {
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
                     }
                 }
             )
@@ -142,10 +213,28 @@ fun AppNavigation(
         composable("location_selection") {
             LocationSelectionScreen(
                 selectedCity = selectedCity,
-                onBackClick = { navController.popBackStack() },
+                onBackClick = { 
+                    if (selectedCity.isBlank()) {
+                        showForcedLocationDialog = true
+                    } else {
+                        navController.popBackStack() 
+                    }
+                },
                 onCitySelected = { city ->
                     selectedCity = city
-                    navController.popBackStack()
+                    hasCompletedOnboarding = true
+                    FakeData.currentUser = FakeData.currentUser.copy(city = city)
+                    locationPreferences.edit()
+                        .putString("selected_city", city)
+                        .putBoolean("onboarding_completed", true)
+                        .apply()
+                    if (navController.previousBackStackEntry == null || currentRoute == "location_selection") {
+                        navController.navigate("home") {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    } else {
+                        navController.popBackStack()
+                    }
                 }
             )
         }
@@ -169,10 +258,18 @@ fun AppNavigation(
                     }
                 },
                 onBottomNavigationClick = { item ->
-                    when (item) {
-                        "Home" -> navController.navigate("home")
-                        "My Bookings" -> navController.navigate("bookings")
-                        "Profile" -> navController.navigate("profile")
+                    val destination = when (item) {
+                        "Home" -> "home"
+                        "My Bookings" -> "bookings"
+                        "Profile" -> "profile"
+                        else -> "search/all"
+                    }
+                    navController.navigate(destination) {
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
                     }
                 }
             )
@@ -215,10 +312,18 @@ fun AppNavigation(
             BookingScreen(
                 onBackClick = { navController.popBackStack() },
                 onBottomNavigationClick = { item ->
-                    when (item) {
-                        "Home" -> navController.navigate("home")
-                        "Profile" -> navController.navigate("profile")
-                        "Search" -> navController.navigate("search/all")
+                    val destination = when (item) {
+                        "Home" -> "home"
+                        "Profile" -> "profile"
+                        "Search" -> "search/all"
+                        else -> "bookings"
+                    }
+                    navController.navigate(destination) {
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
                     }
                 },
                 onViewTicketClick = { booking ->
@@ -240,20 +345,30 @@ fun AppNavigation(
         composable("profile") {
             ProfileScreen(
                 onBottomNavigationClick = { item ->
-                    when (item) {
-                        "Home" -> navController.navigate("home")
-                        "My Bookings" -> navController.navigate("bookings")
-                        "Search" -> navController.navigate("search/all")
+                    val destination = when (item) {
+                        "Home" -> "home"
+                        "My Bookings" -> "bookings"
+                        "Search" -> "search/all"
+                        else -> "profile"
+                    }
+                    navController.navigate(destination) {
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
                     }
                 },
                 onBookingClick = {
                     navController.navigate("bookings")
                 },
-                onUsernameClick = {
-                    navController.navigate("test")
+                onUsernameClick = {},
+                onPartnerClick = {
+                    navController.navigate("manager_dashboard")
                 },
                 onLogoutClick = {
-                    onLoggedOut()
+                    isLoggedIn = false
+                    locationPreferences.edit().putBoolean("is_logged_in", false).apply()
                     navController.navigate("auth") {
                         popUpTo("home") { inclusive = true }
                     }
@@ -261,29 +376,8 @@ fun AppNavigation(
             )
         }
 
-        composable("test") {
-            TestScreen(onBackClick = { navController.popBackStack() })
-        }
-
-        composable("wishlist") {
-            WishlistScreen(
-                onBackClick = { navController.popBackStack() },
-                onItemClick = { item, category ->
-                    when (category) {
-                        "MOVIE" -> navController.navigate("movie_details/${item.id}")
-                        "SPORT" -> navController.navigate("turf_details/${item.id}")
-                        else -> navController.navigate("event_details/${item.id}")
-                    }
-                },
-                onBottomNavigationClick = { item ->
-                    when (item) {
-                        "Home" -> navController.navigate("home")
-                        "Search" -> navController.navigate("search/all")
-                        "My Bookings" -> navController.navigate("bookings")
-                        "Profile" -> navController.navigate("profile")
-                    }
-                }
-            )
+        composable("manager_dashboard") {
+            ManagerDashboardScreen(onBackClick = { navController.popBackStack() })
         }
 
         composable("turf_details/{sportId}") { backStackEntry ->
@@ -379,7 +473,7 @@ fun AppNavigation(
         }
         }
 
-        if (currentRoute in navbarRoutes && !isHomeDrawerOpen) {
+        if (currentRoute in navbarRoutes && !isHomeDrawerOpen && selectedCity.isNotBlank()) {
             val selectedItem = when (currentRoute) {
                 "home" -> "Home"
                 "search/{type}" -> "Search"
@@ -400,7 +494,9 @@ fun AppNavigation(
                         navController.navigate(destination) {
                             launchSingleTop = true
                             restoreState = true
-                            popUpTo("home") { saveState = true }
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
                         }
                     }
                 },
@@ -408,16 +504,22 @@ fun AppNavigation(
             )
         }
 
-        if (authState == AppAuthState.AuthenticatedOffline && currentRoute != "auth") {
-            Text(
-                text = "No internet. Signed-in session is kept; online data may be unavailable.",
-                color = Color.White,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxWidth()
-                    .background(Color(0xFF9A3412))
-                    .statusBarsPadding()
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
+        if (showForcedLocationDialog) {
+            AlertDialog(
+                onDismissRequest = { /* Don't allow dismiss */ },
+                title = { Text("Pick a city to continue", fontWeight = FontWeight.Bold) },
+                text = { Text("Before you go back, choose the city where you want to discover movies, sports, and events.") },
+                confirmButton = {
+                    Button(
+                        onClick = { showForcedLocationDialog = false },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFA580B))
+                    ) {
+                        Text("Select City")
+                    }
+                },
+                containerColor = Color(0xFF0B274F),
+                titleContentColor = Color.White,
+                textContentColor = Color(0xFFA8B8CF)
             )
         }
     }

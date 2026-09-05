@@ -1,7 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
-    id("org.jetbrains.kotlin.plugin.serialization")
 }
 
 android {
@@ -18,7 +17,6 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField("String", "API_BASE_URL", "\"http://98.130.20.52/api/v1/\"")
     }
 
     buildTypes {
@@ -34,7 +32,6 @@ android {
     }
     buildFeatures {
         compose = true
-        buildConfig = true
     }
 }
 
@@ -54,15 +51,8 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)
-    implementation(libs.androidx.datastore.preferences)
     implementation(libs.play.services.location)
 
-    // Networking
-    implementation(libs.retrofit)
-    implementation(libs.okhttp)
-    implementation(libs.logging.interceptor)
-    implementation(libs.kotlinx.serialization.json)
-    implementation(libs.retrofit2.kotlinx.serialization.converter)
     implementation(libs.zxing.core)
 
     testImplementation(libs.junit)

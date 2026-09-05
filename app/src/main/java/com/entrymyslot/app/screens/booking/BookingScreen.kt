@@ -74,6 +74,9 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.entrymyslot.app.EntryMySlotApp
+import com.entrymyslot.app.core.components.PremiumLoadingState
+import com.entrymyslot.app.core.components.PremiumErrorState
+import com.entrymyslot.app.core.components.PremiumEmptyState
 import com.entrymyslot.app.screens.home.GlowBackground
 import com.entrymyslot.app.data.model.Booking
 import com.entrymyslot.app.data.model.BookingStatus
@@ -98,17 +101,7 @@ fun BookingScreen(
     onBottomNavigationClick: (String) -> Unit = {},
     onViewTicketClick: (BookingItem) -> Unit = {}
 ) {
-    val app = LocalContext.current.applicationContext as EntryMySlotApp
-    val bookingViewModel: BookingViewModel = viewModel(
-        factory = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                BookingViewModel(
-                    bookingApi = app.appContainer.bookingApi,
-                    networkMonitor = app.appContainer.networkMonitor
-                ) as T
-        }
-    )
+    val bookingViewModel: BookingViewModel = viewModel()
     val state by bookingViewModel.uiState.collectAsStateWithLifecycle()
     val tabs = listOf("Upcoming", "Past")
     val filters = listOf("All", "Movies", "Turf", "Events")
@@ -664,65 +657,28 @@ private fun StatusBadge(status: BookingStatus) {
 
 @Composable
 private fun BookingLoadingState() {
-    Column(
+    PremiumLoadingState(
         modifier = Modifier.fillMaxWidth().padding(vertical = 72.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        CircularProgressIndicator(
-            color = BookingAccent,
-            strokeWidth = 3.dp,
-            modifier = Modifier.size(34.dp)
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(
-            text = "Loading your bookings…",
-            color = BookingSecondaryText,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium
-        )
-    }
+        message = "Loading your bookings..."
+    )
 }
 
 @Composable
 private fun BookingRefreshingState() {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        CircularProgressIndicator(
-            color = BookingAccent,
-            strokeWidth = 2.dp,
-            modifier = Modifier.size(16.dp)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text("Updating bookings…", color = BookingSecondaryText, fontSize = 10.sp)
-    }
+    PremiumLoadingState(
+        modifier = Modifier.fillMaxWidth().height(100.dp),
+        message = "Updating bookings..."
+    )
 }
 
 @Composable
 private fun BookingErrorState(message: String, onRetry: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 58.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(
-            imageVector = Icons.Outlined.SentimentDissatisfied,
-            contentDescription = null,
-            tint = BookingAccent,
-            modifier = Modifier.size(34.dp)
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(
-            text = message,
-            color = BookingPrimaryText,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center
-        )
-        Spacer(modifier = Modifier.height(14.dp))
-        BookingRetryButton(onRetry)
-    }
+    PremiumErrorState(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 58.dp),
+        title = "Booking Load Failed",
+        message = message,
+        onRetry = onRetry
+    )
 }
 
 @Composable
@@ -776,70 +732,11 @@ private fun EmptyState(
     title: String,
     subtitle: String
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 52.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box(
-            modifier = Modifier
-                .size(54.dp)
-                .clip(CircleShape)
-                .background(BookingSurfaceRaised.copy(alpha = 0.74f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.SentimentDissatisfied,
-                contentDescription = null,
-                tint = BookingSecondaryText,
-                modifier = Modifier.size(27.dp)
-            )
-        }
-        Spacer(modifier = Modifier.height(13.dp))
-        Text(
-            text = title,
-            color = BookingPrimaryText,
-            fontSize = 17.sp,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = subtitle,
-            color = BookingSecondaryText,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
-            textAlign = TextAlign.Center
-        )
-        Spacer(modifier = Modifier.height(18.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-            listOf("Movies", "Turf", "Events").forEach { category ->
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(9.dp))
-                        .background(BookingSurfaceRaised)
-                        .border(
-                            BorderStroke(1.dp, BookingBorder.copy(alpha = 0.72f)),
-                            RoundedCornerShape(9.dp)
-                        )
-                        .clickable(
-                            role = Role.Button,
-                            onClickLabel = "Explore $category",
-                            onClick = {}
-                        )
-                        .padding(horizontal = 11.dp, vertical = 8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = category,
-                        color = BookingAccent,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-        }
-    }
+    PremiumEmptyState(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 52.dp),
+        title = title,
+        message = subtitle
+    )
 }
 
 @Composable
@@ -905,7 +802,11 @@ private fun BookingNavigationItem(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.93f else 1f,
+        targetValue = if (isPressed) {
+            0.93f
+        } else {
+            1f
+        },
         animationSpec = tween(durationMillis = 100),
         label = "bookingNavScale"
     )
@@ -939,7 +840,11 @@ private fun BookingNavigationItem(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Icon(
-            imageVector = if (selected) selectedIcon else unselectedIcon,
+            imageVector = if (selected) {
+                selectedIcon
+            } else {
+                unselectedIcon
+            },
             contentDescription = label,
             tint = if (selected) BookingAccent else BookingMutedText,
             modifier = Modifier.size(19.dp)

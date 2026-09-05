@@ -82,6 +82,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.entrymyslot.app.EntryMySlotApp
 import com.entrymyslot.app.R
+import com.entrymyslot.app.core.components.PremiumLoadingState
+import com.entrymyslot.app.core.components.PremiumErrorState
+import com.entrymyslot.app.core.components.PremiumEmptyState
 import com.entrymyslot.app.screens.home.GlowBackground
 import com.entrymyslot.app.data.model.Turf
 
@@ -100,18 +103,7 @@ fun TurfScreen(
     onBookNowClick: () -> Unit = {},
     sportId: String
 ) {
-    val app = LocalContext.current.applicationContext as EntryMySlotApp
-    val turfViewModel: TurfViewModel = viewModel(
-        key = "turf_details_$sportId",
-        factory = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                TurfViewModel(
-                    detailsApi = app.appContainer.detailsApi,
-                    networkMonitor = app.appContainer.networkMonitor
-                ) as T
-        }
-    )
+    val turfViewModel: TurfViewModel = viewModel(key = "turf_details_$sportId")
     val state by turfViewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(sportId) {
@@ -197,13 +189,6 @@ private fun TurfDetailsContent(
                 Spacer(modifier = Modifier.height(20.dp))
             }
 
-            item(key = "interest") {
-                TurfInterestCard(
-                    turf
-                )
-                Spacer(modifier = Modifier.height(20.dp))
-            }
-
             item(key = "facilities") {
                 SectionHeading(title = "Facilities")
                 Spacer(modifier = Modifier.height(10.dp))
@@ -272,34 +257,6 @@ private fun TurfHeader(
 }
 
 @Composable
-private fun TurfInterestCard(venue: Turf) {
-    var interested by rememberSaveable(venue.id) { mutableStateOf(false) }
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = 18.dp)
-            .clip(RoundedCornerShape(14.dp)).background(TurfSurface)
-            .border(1.dp, TurfBorder, RoundedCornerShape(14.dp)).padding(11.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text("Interested in this venue?", color = TurfPrimaryText, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            Text(
-                "Get updates when slots or venue information changes.",
-                color = TurfSecondaryText,
-                fontSize = 10.sp,
-                lineHeight = 14.sp,
-                modifier = Modifier.padding(top = 2.dp, end = 6.dp)
-            )
-        }
-        Button(
-            onClick = { interested = !interested },
-            modifier = Modifier.height(34.dp),
-            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = if (interested) TurfSurfaceRaised else TurfAccent)
-        ) { Text(if (interested) "Interested ✓" else "Interested", color = TurfPrimaryText, fontSize = 10.sp) }
-    }
-}
-
-@Composable
 private fun TurfDetailLoadingState(onBackClick: () -> Unit) {
     Box(modifier = Modifier.fillMaxSize()) {
         GlowBackground()
@@ -310,14 +267,10 @@ private fun TurfDetailLoadingState(onBackClick: () -> Unit) {
                 .padding(16.dp)
                 .align(Alignment.TopStart)
         )
-        Column(
+        PremiumLoadingState(
             modifier = Modifier.align(Alignment.Center),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            CircularProgressIndicator(color = TurfAccent)
-            Spacer(modifier = Modifier.height(14.dp))
-            Text("Loading Turf details…", color = TurfSecondaryText)
-        }
+            message = "Loading venue details..."
+        )
     }
 }
 
@@ -336,28 +289,12 @@ private fun TurfDetailErrorState(
                 .padding(16.dp)
                 .align(Alignment.TopStart)
         )
-        Column(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .padding(horizontal = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                Icons.Outlined.SportsSoccer,
-                contentDescription = null,
-                tint = TurfAccent,
-                modifier = Modifier.size(42.dp)
-            )
-            Spacer(modifier = Modifier.height(14.dp))
-            Text(message, color = TurfPrimaryText, fontSize = 15.sp, lineHeight = 21.sp)
-            Spacer(modifier = Modifier.height(18.dp))
-            Button(
-                onClick = onRetry,
-                colors = ButtonDefaults.buttonColors(containerColor = TurfAccent)
-            ) {
-                Text("Retry", color = TurfPrimaryText)
-            }
-        }
+        PremiumErrorState(
+            modifier = Modifier.align(Alignment.Center).padding(horizontal = 32.dp),
+            title = "Venue Load Failed",
+            message = message,
+            onRetry = onRetry
+        )
     }
 }
 

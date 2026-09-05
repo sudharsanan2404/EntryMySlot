@@ -69,6 +69,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.entrymyslot.app.EntryMySlotApp
 import com.entrymyslot.app.R
+import com.entrymyslot.app.core.components.PremiumLoadingState
+import com.entrymyslot.app.core.components.PremiumErrorState
+import com.entrymyslot.app.core.components.PremiumEmptyState
 import com.entrymyslot.app.screens.home.GlowBackground
 import com.entrymyslot.app.data.model.Event
 
@@ -87,18 +90,7 @@ fun EventDetailsScreen(
     onBackClick: () -> Unit,
     onBookTicketsClick: () -> Unit
 ) {
-    val app = LocalContext.current.applicationContext as EntryMySlotApp
-    val eventViewModel: EventViewModel = viewModel(
-        key = "event_details_$eventId",
-        factory = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                EventViewModel(
-                    detailsApi = app.appContainer.detailsApi,
-                    networkMonitor = app.appContainer.networkMonitor
-                ) as T
-        }
-    )
+    val eventViewModel: EventViewModel = viewModel(key = "event_details_$eventId")
     val state by eventViewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(eventId) {
@@ -156,17 +148,12 @@ private fun EventDetailsContent(
 
 
             item(key = "interest") {
-                EventInterestCard(event)
             }
 
             item(key = "about_event") {
                 AboutEventSection(
                     description = event.description
                 )
-            }
-
-            item(key = "ticket_preview") {
-                TicketPreview(price = event.price)
             }
         }
 
@@ -280,34 +267,6 @@ private fun EventHero(
 }
 
 @Composable
-private fun EventInterestCard(event: Event) {
-    var interested by rememberSaveable(event.id) { mutableStateOf(false) }
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 5.dp)
-            .clip(RoundedCornerShape(14.dp)).background(DetailsSurface)
-            .border(1.dp, DetailsBorder, RoundedCornerShape(14.dp)).padding(11.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text("Interested in this event?", color = DetailsPrimaryText, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            Text(
-                "Get updates when details or booking information changes.",
-                color = DetailsSecondaryText,
-                fontSize = 10.sp,
-                lineHeight = 14.sp,
-                modifier = Modifier.padding(top = 2.dp, end = 6.dp)
-            )
-        }
-        Button(
-            onClick = { interested = !interested },
-            modifier = Modifier.height(34.dp),
-            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = if (interested) DetailsSurfaceRaised else DetailsAccent)
-        ) { Text(if (interested) "Interested ✓" else "Interested", color = DetailsPrimaryText, fontSize = 10.sp) }
-    }
-}
-
-@Composable
 private fun EventDetailLoadingState(onBackClick: () -> Unit) {
     Box(modifier = Modifier.fillMaxSize()) {
         GlowBackground()
@@ -318,14 +277,10 @@ private fun EventDetailLoadingState(onBackClick: () -> Unit) {
                 .padding(16.dp)
                 .align(Alignment.TopStart)
         )
-        Column(
+        PremiumLoadingState(
             modifier = Modifier.align(Alignment.Center),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            CircularProgressIndicator(color = DetailsAccent)
-            Spacer(modifier = Modifier.height(14.dp))
-            Text("Loading event details…", color = DetailsSecondaryText)
-        }
+            message = "Loading event details..."
+        )
     }
 }
 
@@ -344,20 +299,12 @@ private fun EventDetailErrorState(
                 .padding(16.dp)
                 .align(Alignment.TopStart)
         )
-        Column(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .padding(horizontal = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(Icons.Outlined.Event, contentDescription = null, tint = DetailsAccent, modifier = Modifier.size(42.dp))
-            Spacer(modifier = Modifier.height(14.dp))
-            Text(message, color = DetailsPrimaryText, fontSize = 15.sp, lineHeight = 21.sp)
-            Spacer(modifier = Modifier.height(18.dp))
-            Button(onClick = onRetry, colors = ButtonDefaults.buttonColors(containerColor = DetailsAccent)) {
-                Text("Retry", color = DetailsPrimaryText)
-            }
-        }
+        PremiumErrorState(
+            modifier = Modifier.align(Alignment.Center).padding(horizontal = 32.dp),
+            title = "Event Load Failed",
+            message = message,
+            onRetry = onRetry
+        )
     }
 }
 
@@ -613,58 +560,6 @@ private fun AboutEventSection(description: String) {
             fontSize = 14.sp,
             lineHeight = 22.sp
         )
-    }
-}
-
-@Composable
-private fun TicketPreview(price: String) {
-    DetailsSection(title = "Ticket Information") {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(18.dp))
-                .background(DetailsSurface)
-                .border(
-                    BorderStroke(1.dp, DetailsBorder.copy(alpha = 0.82f)),
-                    RoundedCornerShape(18.dp)
-                )
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(46.dp)
-                    .clip(RoundedCornerShape(13.dp))
-                    .background(DetailsAccent.copy(alpha = 0.14f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.ConfirmationNumber,
-                    contentDescription = null,
-                    tint = DetailsAccent,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            Spacer(modifier = Modifier.width(13.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "AVAILABLE TICKETS",
-                    color = DetailsMutedText,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.9.sp
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = price,
-                    color = DetailsAccent,
-                    fontSize = 19.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
     }
 }
 

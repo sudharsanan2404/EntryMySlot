@@ -75,6 +75,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.entrymyslot.app.EntryMySlotApp
 import com.entrymyslot.app.R
+import com.entrymyslot.app.core.components.PremiumLoadingState
+import com.entrymyslot.app.core.components.PremiumErrorState
+import com.entrymyslot.app.core.components.PremiumEmptyState
 import com.entrymyslot.app.screens.home.GlowBackground
 import com.entrymyslot.app.data.model.Movie
 
@@ -93,18 +96,7 @@ fun MovieDetailsScreen(
     onBackClick: () -> Unit,
     onBookClick: () -> Unit
 ) {
-    val app = LocalContext.current.applicationContext as EntryMySlotApp
-    val movieViewModel: MovieViewModel = viewModel(
-        key = "movie_details_$movieId",
-        factory = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                MovieViewModel(
-                    detailsApi = app.appContainer.detailsApi,
-                    networkMonitor = app.appContainer.networkMonitor
-                ) as T
-        }
-    )
+    val movieViewModel: MovieViewModel = viewModel(key = "movie_details_$movieId")
     val state by movieViewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(movieId) {
@@ -151,7 +143,6 @@ private fun MovieDetailsContent(
             }
 
             item(key = "interest") {
-                MovieInterestCard(movie)
             }
 
             if (movie.castNames.isNotEmpty() || !movie.director.isNullOrBlank()) {
@@ -284,40 +275,6 @@ private fun PremiumBackButton(
             tint = MovieWhite,
             modifier = Modifier.size(21.dp)
         )
-    }
-}
-
-@Composable
-private fun MovieInterestCard(movie: Movie) {
-    var interested by rememberSaveable(movie.id) { mutableStateOf(false) }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 3.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(MovieBlueRaised)
-            .border(1.dp, MovieBlueEdge.copy(alpha = 0.38f), RoundedCornerShape(14.dp))
-            .padding(11.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text("Interested in this movie?", color = MovieWhite, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            Text(
-                "Get updates when showtimes or booking information changes.",
-                color = MovieSecondary,
-                fontSize = 10.sp,
-                lineHeight = 14.sp,
-                modifier = Modifier.padding(top = 2.dp, end = 6.dp)
-            )
-        }
-        Button(
-            onClick = { interested = !interested },
-            modifier = Modifier.height(34.dp),
-            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = if (interested) MovieBlue else MovieOrange
-            )
-        ) { Text(if (interested) "Interested ✓" else "Interested", color = MovieWhite, fontSize = 10.sp) }
     }
 }
 
@@ -560,14 +517,10 @@ private fun MovieDetailLoadingState(onBackClick: () -> Unit) {
                 .padding(16.dp)
                 .align(Alignment.TopStart)
         )
-        Column(
+        PremiumLoadingState(
             modifier = Modifier.align(Alignment.Center),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            CircularProgressIndicator(color = MovieOrange)
-            Spacer(modifier = Modifier.height(14.dp))
-            Text("Loading movie details…", color = MovieSecondary)
-        }
+            message = "Loading movie details..."
+        )
     }
 }
 
@@ -586,20 +539,12 @@ private fun MovieDetailErrorState(
                 .padding(16.dp)
                 .align(Alignment.TopStart)
         )
-        Column(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .padding(horizontal = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(Icons.Outlined.Movie, contentDescription = null, tint = MovieOrange, modifier = Modifier.size(42.dp))
-            Spacer(modifier = Modifier.height(14.dp))
-            Text(message, color = MovieWhite, fontSize = 15.sp, lineHeight = 21.sp)
-            Spacer(modifier = Modifier.height(18.dp))
-            Button(onClick = onRetry, colors = ButtonDefaults.buttonColors(containerColor = MovieOrange)) {
-                Text("Retry", color = MovieWhite)
-            }
-        }
+        PremiumErrorState(
+            modifier = Modifier.align(Alignment.Center).padding(horizontal = 32.dp),
+            title = "Movie Load Failed",
+            message = message,
+            onRetry = onRetry
+        )
     }
 }
 

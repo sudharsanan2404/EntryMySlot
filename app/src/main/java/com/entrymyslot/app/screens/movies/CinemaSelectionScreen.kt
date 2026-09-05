@@ -108,9 +108,6 @@ fun CinemaSelectionScreen(
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
                 MovieBookingViewModel(
-                    bookingApi = app.appContainer.bookingApi,
-                    detailsApi = app.appContainer.detailsApi,
-                    networkMonitor = app.appContainer.networkMonitor,
                     pendingCheckoutStore = app.appContainer.pendingCheckoutStore
                 ) as T
         }

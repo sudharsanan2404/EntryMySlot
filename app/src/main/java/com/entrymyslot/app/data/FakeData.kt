@@ -23,17 +23,15 @@ import com.entrymyslot.app.data.model.TicketTier
 import com.entrymyslot.app.data.model.Turf
 import com.entrymyslot.app.data.model.TurfSlot
 import com.entrymyslot.app.data.model.UserProfile
-import com.entrymyslot.app.data.model.WishlistItem
 
-/** Temporary in-memory database used until feature repositories are backed by the API. */
+/** Static preview content for the navigation-only frontend. */
 object FakeData {
-    val wishlistItems = mutableStateListOf<WishlistItem>()
-    val currentUser = UserProfile(
+    var currentUser = UserProfile(
         id = "user_001",
         fullName = "Navaneethan",
         email = "navaneethan@email.com",
         phone = "+91 98765 43210",
-        city = "Chennai",
+        city = "",
         memberSince = "August 2026"
     )
 
@@ -171,11 +169,6 @@ object FakeData {
     fun getCinemaById(id: String): Cinema? = cinemas.find { it.id == id }
     fun getItemById(id: String): CatalogItem? = getMovieById(id) ?: getTurfById(id) ?: getEventById(id)
     fun getBookingsForUser(userId: String): List<Booking> = bookings.filter { it.userId == userId }
-    fun isWishlisted(itemId: String): Boolean = wishlistItems.any { it.itemId == itemId }
-    fun toggleWishlist(itemId: String, type: BookingType) {
-        val existing = wishlistItems.indexOfFirst { it.itemId == itemId }
-        if (existing >= 0) wishlistItems.removeAt(existing) else wishlistItems.add(WishlistItem(itemId, type))
-    }
     fun getShows(movieId: String, cinemaId: String): List<MovieShow> = movieShows.filter { it.movieId == movieId && it.cinemaId == cinemaId }
     fun getSeats(showId: String): List<MovieSeat> = movieSeats.filter { it.showId == showId }
     fun getSlots(turfId: String, date: String? = null): List<TurfSlot> = turfSlots.filter {

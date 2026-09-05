@@ -29,7 +29,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
@@ -45,7 +44,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.entrymyslot.app.EntryMySlotApp
 import com.entrymyslot.app.R
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
@@ -123,17 +121,7 @@ fun AuthScreen(
     var fieldErrors by remember { mutableStateOf(AuthFormErrors()) }
     
     val focusManager = LocalFocusManager.current
-    val context = LocalContext.current
-    val app = context.applicationContext as EntryMySlotApp
-
-    val viewModel: AuthScreenViewModel = viewModel(
-        factory = object : androidx.lifecycle.ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                return AuthScreenViewModel(repository = app.appContainer.authRepository) as T
-            }
-        }
-    )
+    val viewModel: AuthScreenViewModel = viewModel()
 
     val uiState by viewModel.uiState.collectAsState()
     var showSuccessOverlay by remember { mutableStateOf(false) }
@@ -303,7 +291,7 @@ fun AuthScreen(
                                     confirmPasswordVisible = confirmPasswordVisible,
                                     onConfirmPasswordVisibilityChange = { confirmPasswordVisible = !confirmPasswordVisible },
                                     fieldErrors = fieldErrors,
-                                    serverError = uiState.errorMessage,
+                                    formError = uiState.errorMessage,
                                     isLoading = uiState.isLoading,
                                     onForgotPassword = {
                                         showPasswordRecovery = true
@@ -627,7 +615,7 @@ private fun LoginRegisterView(
     confirmPasswordVisible: Boolean,
     onConfirmPasswordVisibilityChange: () -> Unit,
     fieldErrors: AuthFormErrors,
-    serverError: String?,
+    formError: String?,
     isLoading: Boolean,
     onForgotPassword: () -> Unit,
     onTabSwitch: (Boolean) -> Unit,
@@ -698,7 +686,7 @@ private fun LoginRegisterView(
                         .padding(top = 8.dp)
                         .clickable(onClick = onForgotPassword)
                 )
-                FieldError(serverError)
+                FieldError(formError)
             } else {
                 AuthLabel("FULL NAME")
                 Spacer(modifier = Modifier.height(6.dp))
@@ -752,7 +740,7 @@ private fun LoginRegisterView(
                     onPasswordVisibilityChange = onConfirmPasswordVisibilityChange,
                     error = fieldErrors.confirmPassword
                 )
-                FieldError(serverError)
+                FieldError(formError)
             }
 
             Spacer(modifier = Modifier.height(20.dp))

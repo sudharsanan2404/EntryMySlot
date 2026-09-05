@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -56,8 +57,8 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.ConfirmationNumber
 import androidx.compose.material.icons.outlined.Event
-import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Menu
@@ -74,6 +75,7 @@ import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.Icon
@@ -83,6 +85,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -128,6 +131,9 @@ import com.entrymyslot.app.data.model.AppNotification
 import com.entrymyslot.app.data.model.CatalogItem
 import com.entrymyslot.app.data.model.HomePromotion
 import com.entrymyslot.app.data.model.NotificationKind
+import com.entrymyslot.app.core.components.PremiumLoadingState
+import com.entrymyslot.app.core.components.PremiumErrorState
+import com.entrymyslot.app.core.components.PremiumEmptyState
 import com.entrymyslot.app.data.model.PromotionDestination
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -185,20 +191,13 @@ fun HomeScreen(
     onSportClick: (PopularEvent) -> Unit = {},
     onMovieBookClick: (PopularEvent) -> Unit = {},
     onSearchClick: () -> Unit = {},
-    onWishlistClick: () -> Unit = {},
     onLocationClick: () -> Unit = {},
     onDrawerVisibilityChange: (Boolean) -> Unit = {},
+    onPartnerClick: () -> Unit = {},
     selectedCity: String = FakeData.currentUser.city
 ) {
     val context = LocalContext.current
-    val app = context.applicationContext as EntryMySlotApp
-    val homeViewModel: HomeViewModel = viewModel(
-        factory = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                HomeViewModel(app.appContainer.homeApi) as T
-        }
-    )
+    val homeViewModel: HomeViewModel = viewModel()
     val homeState by homeViewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(selectedCity) {
@@ -221,9 +220,9 @@ fun HomeScreen(
         onSportClick = onSportClick,
         onMovieBookClick = onMovieBookClick,
         onSearchClick = onSearchClick,
-        onWishlistClick = onWishlistClick,
         onLocationClick = onLocationClick,
-        onDrawerVisibilityChange = onDrawerVisibilityChange
+        onDrawerVisibilityChange = onDrawerVisibilityChange,
+        onPartnerClick = onPartnerClick
     )
 }
 
@@ -278,15 +277,16 @@ internal fun PremiumHomeScreen(
     onSportClick: (PopularEvent) -> Unit,
     onMovieBookClick: (PopularEvent) -> Unit,
     onSearchClick: () -> Unit,
-    onWishlistClick: () -> Unit,
     onLocationClick: () -> Unit,
-    onDrawerVisibilityChange: (Boolean) -> Unit
+    onDrawerVisibilityChange: (Boolean) -> Unit,
+    onPartnerClick: () -> Unit
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var selectedBottomItem by remember { mutableStateOf("Home") }
     var showNotifications by remember { mutableStateOf(false) }
+    var showHelpSupport by remember { mutableStateOf(false) }
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
@@ -306,7 +306,8 @@ internal fun PremiumHomeScreen(
         snapshotFlow {
             drawerState.currentValue != DrawerValue.Closed ||
                 drawerState.targetValue != DrawerValue.Closed ||
-                showNotifications
+                showNotifications ||
+                showHelpSupport
         }.collect(onDrawerVisibilityChange)
     }
     ModalNavigationDrawer(
@@ -321,9 +322,15 @@ internal fun PremiumHomeScreen(
                     scope.launch { drawerState.close() }
                     onBottomNavigationClick("My Bookings")
                 },
-                onWishlistClick = {
+                onHelpClick = {
+                    scope.launch {
+                        drawerState.close()
+                        showHelpSupport = true
+                    }
+                },
+                onPartnerClick = {
                     scope.launch { drawerState.close() }
-                    onWishlistClick()
+                    onPartnerClick()
                 }
             )
         }
@@ -365,6 +372,20 @@ internal fun PremiumHomeScreen(
             onClear = { id -> FakeData.notifications.removeAll { it.id == id } },
             onClearAll = FakeData.notifications::clear,
             onDismiss = { showNotifications = false }
+        )
+    }
+    if (showHelpSupport) {
+        HelpSupportDialog(
+            onDismiss = { showHelpSupport = false },
+            onSend = { message ->
+                val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_SUBJECT, "EntryMySlot Help & Support")
+                    putExtra(Intent.EXTRA_TEXT, message)
+                }
+                context.startActivity(Intent.createChooser(sendIntent, "Send support message"))
+                showHelpSupport = false
+            }
         )
     }
 }
@@ -488,87 +509,39 @@ private fun PremiumHomeContent(
 
 @Composable
 private fun HomeLoadingState() {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 54.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        CircularProgressIndicator(color = PremiumOrange)
-        Spacer(modifier = Modifier.height(14.dp))
-        Text("Loading latest Home content...", color = PremiumSecondary)
-    }
+    PremiumLoadingState(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 54.dp),
+        message = "Loading latest Home content..."
+    )
 }
 
 @Composable
 private fun HomeRefreshingState() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        CircularProgressIndicator(
-            color = PremiumOrange,
-            strokeWidth = 2.dp,
-            modifier = Modifier.size(18.dp)
-        )
-        Spacer(modifier = Modifier.width(10.dp))
-        Text("Refreshing latest content...", color = PremiumSecondary, fontSize = 12.sp)
-    }
+    PremiumLoadingState(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        message = "Refreshing latest content..."
+    )
 }
 
 @Composable
 private fun HomeErrorState(message: String, onRetry: () -> Unit) {
-    Surface(
-        color = PremiumSurface,
-        shape = RoundedCornerShape(16.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 10.dp)
-    ) {
-        Column(modifier = Modifier.padding(18.dp)) {
-            Text("Home content unavailable", color = PremiumWhite, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(message, color = PremiumSecondary, fontSize = 13.sp)
-            Spacer(modifier = Modifier.height(14.dp))
-            Button(
-                onClick = onRetry,
-                colors = ButtonDefaults.buttonColors(containerColor = PremiumOrange)
-            ) {
-                Text("Retry")
-            }
-        }
-    }
+    PremiumErrorState(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+        title = "Home content unavailable",
+        message = message,
+        onRetry = onRetry
+    )
 }
 
 @Composable
 private fun HomeEmptyState(onRetry: () -> Unit) {
-    Surface(
-        color = PremiumSurface,
-        shape = RoundedCornerShape(16.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 10.dp)
-    ) {
-        Column(modifier = Modifier.padding(18.dp)) {
-            Text("Nothing to show yet", color = PremiumWhite, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                "No active events, movies, sports or promotions are available.",
-                color = PremiumSecondary,
-                fontSize = 13.sp
-            )
-            Spacer(modifier = Modifier.height(14.dp))
-            Button(
-                onClick = onRetry,
-                colors = ButtonDefaults.buttonColors(containerColor = PremiumOrange)
-            ) {
-                Text("Refresh")
-            }
-        }
-    }
+    PremiumEmptyState(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+        title = "Nothing to show yet",
+        message = "No active events, movies, sports or promotions are available.",
+        actionText = "Refresh",
+        onAction = onRetry
+    )
 }
 
 @Composable
@@ -1366,7 +1339,8 @@ private fun PremiumContentCard(
 private fun PremiumDrawer(
     onProfileClick: () -> Unit,
     onBookingsClick: () -> Unit,
-    onWishlistClick: () -> Unit
+    onHelpClick: () -> Unit,
+    onPartnerClick: () -> Unit
 ) {
     ModalDrawerSheet(
         modifier = Modifier.fillMaxHeight().width(318.dp),
@@ -1403,7 +1377,6 @@ private fun PremiumDrawer(
                 Text("YOUR ACCOUNT", color = PremiumMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, modifier = Modifier.padding(start = 13.dp, bottom = 4.dp))
                 DrawerItem("Profile", Icons.Outlined.AccountCircle, onProfileClick)
                 DrawerItem("Offers", Icons.Outlined.LocalOffer, onClick = {})
-                DrawerItem("Wishlist", Icons.Outlined.FavoriteBorder, onClick = onWishlistClick)
                 DrawerItem("My Bookings", Icons.Outlined.ConfirmationNumber, onBookingsClick)
 
                 Spacer(modifier = Modifier.height(26.dp))
@@ -1412,6 +1385,7 @@ private fun PremiumDrawer(
                 DrawerItem("Share", Icons.Outlined.Share, onClick = {})
                 DrawerItem("Rate Us", Icons.Outlined.Star, onClick = {})
                 DrawerItem("Terms & Policy", Icons.Outlined.Policy, onClick = {})
+                DrawerItem("Help & Support", Icons.Outlined.HelpOutline, onHelpClick)
 
                 Spacer(modifier = Modifier.weight(1f))
                 Column(
@@ -1444,7 +1418,7 @@ private fun PremiumDrawer(
                         modifier = Modifier.padding(top = 7.dp)
                     )
                     Button(
-                        onClick = {},
+                        onClick = onPartnerClick,
                         modifier = Modifier.fillMaxWidth().padding(top = 9.dp).height(38.dp),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = PremiumOrange),
@@ -1456,6 +1430,75 @@ private fun PremiumDrawer(
             }
         }
     }
+}
+
+@Composable
+private fun HelpSupportDialog(
+    onDismiss: () -> Unit,
+    onSend: (String) -> Unit
+) {
+    var message by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = PremiumSurface,
+        titleContentColor = PremiumWhite,
+        textContentColor = PremiumSecondary,
+        title = {
+            Text("Help & Support", fontWeight = FontWeight.Bold)
+        },
+        text = {
+            Column {
+                Text(
+                    "Tell us what you need help with. You can choose an app to send your message.",
+                    color = PremiumSecondary,
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp
+                )
+                Spacer(modifier = Modifier.height(14.dp))
+                OutlinedTextField(
+                    value = message,
+                    onValueChange = { if (it.length <= 1000) message = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 4,
+                    maxLines = 7,
+                    placeholder = { Text("Type your message here...") },
+                    shape = RoundedCornerShape(14.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = PremiumWhite,
+                        unfocusedTextColor = PremiumWhite,
+                        focusedBorderColor = PremiumOrange,
+                        unfocusedBorderColor = PremiumBlueEdge.copy(alpha = 0.5f),
+                        focusedPlaceholderColor = PremiumMuted,
+                        unfocusedPlaceholderColor = PremiumMuted,
+                        cursorColor = PremiumOrange
+                    )
+                )
+                Text(
+                    "${message.length}/1000",
+                    modifier = Modifier.fillMaxWidth().padding(top = 5.dp),
+                    color = PremiumMuted,
+                    fontSize = 10.sp,
+                    textAlign = TextAlign.End
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = PremiumSecondary)
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onSend(message.trim()) },
+                enabled = message.isNotBlank(),
+                colors = ButtonDefaults.buttonColors(containerColor = PremiumOrange),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Send Message")
+            }
+        }
+    )
 }
 
 @Composable

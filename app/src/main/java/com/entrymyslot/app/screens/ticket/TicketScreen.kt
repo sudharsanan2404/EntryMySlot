@@ -105,8 +105,6 @@ fun TicketScreen(
                     itemId = itemId,
                     bookingKey = bookingKey,
                     ticketUuid = ticketUuid,
-                    bookingApi = app.appContainer.bookingApi,
-                    detailsApi = app.appContainer.detailsApi,
                     pendingCheckoutStore = app.appContainer.pendingCheckoutStore
                 ) as T
         }
