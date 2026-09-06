@@ -34,11 +34,14 @@ fun PremiumLoadingState(
     message: String = "Getting things ready"
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "loading")
-    Column(
-        modifier = modifier.fillMaxWidth().padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
     ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.Bottom) {
             repeat(3) { index ->
                 val dotAlpha by infiniteTransition.animateFloat(
@@ -66,6 +69,7 @@ fun PremiumLoadingState(
             fontWeight = FontWeight.Medium,
             textAlign = TextAlign.Center
         )
+        }
     }
 }
 

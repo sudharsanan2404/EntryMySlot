@@ -1,5 +1,7 @@
 package com.entrymyslot.app.screens.payment
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -27,6 +29,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -45,6 +49,8 @@ import com.entrymyslot.app.screens.home.GlowBackground
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.entrymyslot.app.EntryMySlotApp
 import com.entrymyslot.app.data.FakeData
+import com.entrymyslot.app.data.booking.AuthoritativeBillDto
+import com.entrymyslot.app.data.booking.formatPaiseAsRupees
 import com.entrymyslot.app.data.model.BookingDetails
 import com.entrymyslot.app.data.model.BookingType
 import com.entrymyslot.app.data.model.PaymentMethod
@@ -78,9 +84,7 @@ fun PaymentScreen(
         factory = object : androidx.lifecycle.ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T =
-                PaymentViewModel(
-                    pendingCheckoutStore = app.appContainer.pendingCheckoutStore
-                ) as T
+                PaymentViewModel(app.appContainer.pendingCheckoutStore) as T
         }
     )
     val uiState by viewModel.uiState.collectAsState()
@@ -88,14 +92,17 @@ fun PaymentScreen(
     var selectionError by remember { mutableStateOf<String?>(null) }
 
     val ticketPrice = bookingDetails.baseAmount
-    val convenienceFee = bookingDetails.convenienceFee
+    val bookingFee = bookingDetails.bookingFee
+    val serviceCharge = bookingDetails.serviceCharge
     val taxes = bookingDetails.taxes
-    val totalAmount = ticketPrice + convenienceFee + taxes
+    val pendingCheckout = app.appContainer.pendingCheckoutStore.current.value
+    val totalAmount = pendingCheckout?.bill?.totalPaise?.let { it / 100 } ?: bookingDetails.payableAmount
+    val bill = pendingCheckout?.bill
     val methods = FakeData.paymentMethods
     val launchTestPayment = {
         if (selectedMethodId == "upi") {
             selectionError = null
-            viewModel.completeFakePayment()
+            viewModel.completePayment()
         } else {
             selectionError = "Select UPI to run the test payment flow."
         }
@@ -154,9 +161,11 @@ fun PaymentScreen(
                     OrderSummaryCard(
                         bookingDetails = bookingDetails,
                         ticketPrice = ticketPrice,
-                        convenienceFee = convenienceFee,
+                        bookingFee = bookingFee,
+                        serviceCharge = serviceCharge,
                         taxes = taxes,
-                        totalAmount = totalAmount
+                        totalAmount = totalAmount,
+                        bill = bill
                     )
                 }
                 item {
@@ -309,9 +318,11 @@ private fun SelectionCircle(isSelected: Boolean) {
 private fun OrderSummaryCard(
     bookingDetails: BookingDetails,
     ticketPrice: Int,
-    convenienceFee: Int,
+    bookingFee: Int,
+    serviceCharge: Int,
     taxes: Int,
-    totalAmount: Int
+    totalAmount: Int,
+    bill: AuthoritativeBillDto?
 ) {
     Card(
         shape = RoundedCornerShape(18.dp),
@@ -320,7 +331,7 @@ private fun OrderSummaryCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 10.dp)
     ) {
         Column(modifier = Modifier.padding(18.dp)) {
-            Text("ORDER SUMMARY", color = PaymentGray, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
+            Text("BILL SUMMARY", color = PaymentGray, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
             Spacer(modifier = Modifier.height(10.dp))
             Text(bookingDetails.title, color = PaymentWhite, fontSize = 19.sp, fontWeight = FontWeight.Bold, lineHeight = 24.sp)
             Spacer(modifier = Modifier.height(5.dp))
@@ -332,9 +343,16 @@ private fun OrderSummaryCard(
                 lineHeight = 15.sp
             )
             Spacer(modifier = Modifier.height(17.dp))
-            SummaryRow(summaryItemLabel(bookingDetails.category), "₹$ticketPrice")
-            SummaryRow("Convenience fee", "₹$convenienceFee")
-            SummaryRow("Taxes", "₹$taxes")
+            if (bill != null) {
+                SummaryRow(summaryItemLabel(bookingDetails.category), formatPaiseAsRupees(bill.subtotalPaise))
+                if (bill.platformFeePaise > 0) SummaryRow("Booking charge", formatPaiseAsRupees(bill.platformFeePaise))
+                if (bill.gstTotalPaise > 0) SummaryRow("GST", formatPaiseAsRupees(bill.gstTotalPaise))
+            } else {
+                SummaryRow(summaryItemLabel(bookingDetails.category), "₹$ticketPrice")
+                if (bookingFee > 0) SummaryRow("Online booking fee", "₹$bookingFee")
+                if (serviceCharge > 0) SummaryRow("Venue service charge", "₹$serviceCharge")
+                if (taxes > 0) SummaryRow("GST", "₹$taxes")
+            }
             HorizontalDivider(modifier = Modifier.padding(vertical = 14.dp), color = PaymentDivider)
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -342,7 +360,7 @@ private fun OrderSummaryCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text("Amount payable", color = PaymentWhite, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                Text("₹$totalAmount", color = PaymentOrange, fontSize = 25.sp, fontWeight = FontWeight.ExtraBold)
+                Text(if (bill != null) formatPaiseAsRupees(bill.totalPaise) else "₹$totalAmount", color = PaymentOrange, fontSize = 25.sp, fontWeight = FontWeight.ExtraBold)
             }
         }
     }
@@ -541,6 +559,17 @@ private fun PaymentSuccessfulScreen(
     paymentMethod: String,
     onViewTicket: () -> Unit
 ) {
+    var revealTick by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { revealTick = true }
+    val tickScale by animateFloatAsState(
+        targetValue = if (revealTick) 1f else .35f,
+        animationSpec = spring(dampingRatio = .58f, stiffness = 280f),
+        label = "successTickScale"
+    )
+    val tickAlpha by animateFloatAsState(
+        targetValue = if (revealTick) 1f else 0f,
+        label = "successTickAlpha"
+    )
     val reference = remember(bookingDetails.title) {
         bookingDetails.title.hashCode().toUInt().toString(16).uppercase().padStart(8, '0').take(8)
     }
@@ -568,6 +597,8 @@ private fun PaymentSuccessfulScreen(
             Box(
                 modifier = Modifier
                     .size(82.dp)
+                    .scale(tickScale)
+                    .alpha(tickAlpha)
                     .shadow(12.dp, CircleShape, ambientColor = PaymentGreen, spotColor = PaymentGreen)
                     .clip(CircleShape)
                     .background(PaymentGreen.copy(alpha = .14f))

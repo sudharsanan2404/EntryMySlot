@@ -42,7 +42,8 @@ data class CastMember(
 data class Cinema(
     val id: String,
     val name: String,
-    val location: String
+    val location: String,
+    val facilities: List<String> = emptyList()
 )
 
 data class MovieShow(

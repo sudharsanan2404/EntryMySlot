@@ -45,7 +45,7 @@ import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
+import com.entrymyslot.app.core.components.PremiumLoadingState
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -85,6 +85,8 @@ import com.entrymyslot.app.EntryMySlotApp
 import com.entrymyslot.app.R
 import com.entrymyslot.app.core.components.TermsAndPolicyBottomSheet
 import com.entrymyslot.app.screens.home.GlowBackground
+import com.entrymyslot.app.data.booking.AuthoritativeBillDto
+import com.entrymyslot.app.data.booking.formatPaiseAsRupees
 import com.entrymyslot.app.data.model.Event
 import com.entrymyslot.app.data.model.TicketTier
 
@@ -109,9 +111,7 @@ fun EventBookingScreen(
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                EventBookingViewModel(
-                    pendingCheckoutStore = app.appContainer.pendingCheckoutStore
-                ) as T
+                EventBookingViewModel(app.appContainer.pendingCheckoutStore) as T
         }
     )
     BackHandler { eventBookingViewModel.releaseAndGoBack(onBackClick) }
@@ -147,9 +147,7 @@ fun EventBookingScreen(
             )
 
             when {
-                state.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = BookingAccent)
-                }
+                state.isLoading -> PremiumLoadingState(modifier = Modifier.fillMaxSize())
                 state.event == null -> EventBookingError(
                     state.errorMessage ?: "Event booking is unavailable.",
                     eventBookingViewModel::retry
@@ -205,62 +203,18 @@ fun EventBookingScreen(
                     )
                 }
 
-                if (state.attendees.isNotEmpty()) {
-                    item(key = "attendee_heading") {
-                        Text(
-                            "Attendee details",
-                            color = BookingPrimaryText,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
-                    }
-                    items(state.attendees.size, key = { "attendee_$it" }) { index ->
-                        val attendee = state.attendees[index]
-                        Column(
-                            Modifier.fillMaxWidth()
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(BookingSurface)
-                                .border(1.dp, BookingBorder, RoundedCornerShape(16.dp))
-                                .padding(14.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text("Attendee ${index + 1}", color = BookingSecondaryText, fontWeight = FontWeight.SemiBold)
-                            OutlinedTextField(
-                                value = attendee.fullName,
-                                onValueChange = { eventBookingViewModel.updateAttendee(index, fullName = it) },
-                                label = { Text("Full name") },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = eventFieldColors()
-                            )
-                            OutlinedTextField(
-                                value = attendee.phone,
-                                onValueChange = { eventBookingViewModel.updateAttendee(index, phone = it) },
-                                label = { Text("Phone") },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = eventFieldColors()
-                            )
-                        }
-                    }
-                }
-
                 state.validationMessage?.let { validation ->
                     item(key = "validation") {
                         Text(validation, color = Color(0xFFFFC4B0), fontSize = 13.sp)
                     }
                 }
 
-                if (totalTickets > 0) {
+                if (totalTickets > 0 && state.bill != null) {
                     item(key = "booking_summary") {
                         BookingSummary(
                             tiers = tiers,
                             selectedQuantities = selectedQuantities,
-                            subtotal = subtotal,
-                            fee = 0,
-                            taxes = 0,
-                            total = subtotal
+                            bill = state.bill!!
                         )
                     }
                 }
@@ -715,10 +669,7 @@ private fun QuantitySelector(
 private fun BookingSummary(
     tiers: List<TicketTier>,
     selectedQuantities: Map<String, Int>,
-    subtotal: Int,
-    fee: Int,
-    taxes: Int,
-    total: Int
+    bill: AuthoritativeBillDto
 ) {
     Column(modifier = Modifier.padding(top = 8.dp)) {
         Text(
@@ -773,9 +724,13 @@ private fun BookingSummary(
             }
 
             SummaryDivider()
-            SummaryPriceRow(label = "Subtotal", value = "₹$subtotal")
-            SummaryPriceRow(label = "Convenience Fee", value = "₹$fee")
-            SummaryPriceRow(label = "Taxes", value = "₹$taxes")
+            SummaryPriceRow(label = "Subtotal", value = formatPaiseAsRupees(bill.subtotalPaise))
+            if (bill.platformFeePaise > 0) {
+                SummaryPriceRow(label = "Booking charge", value = formatPaiseAsRupees(bill.platformFeePaise))
+            }
+            if (bill.gstTotalPaise > 0) {
+                SummaryPriceRow(label = "GST", value = formatPaiseAsRupees(bill.gstTotalPaise))
+            }
             SummaryDivider()
 
             Row(
@@ -790,7 +745,7 @@ private fun BookingSummary(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "₹$total",
+                    text = formatPaiseAsRupees(bill.totalPaise),
                     color = BookingAccent,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.ExtraBold

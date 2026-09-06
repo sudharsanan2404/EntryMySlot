@@ -3,9 +3,11 @@ package com.entrymyslot.app.screens.movies
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -27,17 +29,17 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.outlined.Movie
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -65,6 +67,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -74,6 +77,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.entrymyslot.app.EntryMySlotApp
+import com.entrymyslot.app.data.FakeData
+import com.entrymyslot.app.data.booking.hasAirConditioning
 import com.entrymyslot.app.R
 import com.entrymyslot.app.core.components.PremiumLoadingState
 import com.entrymyslot.app.core.components.PremiumErrorState
@@ -96,7 +101,15 @@ fun MovieDetailsScreen(
     onBackClick: () -> Unit,
     onBookClick: () -> Unit
 ) {
-    val movieViewModel: MovieViewModel = viewModel(key = "movie_details_$movieId")
+    val app = LocalContext.current.applicationContext as EntryMySlotApp
+    val movieViewModel: MovieViewModel = viewModel(
+        key = "movie_details_$movieId",
+        factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                MovieViewModel() as T
+        }
+    )
     val state by movieViewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(movieId) {
@@ -142,7 +155,18 @@ private fun MovieDetailsContent(
                 AboutMovieSection(movie)
             }
 
-            item(key = "interest") {
+            item(key = "facilities") {
+                MovieFacilitiesSection()
+            }
+
+            if (!movie.trailerUrl.isNullOrBlank()) {
+                item(key = "trailer") {
+                    TrailerSection(movie.trailerUrl)
+                }
+            }
+
+            item(key = "rules") {
+                MovieRulesSection()
             }
 
             if (movie.castNames.isNotEmpty() || !movie.director.isNullOrBlank()) {
@@ -156,12 +180,6 @@ private fun MovieDetailsContent(
 
                 item(key = "cast") {
                     CastRow(movie)
-                }
-            }
-
-            if (!movie.trailerUrl.isNullOrBlank()) {
-                item(key = "trailer") {
-                    TrailerSection(movie.trailerUrl)
                 }
             }
         }
@@ -224,6 +242,25 @@ private fun MovieHero(
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp, vertical = 22.dp)
             ) {
+                if (!movie.trailerUrl.isNullOrBlank()) {
+                    val uriHandler = LocalUriHandler.current
+                    Surface(
+                        onClick = { runCatching { uriHandler.openUri(movie.trailerUrl) } },
+                        shape = CircleShape,
+                        color = Color.Black.copy(alpha = 0.5f),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)),
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Icon(Icons.Rounded.PlayArrow, null, tint = MovieOrange, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Watch Trailer", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
                 Text(
                     text = movie.title,
                     color = MovieWhite,
@@ -302,8 +339,6 @@ private fun MovieMetadata(movie: Movie) {
         MetadataDot()
         MetadataText(text = movie.language)
         MetadataDot()
-        MetadataText(text = movie.genre)
-        MetadataDot()
         MetadataText(text = movie.duration)
     }
 }
@@ -349,6 +384,68 @@ private fun AboutMovieSection(movie: Movie) {
 }
 
 @Composable
+private fun MovieFacilitiesSection() {
+    val facilities = buildList {
+        add("2D")
+        add("3D")
+        if (FakeData.cinemas.any { it.facilities.hasAirConditioning() }) add("AC")
+    }
+    Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp)) {
+        SectionHeading(text = "Facilities")
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            facilities.forEach { facility ->
+                Box(
+                    Modifier.clip(RoundedCornerShape(10.dp))
+                        .background(MovieBlueRaised)
+                        .border(1.dp, MovieBlueEdge.copy(alpha = .35f), RoundedCornerShape(10.dp))
+                        .padding(horizontal = 16.dp, vertical = 9.dp)
+                ) {
+                    Text(facility, color = MovieWhite, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+        Spacer(Modifier.height(18.dp))
+    }
+}
+
+@Composable
+private fun GenreChip(name: String) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(9.dp))
+            .background(MovieBlueRaised)
+            .border(BorderStroke(1.dp, MovieBlueEdge.copy(alpha = 0.3f)), RoundedCornerShape(9.dp))
+            .padding(horizontal = 14.dp, vertical = 7.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text = name, color = MovieWhite, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+private fun MovieRulesSection() {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp)
+    ) {
+        SectionHeading(text = "Cinema Rules")
+        Spacer(modifier = Modifier.height(12.dp))
+        val rules = listOf(
+            "Help keep the auditorium smoke-free.",
+            "Alcohol is not permitted inside the cinema.",
+            "Food purchased outside the venue must remain outside."
+        )
+        rules.forEach { rule ->
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
+                Box(Modifier.size(6.dp).clip(CircleShape).background(MovieOrange))
+                Spacer(Modifier.width(10.dp))
+                Text(text = rule, color = MovieSecondary, fontSize = 13.sp)
+            }
+        }
+    }
+}
+
+@Composable
 private fun SectionHeading(
     text: String,
     modifier: Modifier = Modifier
@@ -378,15 +475,15 @@ private fun SectionHeading(
 @Composable
 private fun CastRow(movie: Movie) {
     val cast = buildList {
-        addAll(movie.castNames)
-        movie.director?.takeIf(String::isNotBlank)?.let { add("$it · Director") }
-    }.distinct()
+        addAll(movie.castNames.mapIndexed { index, name -> Triple("cast-$index", name, null as String?) })
+        movie.director?.takeIf(String::isNotBlank)?.let { add(Triple("director", it, null)) }
+    }
     LazyRow(
         contentPadding = PaddingValues(horizontal = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        items(items = cast, key = { name -> name }) { name ->
-            CastMemberCard(name = name, imageUrl = null)
+        items(items = cast, key = { member -> member.first }) { member ->
+            CastMemberCard(name = member.second, imageUrl = member.third)
         }
     }
 }
@@ -424,15 +521,25 @@ private fun CastMemberCard(name: String, imageUrl: String?) {
                     color = MovieOrange.copy(alpha = 0.48f),
                     shape = CircleShape
                 ),
+            contentAlignment = Alignment.Center
         ) {
-            AsyncImage(
-                model = imageUrl,
-                contentDescription = "$name photo",
-                placeholder = painterResource(R.drawable.profile_avatar_fallback),
-                error = painterResource(R.drawable.profile_avatar_fallback),
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
+            if (imageUrl != null) {
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = "$name photo",
+                    placeholder = painterResource(R.drawable.profile_avatar_fallback),
+                    error = painterResource(R.drawable.profile_avatar_fallback),
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Text(
+                    text = name.split(" ").mapNotNull { it.firstOrNull()?.toString() }.take(2).joinToString("").uppercase(),
+                    color = MovieWhite,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
         Spacer(modifier = Modifier.height(7.dp))
         Text(
@@ -442,6 +549,7 @@ private fun CastMemberCard(name: String, imageUrl: String?) {
             lineHeight = 14.sp,
             fontWeight = FontWeight.Medium,
             maxLines = 2,
+            textAlign = TextAlign.Center,
             overflow = TextOverflow.Ellipsis
         )
     }
@@ -518,7 +626,7 @@ private fun MovieDetailLoadingState(onBackClick: () -> Unit) {
                 .align(Alignment.TopStart)
         )
         PremiumLoadingState(
-            modifier = Modifier.align(Alignment.Center),
+            modifier = Modifier.align(Alignment.Center).fillMaxSize(),
             message = "Loading movie details..."
         )
     }

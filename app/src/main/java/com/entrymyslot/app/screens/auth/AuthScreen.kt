@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -45,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.entrymyslot.app.R
+import com.entrymyslot.app.EntryMySlotApp
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -121,7 +123,14 @@ fun AuthScreen(
     var fieldErrors by remember { mutableStateOf(AuthFormErrors()) }
     
     val focusManager = LocalFocusManager.current
-    val viewModel: AuthScreenViewModel = viewModel()
+    val app = LocalContext.current.applicationContext as EntryMySlotApp
+    val viewModel: AuthScreenViewModel = viewModel(
+        factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T =
+                AuthScreenViewModel() as T
+        }
+    )
 
     val uiState by viewModel.uiState.collectAsState()
     var showSuccessOverlay by remember { mutableStateOf(false) }

@@ -18,7 +18,7 @@ data class AuthUiState(
     val passwordResetComplete: Boolean = false
 )
 
-/** Frontend-only auth state. Replace these actions when the production backend is integrated. */
+/** Local-only authentication state used by the offline app. */
 class AuthScreenViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()

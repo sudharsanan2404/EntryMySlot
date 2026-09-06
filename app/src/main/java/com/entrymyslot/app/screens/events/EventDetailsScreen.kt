@@ -33,6 +33,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.rounded.CalendarToday
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ConfirmationNumber
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material3.Icon
@@ -90,7 +91,15 @@ fun EventDetailsScreen(
     onBackClick: () -> Unit,
     onBookTicketsClick: () -> Unit
 ) {
-    val eventViewModel: EventViewModel = viewModel(key = "event_details_$eventId")
+    val app = LocalContext.current.applicationContext as EntryMySlotApp
+    val eventViewModel: EventViewModel = viewModel(
+        key = "event_details_$eventId",
+        factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                EventViewModel() as T
+        }
+    )
     val state by eventViewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(eventId) {
@@ -146,14 +155,14 @@ private fun EventDetailsContent(
                 )
             }
 
-
-            item(key = "interest") {
-            }
-
             item(key = "about_event") {
                 AboutEventSection(
                     description = event.description
                 )
+            }
+
+            item(key = "rules") {
+                EventRulesSection()
             }
         }
 
@@ -237,7 +246,7 @@ private fun EventHero(
                 overflow = TextOverflow.Ellipsis
             )
             Spacer(Modifier.height(9.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
                 Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Rounded.CalendarToday, null, tint = DetailsAccent, modifier = Modifier.size(15.dp))
                     Text(
@@ -261,6 +270,21 @@ private fun EventHero(
                     )
                 }
             }
+            if (event.facilities.any { it.equals("AC", true) || it.contains("Air Conditioned", true) }) {
+                Spacer(Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(DetailsAccent.copy(alpha = 0.12f))
+                        .border(1.dp, DetailsAccent.copy(alpha = 0.35f), RoundedCornerShape(6.dp))
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Rounded.Check, null, tint = DetailsAccent, modifier = Modifier.size(12.dp))
+                    Spacer(Modifier.width(5.dp))
+                    Text("Air Conditioned", color = DetailsAccent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                }
+            }
         }
 
     }
@@ -278,7 +302,7 @@ private fun EventDetailLoadingState(onBackClick: () -> Unit) {
                 .align(Alignment.TopStart)
         )
         PremiumLoadingState(
-            modifier = Modifier.align(Alignment.Center),
+            modifier = Modifier.align(Alignment.Center).fillMaxSize(),
             message = "Loading event details..."
         )
     }
@@ -560,6 +584,36 @@ private fun AboutEventSection(description: String) {
             fontSize = 14.sp,
             lineHeight = 22.sp
         )
+    }
+}
+
+@Composable
+private fun EventCategoryChip(name: String) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(9.dp))
+            .background(DetailsSurface)
+            .border(BorderStroke(1.dp, DetailsBorder.copy(alpha = 0.6f)), RoundedCornerShape(9.dp))
+            .padding(horizontal = 14.dp, vertical = 7.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text = name, color = DetailsPrimaryText, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+private fun EventRulesSection() {
+    DetailsSection(title = "Venue Rules") {
+        val rules = listOf("No Smoking", "No Alcohol", "Valid ID Required", "Right of admission reserved")
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            rules.forEach { rule ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(6.dp).clip(CircleShape).background(DetailsAccent))
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(text = rule, color = DetailsSecondaryText, fontSize = 13.sp)
+                }
+            }
+        }
     }
 }
 

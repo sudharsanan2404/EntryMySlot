@@ -33,6 +33,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -43,7 +45,7 @@ import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
+import com.entrymyslot.app.core.components.PremiumLoadingState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -79,6 +81,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.entrymyslot.app.EntryMySlotApp
 import com.entrymyslot.app.core.components.TermsAndPolicyBottomSheet
 import com.entrymyslot.app.screens.home.GlowBackground
+import com.entrymyslot.app.data.booking.AuthoritativeBillDto
+import com.entrymyslot.app.data.booking.formatPaiseAsRupees
 import com.entrymyslot.app.data.model.Turf
 import com.entrymyslot.app.data.model.TurfSlot
 import java.text.SimpleDateFormat
@@ -110,9 +114,7 @@ fun TurfBookingScreen(
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                TurfBookingViewModel(
-                    pendingCheckoutStore = app.appContainer.pendingCheckoutStore
-                ) as T
+                TurfBookingViewModel(app.appContainer.pendingCheckoutStore) as T
         }
     )
     BackHandler { turfBookingViewModel.releaseAndGoBack(onBackClick) }
@@ -129,7 +131,7 @@ fun TurfBookingScreen(
             turfId = turfId,
             date = state.selectedDate.toString(),
             hour = slot.unit_id,
-            time = slot.formatted_time,
+            time = slot.formatted_time.substringBefore(" - ").trim(),
             booked = slot.status != "available" && slot.unit_id != state.selectedUnitId
         )
     }
@@ -148,9 +150,7 @@ fun TurfBookingScreen(
             )
 
             when {
-                state.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = TurfBookingAccent)
-                }
+                state.isLoading -> PremiumLoadingState(modifier = Modifier.fillMaxSize())
                 state.turf == null -> TurfBookingError(
                     state.errorMessage ?: "Turf availability is unavailable.",
                     turfBookingViewModel::retry
@@ -219,6 +219,12 @@ fun TurfBookingScreen(
                     }
                     state.errorMessage?.let { message ->
                         Text(message, color = Color(0xFFFFC4B0), fontSize = 12.sp, modifier = Modifier.padding(horizontal = 20.dp))
+                    }
+                }
+
+                state.bill?.let { bill ->
+                    item(key = "booking_summary") {
+                        BookingSummary(bill = bill)
                     }
                 }
                     }
@@ -328,6 +334,45 @@ private fun PremiumBackButton(onClick: () -> Unit) {
 }
 
 @Composable
+private fun BookingSummary(bill: AuthoritativeBillDto) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+        Text(
+            text = "Booking Summary",
+            color = TurfBookingPrimaryText,
+            fontSize = 17.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .background(TurfBookingSurfaceRaised)
+                .border(BorderStroke(1.dp, TurfBookingBorder.copy(alpha = 0.5f)), RoundedCornerShape(14.dp))
+                .padding(15.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            SummaryRow("Subtotal", formatPaiseAsRupees(bill.subtotalPaise))
+            if (bill.platformFeePaise > 0) SummaryRow("Booking charge", formatPaiseAsRupees(bill.platformFeePaise))
+            if (bill.gstTotalPaise > 0) SummaryRow("GST", formatPaiseAsRupees(bill.gstTotalPaise))
+            Box(Modifier.fillMaxWidth().height(1.dp).background(TurfBookingBorder.copy(alpha = 0.4f)).padding(vertical = 4.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Total", color = TurfBookingPrimaryText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(formatPaiseAsRupees(bill.totalPaise), color = TurfBookingAccent, fontWeight = FontWeight.Black, fontSize = 16.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SummaryRow(label: String, value: String) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, color = TurfBookingSecondaryText, fontSize = 12.sp)
+        Text(value, color = TurfBookingPrimaryText, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+    }
+}
+
+@Composable
 private fun VenueSummary(turf: Turf) {
     Column(
         modifier = Modifier
@@ -432,13 +477,12 @@ private fun DateSelector(
     selectedDate: Calendar,
     onDateSelected: (Calendar) -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        for (i in 0..6) {
+        items((0 until 54).toList(), key = { it }) { i ->
             val date = Calendar.getInstance()
             date.add(Calendar.DAY_OF_YEAR, i)
 
@@ -449,7 +493,7 @@ private fun DateSelector(
                 date = date,
                 selected = selected,
                 onClick = { onDateSelected(date) },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.width(56.dp)
             )
         }
     }
@@ -592,7 +636,9 @@ private fun LegendItem(
                 .background(fillColor)
                 .border(1.dp, borderColor, CircleShape)
         )
-        Spacer(modifier = Modifier.width(6.dp))
+
+        Spacer(Modifier.height(6.dp))
+
         Text(
             text = text,
             color = TurfBookingSecondaryText,
@@ -744,7 +790,7 @@ private fun TurfSlotItem(
                 fontSize = 13.sp,
                 fontWeight = FontWeight.ExtraBold
             )
-            Spacer(modifier = Modifier.height(2.dp))
+
             Text(
                 text = status,
                 color = when {

@@ -27,7 +27,7 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Text
-import androidx.compose.material3.CircularProgressIndicator
+import com.entrymyslot.app.core.components.PremiumLoadingState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.DisposableEffect
@@ -40,6 +40,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -60,6 +63,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import com.entrymyslot.app.R
 import com.entrymyslot.app.EntryMySlotApp
 import com.entrymyslot.app.data.model.TicketDetails
@@ -97,9 +102,9 @@ fun TicketScreen(
     val app = context.applicationContext as EntryMySlotApp
     val viewModel: TicketViewModel = viewModel(
         key = "$type:$bookingKey:$ticketUuid",
-        factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+        factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
-            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T =
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
                 TicketViewModel(
                     type = type,
                     itemId = itemId,
@@ -116,7 +121,7 @@ fun TicketScreen(
             Modifier.fillMaxSize().background(TicketNight),
             contentAlignment = Alignment.Center
         ) {
-            CircularProgressIndicator(color = TicketOrange)
+            PremiumLoadingState(modifier = Modifier.fillMaxSize())
         }
         uiState.ticket == null -> Box(
             Modifier.fillMaxSize().background(TicketNight).padding(24.dp),
@@ -190,7 +195,7 @@ private fun TicketFixedBackground() {
             val farthestY = maxOf(cy, size.height - cy)
             return sqrt(farthestX * farthestX + farthestY * farthestY) * stop
         }
-        val bottom = androidx.compose.ui.geometry.Offset(size.width * .50f, size.height)
+        val bottom = Offset(size.width * .50f, size.height)
         val blue = androidx.compose.ui.geometry.Offset(size.width * .85f, size.height * .30f)
         val orange = androidx.compose.ui.geometry.Offset(size.width * .15f, size.height * .50f)
         drawRect(Brush.radialGradient(listOf(TicketOrange.copy(alpha = .15f), Color.Transparent), bottom, radius(bottom.x, bottom.y, .60f)))
@@ -217,8 +222,10 @@ private fun TicketNavigation(onBack: () -> Unit) {
 private fun TicketBody(ticket: TicketDetails, tilt: TicketTilt) {
     val shape = RoundedCornerShape(24.dp)
     val density = LocalDensity.current.density
+    val hasManySeats = ticket.category == "MOVIE" && (ticket.ticketCount ?: 0) > 5
+    val primaryWeight = if (hasManySeats) .61f else .55f
     Box(
-        Modifier.fillMaxWidth().height(640.dp)
+        Modifier.fillMaxWidth().height(if (hasManySeats) 680.dp else 600.dp)
             .graphicsLayer {
                 rotationX = tilt.x
                 rotationY = tilt.y
@@ -228,7 +235,7 @@ private fun TicketBody(ticket: TicketDetails, tilt: TicketTilt) {
                 clip = true
             }
             .drawWithContent {
-                drawRoundRect(Color.White.copy(alpha = .045f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(24.dp.toPx()))
+                drawRoundRect(Color.White.copy(alpha = .045f), cornerRadius = CornerRadius(24.dp.toPx()))
                 drawContent()
                 drawRoundRect(
                     Color.White.copy(alpha = .25f),
@@ -236,7 +243,7 @@ private fun TicketBody(ticket: TicketDetails, tilt: TicketTilt) {
                     style = Stroke(1.dp.toPx())
                 )
                 val cutout = 24.dp.toPx()
-                val split = size.height * .56f
+                val split = size.height * primaryWeight
                 drawCircle(Color.Transparent, cutout, androidx.compose.ui.geometry.Offset(0f, split), blendMode = BlendMode.Clear)
                 drawCircle(Color.Transparent, cutout, androidx.compose.ui.geometry.Offset(size.width, split), blendMode = BlendMode.Clear)
                 drawCircle(Color.Transparent, cutout, androidx.compose.ui.geometry.Offset(size.width / 2, 0f), blendMode = BlendMode.Clear)
@@ -244,9 +251,9 @@ private fun TicketBody(ticket: TicketDetails, tilt: TicketTilt) {
             }
     ) {
         Column(Modifier.fillMaxSize()) {
-            TicketPrimary(ticket, Modifier.weight(.56f).fillMaxWidth())
+            TicketPrimary(ticket, Modifier.weight(primaryWeight).fillMaxWidth())
             TicketPerforation()
-            TicketQrPanel(ticket, Modifier.weight(.44f).fillMaxWidth())
+            TicketQrPanel(ticket, Modifier.weight(1f - primaryWeight).fillMaxWidth())
         }
     }
 }
@@ -306,43 +313,101 @@ private fun angleDelta(value: Float, baseline: Float): Float =
 
 @Composable
 private fun TicketPrimary(ticket: TicketDetails, modifier: Modifier) {
-    Column(modifier.padding(16.dp), verticalArrangement = Arrangement.SpaceBetween) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+    Column(modifier.padding(16.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             TicketBrandLogo()
-            TicketAdmitOne()
+            TicketCategoryBadge(ticket.category)
         }
-        Column {
-            Text(
-                ticket.title,
-                color = Color.White,
-                fontSize = 28.sp,
-                lineHeight = 32.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = (-1.2).sp,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
+        Text(
+            ticket.title,
+            color = Color.White,
+            fontSize = 24.sp,
+            lineHeight = 28.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = (-0.5).sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+        if (ticket.venue.isNotBlank() || ticket.location.isNotBlank()) {
+            Spacer(Modifier.height(6.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.LocationOn, null, tint = TicketOrange, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(7.dp))
-                Text(ticket.venue, color = TicketPaleBlue, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                Icon(Icons.Default.LocationOn, null, tint = TicketOrange, modifier = Modifier.size(14.dp))
+                Spacer(Modifier.width(6.dp))
+                Column(Modifier.weight(1f)) {
+                    if (ticket.venue.isNotBlank()) {
+                        Text(ticket.venue, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    if (ticket.location.isNotBlank()) {
+                        Text(ticket.location, color = TicketPaleBlue.copy(alpha = .78f), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
             }
         }
+        if (!ticket.language.isNullOrBlank() || !ticket.format.isNullOrBlank()) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = listOfNotNull(ticket.language, ticket.format).joinToString(" • "),
+                color = TicketOrange,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        Spacer(Modifier.height(14.dp))
         TicketInformation(ticket)
     }
 }
 
 @Composable
-private fun TicketInformation(ticket: TicketDetails) {
-    Column(Modifier.fillMaxWidth().ticketTopRule(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(Modifier.padding(top = 12.dp)) {
-            Box(Modifier.weight(1f)) { TicketInfoCell("DATE") { TicketValue(ticket.date) } }
-            Box(Modifier.weight(1f)) { TicketInfoCell("TIME SLOT(S)") { TicketSlots(ticket.slots) } }
+private fun TicketCategoryBadge(category: String) {
+    Box(
+        Modifier.background(TicketOrange.copy(alpha = .15f), RoundedCornerShape(8.dp))
+            .border(1.dp, TicketOrange.copy(alpha = .40f), RoundedCornerShape(8.dp))
+            .padding(horizontal = 10.dp, vertical = 5.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        val label = when (category.uppercase()) {
+            "MOVIE" -> "Movie"
+            "EVENT" -> "Event"
+            "TURF" -> "Turf"
+            else -> category
         }
-        Row {
-            Box(Modifier.weight(1f)) { TicketInfoCell("ATTENDEE") { TicketValue(ticket.attendee, true) } }
-            Box(Modifier.weight(1f)) { TicketInfoCell("ACCESS") { TicketValue(ticket.admission) } }
+        Text(label, color = TicketOrange, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+    }
+}
+
+@Composable
+private fun TicketInformation(ticket: TicketDetails) {
+    Row(Modifier.fillMaxWidth().ticketTopRule().padding(top = 16.dp)) {
+        Box(Modifier.weight(1f)) { TicketInfoCell("DATE") { TicketValue(ticket.date) } }
+        Box(Modifier.weight(1f)) { TicketInfoCell("TIME") { TicketValue(ticket.time) } }
+    }
+    Spacer(Modifier.height(16.dp))
+    if (ticket.category == "MOVIE") {
+        TicketInfoCell("SEATS") {
+            TicketValue(ticket.admission, maxLines = 3)
+        }
+        if (ticket.ticketCount != null || !ticket.screenName.isNullOrBlank()) {
+            Spacer(Modifier.height(16.dp))
+            Row(Modifier.fillMaxWidth()) {
+                ticket.ticketCount?.let { count ->
+                    Box(Modifier.weight(1f)) { TicketInfoCell("QUANTITY") { TicketValue("$count") } }
+                }
+                if (!ticket.screenName.isNullOrBlank()) {
+                    Box(Modifier.weight(1f)) { TicketInfoCell("SCREEN") { TicketValue(ticket.screenName) } }
+                }
+            }
+        }
+    } else {
+        Row(Modifier.fillMaxWidth()) {
+            Box(Modifier.weight(1f)) {
+                TicketInfoCell(if (ticket.category == "TURF") "SLOT" else "TIER") {
+                    TicketValue(ticket.ticketTier ?: ticket.admission, ellipsize = true)
+                }
+            }
+            ticket.ticketCount?.let { count ->
+                Box(Modifier.weight(1f)) { TicketInfoCell("QUANTITY") { TicketValue("$count") } }
+            }
         }
     }
 }
@@ -353,13 +418,14 @@ private fun TicketInfoCell(label: String, value: @Composable () -> Unit) {
 }
 
 @Composable
-private fun TicketValue(value: String, ellipsize: Boolean = false) {
+private fun TicketValue(value: String, ellipsize: Boolean = false, maxLines: Int = 1) {
     Text(
         value,
         color = Color.White,
         fontSize = 14.sp,
         fontWeight = FontWeight.Bold,
-        maxLines = 1,
+        maxLines = maxLines,
+        softWrap = maxLines > 1,
         overflow = if (ellipsize) TextOverflow.Ellipsis else TextOverflow.Clip
     )
 }
@@ -385,23 +451,20 @@ private fun TicketSlots(slots: List<String>) {
 @Composable
 private fun TicketQrPanel(ticket: TicketDetails, modifier: Modifier) {
     var expanded by rememberSaveable(ticket.bookingId) { mutableStateOf(false) }
-    Box(modifier.background(Color.Black.copy(alpha = .10f)).padding(24.dp), contentAlignment = Alignment.Center) {
-        Row(Modifier.align(Alignment.TopEnd), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            repeat(3) { Box(Modifier.size(6.dp).background(Color.White.copy(alpha = .20f), CircleShape)) }
-        }
+    Box(modifier = modifier.background(Color.Black.copy(alpha = .10f)).padding(horizontal = 24.dp, vertical = 14.dp), contentAlignment = Alignment.Center) {
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-            TicketMicroText("TICKET REFERENCE")
+            TicketMicroText("TICKET ID")
             Spacer(Modifier.height(4.dp))
             Text(ticket.bookingId, color = TicketOrange, fontFamily = TicketMono, fontWeight = FontWeight.Bold, fontSize = 14.sp, letterSpacing = 1.2.sp)
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(10.dp))
             Box(
-                Modifier.size(100.dp).clip(RoundedCornerShape(16.dp)).background(Color.White)
+                Modifier.size(104.dp).clip(RoundedCornerShape(16.dp)).background(Color.White)
                     .clickable { expanded = true }.padding(12.dp)
             ) { TicketQr(ticket.qrPayload, Modifier.fillMaxSize()) }
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
             TicketMicroText("TOTAL PAID")
-            Spacer(Modifier.height(4.dp))
-            Text(ticket.amount, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black, letterSpacing = (-1).sp)
+            Spacer(Modifier.height(2.dp))
+            Text(ticket.amount.ifBlank { "Amount unavailable" }, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black, letterSpacing = (-1).sp)
         }
     }
     if (expanded) ExpandedTicketQrDialog(ticket, onDismiss = { expanded = false })
@@ -426,7 +489,7 @@ private fun ExpandedTicketQrDialog(ticket: TicketDetails, onDismiss: () -> Unit)
                 contentAlignment = Alignment.Center
             ) { Icon(Icons.Default.Close, "Close enlarged ticket QR code", tint = Color.White.copy(alpha = .80f)) }
             Column(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                TicketMicroText("TICKET REFERENCE")
+                TicketMicroText("TICKET ID")
                 Spacer(Modifier.height(8.dp))
                 Text(ticket.bookingId, color = TicketOrange, fontFamily = TicketMono, fontWeight = FontWeight.Bold, fontSize = 18.sp, letterSpacing = 1.5.sp)
                 Spacer(Modifier.height(24.dp))
@@ -452,20 +515,6 @@ private fun TicketPerforation() {
 }
 
 @Composable
-private fun TicketAdmitOne() {
-    Row(
-        Modifier.background(TicketOrange.copy(alpha = .20f), RoundedCornerShape(50))
-            .border(1.dp, TicketOrange.copy(alpha = .30f), RoundedCornerShape(50))
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(Modifier.size(6.dp).background(TicketOrange, CircleShape))
-        Spacer(Modifier.width(7.dp))
-        Text("ADMIT ONE", color = TicketOrange, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
-    }
-}
-
-@Composable
 private fun TicketQr(payload: String, modifier: Modifier) {
     val matrix = remember(payload) {
         QRCodeWriter().encode(
@@ -482,7 +531,7 @@ private fun TicketQr(payload: String, modifier: Modifier) {
             if (matrix[x, y]) drawRect(
                 TicketBlue,
                 androidx.compose.ui.geometry.Offset(x * cell, y * cell),
-                androidx.compose.ui.geometry.Size(cell + .5f, cell + .5f)
+                Size(cell + .5f, cell + .5f)
             )
         }
     }
@@ -533,7 +582,7 @@ private fun Modifier.ticketTopRule(): Modifier = drawWithContent {
     drawContent()
     drawLine(
         Color.White.copy(alpha = .10f),
-        androidx.compose.ui.geometry.Offset.Zero,
+        Offset.Zero,
         androidx.compose.ui.geometry.Offset(size.width, 0f),
         1.dp.toPx(),
         StrokeCap.Butt

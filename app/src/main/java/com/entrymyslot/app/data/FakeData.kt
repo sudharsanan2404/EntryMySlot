@@ -44,19 +44,19 @@ object FakeData {
 
     private val defaultCastIds = castMembers.map { it.id }
     val movies = listOf(
-        Movie("mov_1", "The Dark Knight", "In Cinemas Now", "IMAX, Chennai", "From ₹190", description = "A masked vigilante faces a criminal mastermind who pushes Gotham into chaos.", rating = 8.5, language = "Tamil", genre = "Action", duration = "2h 35m", releaseDate = "28 Aug 2026", castIds = defaultCastIds),
-        Movie("mov_2", "Inception", "Re-releasing Soon", "PVR, Bangalore", "From ₹250", description = "A skilled extractor enters layered dreams for one last impossible mission.", rating = 8.8, language = "English", genre = "Sci-Fi", duration = "2h 28m", releaseDate = "04 Sep 2026", castIds = defaultCastIds),
-        Movie("mov_3", "Interstellar", "15 Oct 2026", "Luxe, Mumbai", "From ₹300", description = "Explorers travel through a wormhole to find humanity a new home.", rating = 8.7, language = "English", genre = "Sci-Fi", duration = "2h 49m", releaseDate = "15 Oct 2026", castIds = defaultCastIds),
-        Movie("mov_4", "Avatar: Way of Water", "In Cinemas Now", "PVR, Chennai", "From ₹220", description = "A family fights to protect Pandora and the people who call it home.", rating = 7.6, language = "English", genre = "Adventure", duration = "3h 12m", releaseDate = "20 Aug 2026", castIds = defaultCastIds),
-        Movie("mov_5", "The Matrix", "Next Week", "Sathyam, Chennai", "From ₹180", description = "A hacker discovers that his world is an elaborate simulation.", rating = 8.7, language = "English", genre = "Action", duration = "2h 16m", releaseDate = "07 Sep 2026", castIds = defaultCastIds),
-        Movie("mov_6", "Avengers: Endgame", "20 Oct 2026", "INOX, Madurai", "From ₹150", description = "Earth's heroes assemble for a final battle to restore the universe.", rating = 8.4, language = "English", genre = "Action", duration = "3h 1m", releaseDate = "20 Oct 2026", castIds = defaultCastIds)
+        Movie("mov_1", "The Dark Knight", "In Cinemas Now", "IMAX, Chennai", "From ₹190", description = "A masked vigilante faces a criminal mastermind who pushes Gotham into chaos.", rating = 8.5, language = "Tamil", genre = "Action", duration = "2h 35m", releaseDate = "28 Aug 2026", castIds = defaultCastIds, trailerUrl = "https://www.youtube.com/watch?v=EXeTwQWrcwY"),
+        Movie("mov_2", "Inception", "Re-releasing Soon", "PVR, Bangalore", "From ₹250", description = "A skilled extractor enters layered dreams for one last impossible mission.", rating = 8.8, language = "English", genre = "Sci-Fi", duration = "2h 28m", releaseDate = "04 Sep 2026", castIds = defaultCastIds, trailerUrl = "https://www.youtube.com/watch?v=YoHD9XEInc0"),
+        Movie("mov_3", "Interstellar", "15 Oct 2026", "Luxe, Mumbai", "From ₹300", description = "Explorers travel through a wormhole to find humanity a new home.", rating = 8.7, language = "English", genre = "Sci-Fi", duration = "2h 49m", releaseDate = "15 Oct 2026", castIds = defaultCastIds, trailerUrl = "https://www.youtube.com/watch?v=zSWdZVtXT7E"),
+        Movie("mov_4", "Avatar: Way of Water", "In Cinemas Now", "PVR, Chennai", "From ₹220", description = "A family fights to protect Pandora and the people who call it home.", rating = 7.6, language = "English", genre = "Adventure", duration = "3h 12m", releaseDate = "20 Aug 2026", castIds = defaultCastIds, trailerUrl = "https://www.youtube.com/watch?v=d9MyW72ELq0"),
+        Movie("mov_5", "The Matrix", "Next Week", "Sathyam, Chennai", "From ₹180", description = "A hacker discovers that his world is an elaborate simulation.", rating = 8.7, language = "English", genre = "Action", duration = "2h 16m", releaseDate = "07 Sep 2026", castIds = defaultCastIds, trailerUrl = "https://www.youtube.com/watch?v=vKQi3bBA1y8"),
+        Movie("mov_6", "Avengers: Endgame", "20 Oct 2026", "INOX, Madurai", "From ₹150", description = "Earth's heroes assemble for a final battle to restore the universe.", rating = 8.4, language = "English", genre = "Action", duration = "3h 1m", releaseDate = "20 Oct 2026", castIds = defaultCastIds, trailerUrl = "https://www.youtube.com/watch?v=TcMBFSGVi1c")
     )
 
     val cinemas = listOf(
-        Cinema("cinema_001", "PVR Cinemas", "Phoenix Marketcity, Chennai"),
-        Cinema("cinema_002", "INOX", "VR Mall, Chennai"),
-        Cinema("cinema_003", "AGS Cinemas", "T. Nagar, Chennai"),
-        Cinema("cinema_004", "Sathyam Cinemas", "Royapettah, Chennai")
+        Cinema("cinema_001", "PVR Cinemas", "Phoenix Marketcity, Chennai", facilities = listOf("Air Conditioned", "Parking", "Food Court")),
+        Cinema("cinema_002", "INOX", "VR Mall, Chennai", facilities = listOf("AC", "Parking", "Game Zone")),
+        Cinema("cinema_003", "AGS Cinemas", "T. Nagar, Chennai", facilities = listOf("Air Conditioned", "Parking")),
+        Cinema("cinema_004", "Sathyam Cinemas", "Royapettah, Chennai", facilities = listOf("AC", "Parking", "Cafe"))
     )
 
     private val cinemaTimes = listOf(
@@ -98,10 +98,10 @@ object FakeData {
 
     val events = listOf(
         Event("event_001", "Live Cricket Championship", "30 Aug 2026 | 6:30 PM", "Nehru Stadium, Chennai", "From ₹400", description = "An electric evening of live cricket with premium stadium experiences.", category = "Sports", time = "6:30 PM"),
-        Event("event_002", "Arijit Singh Live", "25 Nov 2026 | 7:00 PM", "DY Patil Stadium, Mumbai", "From ₹799", description = "An unforgettable live concert featuring chart-topping favourites.", category = "Concert", time = "7:00 PM"),
-        Event("event_003", "Live Music Night", "12 Dec 2026 | 8:00 PM", "Chennai", "From ₹499", description = "A curated night of independent music and local performers.", category = "Concert", time = "8:00 PM"),
-        Event("event_004", "Tech Summit 2026", "15 Jan 2027 | 10:00 AM", "Trade Center, Bangalore", "Free Entry", description = "Technology leaders discuss products, startups and the future of AI.", category = "Conference", time = "10:00 AM"),
-        Event("event_005", "Stand-up Comedy", "05 Dec 2026 | 9:00 PM", "The Laugh Club, Chennai", "From ₹350", description = "A sharp new stand-up set from popular comedians.", category = "Comedy", time = "9:00 PM"),
+        Event("event_002", "Arijit Singh Live", "25 Nov 2026 | 7:00 PM", "DY Patil Stadium, Mumbai", "From ₹799", description = "An unforgettable live concert featuring chart-topping favourites.", category = "Concert", time = "7:00 PM", facilities = listOf("Air Conditioned")),
+        Event("event_003", "Live Music Night", "12 Dec 2026 | 8:00 PM", "Chennai", "From ₹499", description = "A curated night of independent music and local performers.", category = "Concert", time = "8:00 PM", facilities = listOf("AC")),
+        Event("event_004", "Tech Summit 2026", "15 Jan 2027 | 10:00 AM", "Trade Center, Bangalore", "Free Entry", description = "Technology leaders discuss products, startups and the future of AI.", category = "Conference", time = "10:00 AM", facilities = listOf("Air Conditioned")),
+        Event("event_005", "Stand-up Comedy", "05 Dec 2026 | 9:00 PM", "The Laugh Club, Chennai", "From ₹350", description = "A sharp new stand-up set from popular comedians.", category = "Comedy", time = "9:00 PM", facilities = listOf("Air Conditioned")),
         Event("event_006", "Food Festival", "10 Nov 2026 | 11:00 AM", "Island Ground, Chennai", "From ₹100", description = "Street food, regional favourites and live entertainment.", category = "Festival", time = "11:00 AM")
     )
     val ticketTiers = events.flatMap { event ->
@@ -144,11 +144,12 @@ object FakeData {
         title = "Booking Confirmed",
         category = "Entry Pass",
         venue = "EntryMySlot Venue",
+        location = "Event",
         date = "30 Aug 2026",
         time = "Confirmed",
         admission = "1 Guest",
-        attendee = currentUser.fullName,
-        amount = "₹408"
+        amount = "₹408",
+        ticketCount = 1
     )
     val cities = listOf(
         "Ariyalur", "Chengalpattu", "Chennai", "Coimbatore", "Cuddalore",
@@ -205,16 +206,25 @@ object FakeData {
     }
     fun getTicket(booking: Booking): TicketDetails {
         val item = getItemById(booking.itemId)
+        val categoryLabel = when (booking.type) {
+            BookingType.MOVIE -> "Movie"
+            BookingType.EVENT -> "Event"
+            BookingType.TURF -> "Turf"
+        }
         return TicketDetails(
             bookingId = "EMS-${booking.id.removePrefix("booking_").padStart(6, '0')}",
             title = item?.title ?: "Booking",
             category = booking.type.name,
             venue = getBookingVenue(booking),
+            location = categoryLabel,
             date = booking.dateTime.substringBefore(" • "),
             time = booking.dateTime.substringAfter(" • ", "Confirmed"),
             admission = booking.details,
-            attendee = currentUser.fullName,
-            amount = booking.price
+            amount = booking.price,
+            language = (item as? Movie)?.language,
+            format = if (booking.type == BookingType.MOVIE) "2D" else null,
+            screenName = if (booking.type == BookingType.MOVIE) "Screen 1" else null,
+            ticketCount = if (booking.type == BookingType.MOVIE) booking.details.count { it == ',' } + 1 else 1
         )
     }
 

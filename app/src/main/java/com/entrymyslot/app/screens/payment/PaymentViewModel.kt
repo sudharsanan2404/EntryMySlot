@@ -16,7 +16,7 @@ data class PaymentUiState(val isProcessing: Boolean = false, val errorMessage: S
 class PaymentViewModel(private val pendingCheckoutStore: PendingCheckoutStore) : ViewModel() {
     private val state = MutableStateFlow(PaymentUiState())
     val uiState: StateFlow<PaymentUiState> = state.asStateFlow()
-    fun completeFakePayment() {
+    fun completePayment() {
         val checkout = pendingCheckoutStore.current.value ?: return run { state.value = PaymentUiState(errorMessage = "Booking selection expired. Please select again.") }
         if (state.value.isProcessing) return
         viewModelScope.launch {

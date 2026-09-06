@@ -72,6 +72,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -103,7 +104,15 @@ fun TurfScreen(
     onBookNowClick: () -> Unit = {},
     sportId: String
 ) {
-    val turfViewModel: TurfViewModel = viewModel(key = "turf_details_$sportId")
+    val app = LocalContext.current.applicationContext as EntryMySlotApp
+    val turfViewModel: TurfViewModel = viewModel(
+        key = "turf_details_$sportId",
+        factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                TurfViewModel() as T
+        }
+    )
     val state by turfViewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(sportId) {
@@ -132,17 +141,10 @@ private fun TurfDetailsContent(
     onBackClick: () -> Unit,
     onBookNowClick: () -> Unit
 ) {
-    val sportId = turf.id
-    val title = turf.title
-    val venueType = turf.venueType
     val price = "₹${turf.pricePerHour} / hour"
     val about = turf.description
-    val sports = turf.sports
-    val venueImages = turf.imageUrls
     val venueSpecifications = turf.specifications
     val venueRules = turf.rules
-    val venueLocation = turf.location
-    val context = LocalContext.current
 
     Box(
         modifier = Modifier.fillMaxSize()
@@ -153,30 +155,15 @@ private fun TurfDetailsContent(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 104.dp)
         ) {
-            item(key = "header") {
-                TurfHeader(onBackClick = onBackClick)
-            }
-
             item(key = "venue_hero") {
-                VenueImageCarousel(
-                    sportId = sportId,
-                    venueTitle = title,
-                    imageUrls = venueImages
+                TurfHero(
+                    turf = turf,
+                    onBackClick = onBackClick
                 )
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            item(key = "venue_identity") {
-                VenueIdentity(
-                    title = title,
-                    venueType = venueType,
-                    location = venueLocation,
-                    onDirectionsClick = { context.openVenueLocation(venueLocation) }
-                )
-                Spacer(modifier = Modifier.height(20.dp))
             }
 
             item(key = "about") {
+                Spacer(modifier = Modifier.height(16.dp))
                 SectionHeading(title = "About this Venue")
                 Spacer(modifier = Modifier.height(7.dp))
                 Text(
@@ -201,23 +188,6 @@ private fun TurfDetailsContent(
                 Spacer(modifier = Modifier.height(20.dp))
             }
 
-            item(key = "available_sports") {
-                SectionHeading(title = "Available Sports")
-                Spacer(modifier = Modifier.height(10.dp))
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 18.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    itemsIndexed(sports, key = { _, sport -> sport }) { index, sport ->
-                        SportChip(
-                            name = sport,
-                            selected = index == 0
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(20.dp))
-            }
-
             item(key = "rules") {
                 RulesAndGuidelines(rules = venueRules)
                 Spacer(modifier = Modifier.height(20.dp))
@@ -233,87 +203,125 @@ private fun TurfDetailsContent(
 }
 
 @Composable
-private fun TurfHeader(
+private fun TurfHero(
+    turf: Turf,
     onBackClick: () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .statusBarsPadding()
-            .height(68.dp)
-            .padding(horizontal = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        HeaderBackButton(onClick = onBackClick)
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = "Venue Details",
-            modifier = Modifier.weight(1f),
-            color = TurfPrimaryText,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold
-        )
-    }
-}
-
-@Composable
-private fun TurfDetailLoadingState(onBackClick: () -> Unit) {
-    Box(modifier = Modifier.fillMaxSize()) {
-        GlowBackground()
-        HeaderBackButton(
-            onClick = onBackClick,
+    Box(modifier = Modifier.fillMaxWidth()) {
+        Box(
             modifier = Modifier
-                .statusBarsPadding()
-                .padding(16.dp)
-                .align(Alignment.TopStart)
-        )
-        PremiumLoadingState(
-            modifier = Modifier.align(Alignment.Center),
-            message = "Loading venue details..."
-        )
+                .fillMaxWidth()
+                .height(350.dp)
+        ) {
+            AsyncImage(
+                model = turf.imageUrls.firstOrNull() ?: turf.imageUrl ?: R.drawable.turf_hero,
+                contentDescription = "${turf.title} cover",
+                placeholder = painterResource(R.drawable.turf_hero),
+                error = painterResource(R.drawable.turf_hero),
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colorStops = arrayOf(
+                                0f to Color.Black.copy(alpha = 0.16f),
+                                0.43f to Color.Transparent,
+                                0.72f to TurfBackground.copy(alpha = 0.62f),
+                                1f to TurfBackground
+                            )
+                        )
+                    )
+            )
+
+            PremiumTurfBackButton(
+                onClick = onBackClick,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .statusBarsPadding()
+                    .padding(start = 12.dp, top = 8.dp)
+            )
+
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 18.dp)
+            ) {
+                Text(
+                    text = turf.title,
+                    color = TurfPrimaryText,
+                    fontSize = 28.sp,
+                    lineHeight = 32.sp,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "★ ${turf.rating}",
+                        color = TurfAccent,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Box(Modifier.size(3.dp).clip(CircleShape).background(TurfSecondaryText.copy(alpha = 0.6f)))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = turf.venueType,
+                        color = TurfPrimaryText.copy(alpha = 0.8f),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                if (turf.location.isNotBlank()) {
+                    Spacer(Modifier.height(7.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                        Icons.Rounded.LocationOn,
+                            contentDescription = null,
+                            tint = TurfAccent,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = turf.location,
+                            color = TurfPrimaryText.copy(alpha = 0.8f),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
 @Composable
-private fun TurfDetailErrorState(
-    message: String,
-    onBackClick: () -> Unit,
-    onRetry: () -> Unit
-) {
-    Box(modifier = Modifier.fillMaxSize()) {
-        GlowBackground()
-        HeaderBackButton(
-            onClick = onBackClick,
-            modifier = Modifier
-                .statusBarsPadding()
-                .padding(16.dp)
-                .align(Alignment.TopStart)
-        )
-        PremiumErrorState(
-            modifier = Modifier.align(Alignment.Center).padding(horizontal = 32.dp),
-            title = "Venue Load Failed",
-            message = message,
-            onRetry = onRetry
-        )
-    }
-}
-
-@Composable
-private fun HeaderBackButton(
+private fun PremiumTurfBackButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.91f else 1f,
-        animationSpec = tween(durationMillis = 110),
-        label = "turfBackScale"
+        targetValue = if (isPressed) 0.92f else 1f,
+        animationSpec = tween(100),
+        label = "backButtonScale"
     )
 
     Box(
         modifier = modifier
-            .size(48.dp)
+            .size(42.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -322,7 +330,7 @@ private fun HeaderBackButton(
                 interactionSource = interactionSource,
                 indication = null,
                 role = Role.Button,
-                onClickLabel = "Go back",
+                onClickLabel = "Back",
                 onClick = onClick
             ),
         contentAlignment = Alignment.Center
@@ -337,233 +345,43 @@ private fun HeaderBackButton(
 }
 
 @Composable
-private fun VenueImageCarousel(
-    sportId: String,
-    venueTitle: String,
-    imageUrls: List<String>
-) {
-    val icon = when (sportId) {
-        "sport_2" -> Icons.Outlined.WaterDrop
-        else -> Icons.Outlined.SportsSoccer
-    }
-    val pages: List<String?> = if (imageUrls.isEmpty()) listOf(null) else imageUrls
-    val listState = rememberLazyListState()
-
-    BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .height(184.dp)
-    ) {
-        val pageWidth = maxWidth
-        LazyRow(
-            state = listState,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            itemsIndexed(pages) { index, imageUrl ->
-                VenueImagePage(
-                    imageUrl = imageUrl,
-                    venueTitle = venueTitle,
-                    icon = icon,
-                    modifier = Modifier.width(pageWidth),
-                    page = index + 1
-                )
-            }
-        }
-
-        if (pages.size > 1) {
-            Row(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 10.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(TurfBackground.copy(alpha = 0.72f))
-                    .padding(horizontal = 8.dp, vertical = 5.dp),
-                horizontalArrangement = Arrangement.spacedBy(5.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                pages.indices.forEach { index ->
-                    Box(
-                        modifier = Modifier
-                            .size(if (listState.firstVisibleItemIndex == index) 7.dp else 5.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (listState.firstVisibleItemIndex == index) {
-                                    TurfAccent
-                                } else {
-                                    TurfSecondaryText.copy(alpha = 0.52f)
-                                }
-                            )
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun VenueImagePage(
-    imageUrl: String?,
-    venueTitle: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    modifier: Modifier = Modifier,
-    page: Int
-) {
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .shadow(
-                elevation = 5.dp,
-                shape = RoundedCornerShape(17.dp),
-                ambientColor = Color.Black.copy(alpha = 0.18f),
-                spotColor = Color.Black.copy(alpha = 0.24f)
-            )
-            .clip(RoundedCornerShape(17.dp))
-            .background(
-                Brush.linearGradient(
-                    colors = listOf(Color(0xFF102B50), Color(0xFF07162C))
-                )
-            )
-            .border(
-                BorderStroke(1.dp, TurfBorder.copy(alpha = 0.72f)),
-                RoundedCornerShape(17.dp)
-            )
-            .semantics {
-                contentDescription = "$venueTitle venue image $page"
-            },
-        contentAlignment = Alignment.Center
-    ) {
-        AsyncImage(
-            model = imageUrl?.takeIf(String::isNotBlank) ?: R.drawable.turf_hero,
-            contentDescription = null,
-            placeholder = painterResource(R.drawable.turf_hero),
-            error = painterResource(R.drawable.turf_hero),
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
-        )
-
-        Text(
-            text = "ENTRYMYSLOT SPORTS",
+private fun TurfDetailLoadingState(onBackClick: () -> Unit) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        GlowBackground()
+        PremiumTurfBackButton(
+            onClick = onBackClick,
             modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(14.dp),
-            color = TurfSecondaryText,
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.1.sp
+                .statusBarsPadding()
+                .padding(16.dp)
+                .align(Alignment.TopStart)
+        )
+        PremiumLoadingState(
+            modifier = Modifier.align(Alignment.Center).fillMaxSize(),
+            message = "Loading venue details..."
         )
     }
 }
 
 @Composable
-private fun VenueIdentity(
-    title: String,
-    venueType: String,
-    location: String,
-    onDirectionsClick: () -> Unit
+private fun TurfDetailErrorState(
+    message: String,
+    onBackClick: () -> Unit,
+    onRetry: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 18.dp)
-    ) {
-        Text(
-            text = title,
-            color = TurfPrimaryText,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.ExtraBold,
-            lineHeight = 29.sp,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
+    Box(modifier = Modifier.fillMaxSize()) {
+        GlowBackground()
+        PremiumTurfBackButton(
+            onClick = onBackClick,
+            modifier = Modifier
+                .statusBarsPadding()
+                .padding(16.dp)
+                .align(Alignment.TopStart)
         )
-        Spacer(modifier = Modifier.height(6.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = "★ 4.7",
-                color = TurfAccent,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "  •  $venueType",
-                modifier = Modifier.weight(1f),
-                color = TurfSecondaryText,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        Spacer(modifier = Modifier.height(12.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = Icons.Rounded.LocationOn,
-                contentDescription = "Location",
-                tint = TurfAccent,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(7.dp))
-            Column {
-                Text(
-                    text = "2.4 km away",
-                    color = TurfPrimaryText,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(modifier = Modifier.height(1.dp))
-                Text(
-                    text = location,
-                    color = TurfSecondaryText,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-            Spacer(modifier = Modifier.weight(1f))
-            DirectionsAction(onClick = onDirectionsClick)
-        }
-    }
-}
-
-@Composable
-private fun DirectionsAction(onClick: () -> Unit) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val color by animateColorAsState(
-        targetValue = if (isPressed) TurfAccent.copy(alpha = 0.22f) else TurfAccent.copy(alpha = 0.12f),
-        animationSpec = tween(durationMillis = 110),
-        label = "directionsColor"
-    )
-
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(color)
-            .border(
-                BorderStroke(1.dp, TurfAccent.copy(alpha = 0.34f)),
-                RoundedCornerShape(10.dp)
-            )
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                role = Role.Button,
-                onClickLabel = "Get Directions",
-                onClick = onClick
-            )
-            .padding(horizontal = 10.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = "Directions",
-            color = TurfAccent,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.width(4.dp))
-        Icon(
-            imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
-            contentDescription = null,
-            tint = TurfAccent,
-            modifier = Modifier.size(14.dp)
+        PremiumErrorState(
+            modifier = Modifier.align(Alignment.Center).padding(horizontal = 32.dp),
+            title = "Venue Load Failed",
+            message = message,
+            onRetry = onRetry
         )
     }
 }
@@ -591,12 +409,17 @@ private fun FacilitiesGrid(turf: Turf) {
         }
         icon to label
     }
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = 18.dp),
-        horizontalArrangement = Arrangement.spacedBy(18.dp)
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        items(facilities, key = { it.second }) { facility ->
-            FacilityItem(icon = facility.first, title = facility.second)
+        facilities.chunked(4).forEach { rowFacilities ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                rowFacilities.forEach { facility ->
+                    FacilityItem(icon = facility.first, title = facility.second, modifier = Modifier.weight(1f))
+                }
+                repeat(4 - rowFacilities.size) { Spacer(Modifier.weight(1f)) }
+            }
         }
     }
 }
@@ -604,11 +427,11 @@ private fun FacilitiesGrid(turf: Turf) {
 @Composable
 private fun FacilityItem(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String
+    title: String,
+    modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = Modifier
-            .width(74.dp)
+        modifier = modifier
             .semantics { contentDescription = title },
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -629,12 +452,14 @@ private fun FacilityItem(
         Spacer(modifier = Modifier.height(6.dp))
         Text(
             text = title,
+            textAlign = TextAlign.Center,
             color = TurfSecondaryText,
             fontSize = 10.sp,
             fontWeight = FontWeight.Medium,
             maxLines = 2,
             lineHeight = 13.sp,
-            overflow = TextOverflow.Ellipsis
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth()
         )
     }
 }
@@ -680,36 +505,28 @@ private fun VenueSpecifications(specifications: List<Pair<String, String>>) {
 
 @Composable
 private fun RulesAndGuidelines(rules: List<String>) {
-    SectionHeading(title = "Rules & Guidelines")
-    Spacer(modifier = Modifier.height(8.dp))
+    SectionHeading(title = "Venue Rules")
+    Spacer(modifier = Modifier.height(10.dp))
     Column(
         modifier = Modifier.padding(horizontal = 18.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        if (rules.isEmpty()) {
-            Text(
-                text = "Venue-specific rules will be available before booking.",
-                color = TurfMutedText,
-                fontSize = 12.sp,
-                lineHeight = 17.sp
-            )
-        } else {
-            rules.forEach { rule ->
-                Row(verticalAlignment = Alignment.Top) {
-                    Text(
-                        text = "•",
-                        color = TurfAccent,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = rule,
-                        color = TurfSecondaryText,
-                        fontSize = 12.sp,
-                        lineHeight = 17.sp
-                    )
-                }
+        val baseRules = listOf(
+            "Keep the playing area smoke-free.",
+            "Alcohol is not permitted anywhere on the premises.",
+            "Use suitable sports shoes to protect the playing surface."
+        )
+        val allRules = (baseRules + rules).distinct()
+        allRules.forEach { rule ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(6.dp).clip(CircleShape).background(TurfAccent))
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = rule,
+                    color = TurfSecondaryText,
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp
+                )
             }
         }
     }
@@ -718,7 +535,8 @@ private fun RulesAndGuidelines(rules: List<String>) {
 @Composable
 private fun SportChip(
     name: String,
-    selected: Boolean
+    selected: Boolean,
+    onClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -731,6 +549,7 @@ private fun SportChip(
                 ),
                 RoundedCornerShape(9.dp)
             )
+            .clickable(onClick = onClick)
             .semantics { this.selected = selected }
             .padding(horizontal = 15.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center

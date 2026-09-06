@@ -12,6 +12,7 @@ data class Event(
     val time: String,
     val endTime: String = "",
     val remainingCapacity: Int? = null,
+    val facilities: List<String> = emptyList(),
 ) : CatalogItem
 
 data class TicketTier(

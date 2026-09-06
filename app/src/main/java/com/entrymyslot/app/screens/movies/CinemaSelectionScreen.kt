@@ -75,7 +75,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.entrymyslot.app.EntryMySlotApp
 import com.entrymyslot.app.screens.home.GlowBackground
+import com.entrymyslot.app.core.components.PremiumLoadingState
 import com.entrymyslot.app.data.booking.ShowtimeDto
+import com.entrymyslot.app.data.booking.hasAirConditioning
 import com.entrymyslot.app.data.model.Cinema
 import java.text.SimpleDateFormat
 import java.time.Instant
@@ -107,9 +109,7 @@ fun CinemaSelectionScreen(
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                MovieBookingViewModel(
-                    pendingCheckoutStore = app.appContainer.pendingCheckoutStore
-                ) as T
+                MovieBookingViewModel(app.appContainer.pendingCheckoutStore) as T
         }
     )
     val state by movieBookingViewModel.uiState.collectAsStateWithLifecycle()
@@ -237,7 +237,8 @@ fun CinemaSelectionScreen(
                             id = option.cinema.id.toString(),
                             name = option.cinema.name,
                             location = listOf(option.cinema.address, option.cinema.city)
-                                .filter(String::isNotBlank).joinToString(", ")
+                                .filter(String::isNotBlank).joinToString(", "),
+                            facilities = option.cinema.facilities
                         ),
                         showTimes = option.showtimes,
                         onTimeClick = { showtime -> onTimeSelected(showtime.id) }
@@ -259,7 +260,7 @@ private fun CinemaBookingMessage(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        if (showProgress) CircularProgressIndicator(color = MovieOrange)
+        if (showProgress) PremiumLoadingState(modifier = Modifier.fillMaxSize())
         Text(message, color = MovieSecondary)
         if (onRetry != null) Button(onClick = onRetry) { Text("Retry") }
     }
@@ -520,6 +521,15 @@ private fun CinemaCard(
                             fontWeight = FontWeight.Normal,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    if (cinema.facilities.hasAirConditioning()) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "AC available",
+                            color = MovieOrange,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 }

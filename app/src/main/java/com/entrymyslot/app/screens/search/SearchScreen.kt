@@ -56,7 +56,6 @@ import androidx.compose.material.icons.rounded.SportsSoccer
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -217,9 +216,9 @@ fun SearchScreen(
             )
 
             if (state.isLoading && state.results.isEmpty()) {
-                SearchLoadingState(modifier = Modifier.weight(1f))
+                PremiumLoadingState(modifier = Modifier.weight(1f).fillMaxSize())
             } else if (state.errorMessage != null && state.results.isEmpty()) {
-                SearchErrorState(
+                PremiumErrorState(
                     message = state.errorMessage.orEmpty(),
                     onRetry = searchViewModel::retry,
                     modifier = Modifier.weight(1f)
@@ -1071,28 +1070,6 @@ private fun ResultArtwork(item: PopularEvent, fallbackImage: Int) {
         error = painterResource(fallbackImage),
         contentScale = ContentScale.Crop,
         modifier = Modifier.fillMaxSize()
-    )
-}
-
-@Composable
-private fun SearchLoadingState(modifier: Modifier = Modifier) {
-    PremiumLoadingState(
-        modifier = modifier,
-        message = "Loading latest results..."
-    )
-}
-
-@Composable
-private fun SearchErrorState(
-    message: String,
-    onRetry: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    PremiumErrorState(
-        modifier = modifier,
-        title = "Search failed",
-        message = message,
-        onRetry = onRetry
     )
 }
 

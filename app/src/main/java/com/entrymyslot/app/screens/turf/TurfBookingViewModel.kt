@@ -17,14 +17,26 @@ data class TurfBookingUiState(
     val isLoading: Boolean = false, val isHolding: Boolean = false, val isOffline: Boolean = false,
     val turf: Turf? = null, val selectedDate: LocalDate = LocalDate.now(), val slots: List<TurfSlotDto> = emptyList(),
     val selectedUnitId: Int? = null, val holdToken: String? = null, val holdExpiresAt: String? = null,
-    val holdSecondsRemaining: Int = 0, val errorMessage: String? = null, val httpStatus: Int? = null
+    val holdSecondsRemaining: Int = 0, val bill: com.entrymyslot.app.data.booking.AuthoritativeBillDto? = null,
+    val errorMessage: String? = null, val httpStatus: Int? = null
 ) { val selectedSlot get() = slots.firstOrNull { it.unit_id == selectedUnitId } }
 
 class TurfBookingViewModel(private val pendingCheckoutStore: PendingCheckoutStore) : ViewModel() {
     private val state = MutableStateFlow(TurfBookingUiState()); val uiState: StateFlow<TurfBookingUiState> = state.asStateFlow(); private var resourceId = ""
     fun loadTurf(id: String, date: LocalDate = state.value.selectedDate) {
         resourceId = id; val turf = FakeData.getTurfById(id)
-        val slots = (6..22).map { hour -> TurfSlotDto(hour, "${date}T${hour.toString().padStart(2, '0')}:00:00Z", "${date}T${(hour + 1).coerceAtMost(23).toString().padStart(2, '0')}:00:00Z", if (hour in setOf(9, 14, 19)) "booked" else "available", turf?.pricePerHour?.toDouble(), formatted_time = "%02d:00 - %02d:00".format(hour, hour + 1), duration_minutes = 60) }
+        val slots = (0..23).map { hour ->
+            val nextHour = (hour + 1) % 24
+            TurfSlotDto(
+                hour,
+                "${date}T${hour.toString().padStart(2, '0')}:00:00Z",
+                "${if (nextHour == 0) date.plusDays(1) else date}T${nextHour.toString().padStart(2, '0')}:00:00Z",
+                if (hour in setOf(9, 14, 19)) "booked" else "available",
+                turf?.pricePerHour?.toDouble(),
+                formatted_time = "%02d:00 - %02d:00".format(hour, nextHour),
+                duration_minutes = 60
+            )
+        }
         state.value = TurfBookingUiState(turf = turf, selectedDate = date, slots = slots, errorMessage = if (turf == null) "Turf preview is unavailable." else null)
     }
     fun changeDate(date: LocalDate) = loadTurf(resourceId, date)
@@ -36,7 +48,14 @@ class TurfBookingViewModel(private val pendingCheckoutStore: PendingCheckoutStor
     fun createHoldAndPrepareCheckout(onSuccess: () -> Unit) {
         if (!validateSelection()) return; val current = state.value; val turf = current.turf ?: return; val slot = current.selectedSlot ?: return
         val subtotal = ((slot.price ?: turf.pricePerHour.toDouble()) * 100).toInt(); val bill = previewBill("TURF", 1, subtotal)
-        pendingCheckoutStore.save(PendingTurfCheckout(turf.id, turf.title, slot.unit_id, slot.starts_at, slot.ends_at, slot.formatted_time, "preview-turf-hold", Instant.now().plusSeconds(300).toString(), subtotal, "INR", bill))
+        state.value = current.copy(bill = bill)
+        pendingCheckoutStore.save(PendingTurfCheckout(
+            itemId = turf.id, resourceName = turf.title, unitId = slot.unit_id,
+            startsAt = slot.starts_at, endsAt = slot.ends_at, formattedTime = slot.formatted_time,
+            venueLocation = turf.location, bookingDate = current.selectedDate.toString(),
+            holdToken = "local-turf-hold", holdExpiresAt = Instant.now().plusSeconds(300).toString(),
+            subtotalPaise = subtotal, currency = "INR", bill = bill
+        ))
         onSuccess()
     }
     fun releaseAndGoBack(onReleased: () -> Unit) { pendingCheckoutStore.clear(); onReleased() }

@@ -46,6 +46,7 @@ import com.entrymyslot.app.screens.turf.TurfBookingScreen
 import com.entrymyslot.app.screens.events.EventDetailsScreen
 import com.entrymyslot.app.screens.events.EventBookingScreen
 import com.entrymyslot.app.screens.profile.ProfileScreen
+import com.entrymyslot.app.screens.profile.TermsPolicyScreen
 import com.entrymyslot.app.screens.booking.BookingScreen
 import com.entrymyslot.app.screens.search.SearchResultType
 import com.entrymyslot.app.screens.search.SearchScreen
@@ -184,6 +185,7 @@ fun AppNavigation() {
                 onLocationClick = { navController.navigate("location_selection") },
                 onDrawerVisibilityChange = { isHomeDrawerOpen = it },
                 onPartnerClick = { navController.navigate("manager_dashboard") },
+                onTermsClick = { navController.navigate("terms_policy") },
                 selectedCity = selectedCity,
                 onCategoryClick = { category ->
                     when (category) {
@@ -380,6 +382,10 @@ fun AppNavigation() {
             ManagerDashboardScreen(onBackClick = { navController.popBackStack() })
         }
 
+        composable("terms_policy") {
+            TermsPolicyScreen(onBackClick = { navController.popBackStack() })
+        }
+
         composable("turf_details/{sportId}") { backStackEntry ->
             val sportId = backStackEntry.arguments?.getString("sportId").orEmpty()
             TurfScreen(
@@ -531,19 +537,20 @@ private fun PendingCheckout.toBookingDetails(): BookingDetails = when (this) {
         date = showDatetime.substringBefore('T'), time = showDatetime.substringAfter('T').take(5),
         location = cinemaName, details = seatLabels.joinToString(", "),
         baseAmount = bill.subtotalPaise / 100, convenienceFee = bill.platformFeePaise / 100,
-        taxes = bill.gstTotalPaise / 100
+        taxes = bill.gstTotalPaise / 100, payableAmount = bill.totalRupees
     )
     is PendingEventCheckout -> BookingDetails(
         itemId = itemId, title = title, category = BookingType.EVENT,
-        date = "", time = "", location = zoneName,
-        details = "${bill.quantity} ticket${if (bill.quantity == 1) "" else "s"}",
+        date = eventDate, time = eventTime, location = venueLocation.ifBlank { zoneName },
+        details = "${bill.quantity} ticket${if (bill.quantity == 1) "" else "s"} · $zoneName",
         baseAmount = bill.subtotalPaise / 100, convenienceFee = bill.platformFeePaise / 100,
-        taxes = bill.gstTotalPaise / 100
+        taxes = bill.gstTotalPaise / 100, payableAmount = bill.totalRupees
     )
     is PendingTurfCheckout -> BookingDetails(
         itemId = itemId, title = resourceName, category = BookingType.TURF,
-        date = startsAt.substringBefore('T'), time = formattedTime, location = resourceName,
+        date = startsAt.substringBefore('T'), time = formattedTime, location = venueLocation.ifBlank { resourceName },
         details = formattedTime, baseAmount = bill.subtotalPaise / 100,
-        convenienceFee = bill.platformFeePaise / 100, taxes = bill.gstTotalPaise / 100
+        convenienceFee = bill.platformFeePaise / 100, taxes = bill.gstTotalPaise / 100,
+        payableAmount = bill.totalRupees
     )
 }

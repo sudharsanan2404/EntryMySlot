@@ -1,14 +1,7 @@
 package com.entrymyslot.app.screens.home
 
-import android.Manifest
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Build
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
@@ -47,6 +40,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -194,6 +188,7 @@ fun HomeScreen(
     onLocationClick: () -> Unit = {},
     onDrawerVisibilityChange: (Boolean) -> Unit = {},
     onPartnerClick: () -> Unit = {},
+    onTermsClick: () -> Unit = {},
     selectedCity: String = FakeData.currentUser.city
 ) {
     val context = LocalContext.current
@@ -222,7 +217,8 @@ fun HomeScreen(
         onSearchClick = onSearchClick,
         onLocationClick = onLocationClick,
         onDrawerVisibilityChange = onDrawerVisibilityChange,
-        onPartnerClick = onPartnerClick
+        onPartnerClick = onPartnerClick,
+        onTermsClick = onTermsClick
     )
 }
 
@@ -279,7 +275,8 @@ internal fun PremiumHomeScreen(
     onSearchClick: () -> Unit,
     onLocationClick: () -> Unit,
     onDrawerVisibilityChange: (Boolean) -> Unit,
-    onPartnerClick: () -> Unit
+    onPartnerClick: () -> Unit,
+    onTermsClick: () -> Unit
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -287,20 +284,8 @@ internal fun PremiumHomeScreen(
     var selectedBottomItem by remember { mutableStateOf("Home") }
     var showNotifications by remember { mutableStateOf(false) }
     var showHelpSupport by remember { mutableStateOf(false) }
-    val notificationPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (granted) showSystemReminderNotification(context)
-    }
     val openNotifications = {
         showNotifications = true
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) {
-            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        } else {
-            showSystemReminderNotification(context)
-        }
     }
     LaunchedEffect(drawerState) {
         snapshotFlow {
@@ -327,6 +312,10 @@ internal fun PremiumHomeScreen(
                         drawerState.close()
                         showHelpSupport = true
                     }
+                },
+                onTermsClick = {
+                    scope.launch { drawerState.close() }
+                    onTermsClick()
                 },
                 onPartnerClick = {
                     scope.launch { drawerState.close() }
@@ -725,31 +714,6 @@ private fun NotificationPanel(
             }
         }
     }
-}
-
-private fun showSystemReminderNotification(context: Context) {
-    val reminder = FakeData.notifications.firstOrNull { it.kind == NotificationKind.REMINDER }
-        ?: return
-    val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-    val channelId = "entrymyslot_reminders"
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        manager.createNotificationChannel(
-            NotificationChannel(channelId, "Booking reminders and offers", NotificationManager.IMPORTANCE_HIGH)
-        )
-    }
-    val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        android.app.Notification.Builder(context, channelId)
-    } else {
-        @Suppress("DEPRECATION") android.app.Notification.Builder(context)
-    }
-    val notification = builder
-        .setSmallIcon(R.drawable.ic_launcher_foreground)
-        .setContentTitle(reminder.title)
-        .setContentText(reminder.message)
-        .setAutoCancel(true)
-        .setPriority(android.app.Notification.PRIORITY_HIGH)
-        .build()
-    manager.notify(1001, notification)
 }
 
 @Composable
@@ -1210,10 +1174,11 @@ private fun PremiumContentRow(
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            items(items = events, key = { event -> event.id }) { event ->
+            itemsIndexed(items = events, key = { _, event -> event.id }) { index, event ->
                 PremiumContentCard(
                     event = event,
                     kind = kind,
+                    promoted = index == 0 && kind != HomeContentKind.Movie,
                     cardWidth = cardWidth,
                     onClick = { onEventClick(event) }
                 )
@@ -1226,6 +1191,7 @@ private fun PremiumContentRow(
 private fun PremiumContentCard(
     event: PopularEvent,
     kind: HomeContentKind,
+    promoted: Boolean,
     cardWidth: Dp,
     onClick: () -> Unit
 ) {
@@ -1282,6 +1248,18 @@ private fun PremiumContentCard(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
+            if (promoted) {
+                Text(
+                    "PROMOTED",
+                    color = Color.White,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = .65.sp,
+                    modifier = Modifier.align(Alignment.TopEnd)
+                        .clip(RoundedCornerShape(bottomStart = 9.dp)).background(PremiumOrange)
+                        .padding(horizontal = 5.dp, vertical = 2.dp)
+                )
+            }
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -1340,6 +1318,7 @@ private fun PremiumDrawer(
     onProfileClick: () -> Unit,
     onBookingsClick: () -> Unit,
     onHelpClick: () -> Unit,
+    onTermsClick: () -> Unit,
     onPartnerClick: () -> Unit
 ) {
     ModalDrawerSheet(
@@ -1384,7 +1363,7 @@ private fun PremiumDrawer(
                 Text("MORE", color = PremiumMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, modifier = Modifier.padding(start = 13.dp, bottom = 4.dp))
                 DrawerItem("Share", Icons.Outlined.Share, onClick = {})
                 DrawerItem("Rate Us", Icons.Outlined.Star, onClick = {})
-                DrawerItem("Terms & Policy", Icons.Outlined.Policy, onClick = {})
+                DrawerItem("Terms & Policy", Icons.Outlined.Policy, onTermsClick)
                 DrawerItem("Help & Support", Icons.Outlined.HelpOutline, onHelpClick)
 
                 Spacer(modifier = Modifier.weight(1f))
@@ -1750,10 +1729,9 @@ private fun CurrentLocationCard(
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (loading) {
-            CircularProgressIndicator(
+            PremiumLoadingState(
                 modifier = Modifier.size(15.dp),
-                color = PremiumOrange,
-                strokeWidth = 2.dp
+                message = ""
             )
             Spacer(modifier = Modifier.width(7.dp))
             Text("Detecting your location...", color = PremiumOrange, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)

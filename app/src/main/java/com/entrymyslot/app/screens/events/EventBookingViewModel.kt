@@ -17,7 +17,8 @@ data class EventBookingUiState(
     val isLoading: Boolean = false, val isOffline: Boolean = false, val isHolding: Boolean = false,
     val event: Event? = null, val options: List<EventBookingOption> = emptyList(), val selectedOptionId: String? = null,
     val quantity: Int = 0, val attendees: List<PendingAttendee> = emptyList(), val validationMessage: String? = null,
-    val errorMessage: String? = null, val httpStatus: Int? = null, val holdKey: String? = null, val holdExpiresAt: String? = null
+    val errorMessage: String? = null, val httpStatus: Int? = null, val holdKey: String? = null,
+    val holdExpiresAt: String? = null, val bill: com.entrymyslot.app.data.booking.AuthoritativeBillDto? = null
 ) {
     val selectedOption get() = options.firstOrNull { it.id == selectedOptionId }
     val subtotalPaise get() = (selectedOption?.pricePaise ?: 0) * quantity
@@ -33,7 +34,7 @@ class EventBookingViewModel(private val pendingCheckoutStore: PendingCheckoutSto
     fun selectOption(optionId: String) { state.value = state.value.copy(selectedOptionId = optionId, quantity = 0, attendees = emptyList(), validationMessage = null) }
     fun setQuantity(quantity: Int) {
         val option = state.value.selectedOption ?: return; val count = quantity.coerceIn(0, minOf(option.remaining, 10))
-        state.value = state.value.copy(quantity = count, attendees = List(count) { state.value.attendees.getOrNull(it) ?: PendingAttendee("", "") }, validationMessage = null)
+        state.value = state.value.copy(quantity = count, attendees = emptyList(), validationMessage = null, bill = null)
     }
     fun updateAttendee(index: Int, fullName: String? = null, phone: String? = null) {
         val list = state.value.attendees.toMutableList(); val current = list.getOrNull(index) ?: return
@@ -43,7 +44,6 @@ class EventBookingViewModel(private val pendingCheckoutStore: PendingCheckoutSto
     fun validateSelection(): Boolean {
         val error = when {
             state.value.quantity == 0 -> "Select at least one ticket."
-            state.value.attendees.any { it.fullName.isBlank() || it.phone.length < 7 } -> "Enter a valid name and phone for every attendee."
             else -> null
         }
         state.value = state.value.copy(validationMessage = error); return error == null
@@ -51,7 +51,14 @@ class EventBookingViewModel(private val pendingCheckoutStore: PendingCheckoutSto
     fun createHoldAndPrepareCheckout(onSuccess: () -> Unit) {
         if (!validateSelection()) return; val current = state.value; val event = current.event ?: return; val option = current.selectedOption ?: return
         val bill = previewBill("EVENT", current.quantity, current.subtotalPaise)
-        pendingCheckoutStore.save(PendingEventCheckout(event.id, event.title, "preview-event-hold", Instant.now().plusSeconds(300).toString(), option.zoneId, option.name, current.attendees, current.subtotalPaise, "INR", bill))
+        state.value = current.copy(bill = bill)
+        pendingCheckoutStore.save(PendingEventCheckout(
+            itemId = event.id, title = event.title, holdKey = "local-event-hold",
+            holdExpiresAt = Instant.now().plusSeconds(300).toString(), zoneId = option.zoneId,
+            zoneName = option.name, venueLocation = event.location, eventDate = event.date,
+            eventTime = event.time, quantity = current.quantity, attendees = emptyList(),
+            subtotalPaise = current.subtotalPaise, currency = "INR", bill = bill
+        ))
         onSuccess()
     }
     fun releaseAndGoBack(onReleased: () -> Unit) { pendingCheckoutStore.clear(); onReleased() }

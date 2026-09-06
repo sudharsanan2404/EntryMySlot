@@ -42,7 +42,6 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.SentimentDissatisfied
 import androidx.compose.material.icons.outlined.SportsSoccer
 import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -101,7 +100,14 @@ fun BookingScreen(
     onBottomNavigationClick: (String) -> Unit = {},
     onViewTicketClick: (BookingItem) -> Unit = {}
 ) {
-    val bookingViewModel: BookingViewModel = viewModel()
+    val app = LocalContext.current.applicationContext as EntryMySlotApp
+    val bookingViewModel: BookingViewModel = viewModel(
+        factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                BookingViewModel() as T
+        }
+    )
     val state by bookingViewModel.uiState.collectAsStateWithLifecycle()
     val tabs = listOf("Upcoming", "Past")
     val filters = listOf("All", "Movies", "Turf", "Events")
@@ -160,7 +166,7 @@ fun BookingScreen(
             ) {
                 when {
                     state.isLoading && state.bookings.isEmpty() -> {
-                        item { BookingLoadingState() }
+                        item { PremiumLoadingState(modifier = Modifier.fillParentMaxSize()) }
                     }
                     state.errorMessage != null && state.bookings.isEmpty() -> {
                         item {
@@ -653,14 +659,6 @@ private fun StatusBadge(status: BookingStatus) {
             letterSpacing = 0.6.sp
         )
     }
-}
-
-@Composable
-private fun BookingLoadingState() {
-    PremiumLoadingState(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 72.dp),
-        message = "Loading your bookings..."
-    )
 }
 
 @Composable
