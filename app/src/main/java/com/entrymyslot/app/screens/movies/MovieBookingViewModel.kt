@@ -1,9 +1,17 @@
 package com.entrymyslot.app.screens.movies
 
 import androidx.lifecycle.ViewModel
-import com.entrymyslot.app.data.FakeData
+import androidx.lifecycle.viewModelScope
 import com.entrymyslot.app.data.booking.*
 import com.entrymyslot.app.data.details.MovieDetailDto
+import com.entrymyslot.app.data.mapper.toDetail
+import com.entrymyslotbe.app.EntryMySlotBackend
+import com.entrymyslotbe.app.core.ApiResult
+import com.entrymyslotbe.app.network.model.CalculatePricesRequest
+import com.entrymyslotbe.app.network.model.HoldSeatsRequest
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,53 +23,99 @@ data class MovieBookingUiState(
     val isLoading: Boolean = false, val isRefreshing: Boolean = false, val isHolding: Boolean = false,
     val isOffline: Boolean = false, val movie: MovieDetailDto? = null, val cinemas: List<MovieCinemaOption> = emptyList(),
     val selectedDate: LocalDate = LocalDate.now(), val showtime: ShowtimeDto? = null, val cinema: CinemaDto? = null,
-    val showtimes: List<ShowtimeDto> = emptyList(),
     val seatLayout: MovieSeatLayoutDto? = null, val desiredSeatCount: Int = 1, val selectedSeatIds: Set<Int> = emptySet(),
     val holdKey: String? = null, val holdExpiresAt: String? = null, val holdSecondsRemaining: Int = 0,
-    val totalPaise: Int = 0, val currency: String = "INR", val bill: AuthoritativeBillDto? = null,
-    val errorMessage: String? = null, val httpStatus: Int? = null
+    val totalPaise: Int = 0, val currency: String = "INR", val errorMessage: String? = null, val httpStatus: Int? = null
 )
 
-class MovieBookingViewModel(private val pendingCheckoutStore: PendingCheckoutStore) : ViewModel() {
-    private val state = MutableStateFlow(MovieBookingUiState()); val uiState: StateFlow<MovieBookingUiState> = state.asStateFlow()
+class MovieBookingViewModel(private val backend: EntryMySlotBackend, private val pendingCheckoutStore: PendingCheckoutStore, private val selectedCity: String = "") : ViewModel() {
+    private val state = MutableStateFlow(MovieBookingUiState())
+    val uiState: StateFlow<MovieBookingUiState> = state.asStateFlow()
     private var movieId = ""
+    private var seatShowtimeId: Int? = null
+    private var loadJob: Job? = null
+    private var holdJob: Job? = null
 
     fun loadCinemaOptions(id: String, date: LocalDate = state.value.selectedDate) {
         movieId = id
-        val movie = movieDto(id)
-        val cinemas = FakeData.cinemas.mapIndexed { index, cinema ->
-            val dto = CinemaDto(index + 1, cinema.name, cinema.location, "Chennai", facilities = cinema.facilities)
-            MovieCinemaOption(dto, listOf(10, 14, 18, 21).mapIndexed { timeIndex, hour -> showtime(index * 10 + timeIndex + 1, index + 1, date, hour) })
+        seatShowtimeId = null
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
+            state.value = MovieBookingUiState(isLoading = true, selectedDate = date)
+            val movie = when (val result = backend.loadMovieForUi(id)) {
+                is ApiResult.Success -> result.value?.toDetail()
+                is ApiResult.Failure -> return@launch fail(result)
+            }
+            val cinemas = when (val result = backend.gateway.data { if (selectedCity.isBlank()) listCinemas() else getCinemasByCity(selectedCity) }) {
+                is ApiResult.Success -> result.value.orEmpty().mapNotNull { it.toUiCinema() }
+                is ApiResult.Failure -> return@launch fail(result)
+            }
+            val shows = when (val result = backend.gateway.data { listShowtimes(buildMap {
+                put("movieId", id); put("date", date.toString()); if (selectedCity.isNotBlank()) put("city", selectedCity)
+            }) }) {
+                is ApiResult.Success -> result.value.orEmpty().mapNotNull { it.toUiShowtime() }
+                is ApiResult.Failure -> return@launch fail(result)
+            }
+            state.value = MovieBookingUiState(movie = movie, selectedDate = date,
+                cinemas = cinemas.mapNotNull { cinema -> shows.filter { it.cinemaId == cinema.id }.takeIf { it.isNotEmpty() }?.let { MovieCinemaOption(cinema, it) } })
         }
-        state.value = MovieBookingUiState(movie = movie, cinemas = cinemas, selectedDate = date)
     }
-
     fun changeCinemaDate(date: LocalDate) = loadCinemaOptions(movieId, date)
-
     fun loadSeatBooking(id: String, targetShowtimeId: Int) {
         movieId = id
-        val cinemaIndex = ((targetShowtimeId - 1) / 10).coerceIn(0, FakeData.cinemas.lastIndex)
-        val cinema = FakeData.cinemas[cinemaIndex]
-        val cinemaDto = CinemaDto(cinemaIndex + 1, cinema.name, cinema.location, "Chennai", facilities = cinema.facilities)
-        val localShowtimes = listOf(10, 14, 18, 21).mapIndexed { index, hour ->
-            showtime(cinemaIndex * 10 + index + 1, cinemaDto.id, LocalDate.now(), hour)
+        seatShowtimeId = targetShowtimeId
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
+            state.value = MovieBookingUiState(isLoading = true)
+            val movie = when (val result = backend.loadMovieForUi(id)) {
+                is ApiResult.Success -> result.value?.toDetail()
+                is ApiResult.Failure -> return@launch fail(result)
+            }
+            val show = when (val result = backend.gateway.data { getShowtime(targetShowtimeId.toString()) }) {
+                is ApiResult.Success -> result.value?.toUiShowtime()
+                is ApiResult.Failure -> {
+                    // The live detail route rejects IDs returned by its own list route (HTTP 400).
+                    if (result !is ApiResult.HttpError || result.httpCode != 400) return@launch fail(result)
+                    when (val listed = backend.gateway.data { listShowtimes(mapOf("movieId" to id)) }) {
+                        is ApiResult.Success -> listed.value.orEmpty().firstOrNull { it.id == targetShowtimeId.toString() }?.toUiShowtime()
+                        is ApiResult.Failure -> return@launch fail(listed)
+                    }
+                }
+            } ?: return@launch fail(ApiResult.UnexpectedError("Showtime is unavailable."))
+            val cinema = when (val result = backend.gateway.data { getCinema(show.cinemaId.toString()) }) {
+                is ApiResult.Success -> result.value?.toUiCinema()
+                is ApiResult.Failure -> {
+                    if (result !is ApiResult.HttpError || result.httpCode != 404) return@launch fail(result)
+                    when (val listed = backend.gateway.data { listCinemas() }) {
+                        is ApiResult.Success -> listed.value.orEmpty().firstOrNull { it.id == show.cinemaId.toString() }?.toUiCinema()
+                        is ApiResult.Failure -> return@launch fail(listed)
+                    }
+                }
+            }
+            val layout = when (val result = backend.gateway.data { getSeats(targetShowtimeId.toString()) }) {
+                is ApiResult.Success -> result.value?.let { data ->
+                    MovieSeatLayoutDto(show.id, show.screenId, data.price ?: show.price, data.currency,
+                        data.rows.orEmpty().map { row -> MovieSeatRowDto(row.rowLabel, row.seats.mapNotNull { seat ->
+                            val seatId = seat.id.toIntOrNull() ?: return@mapNotNull null
+                            val number = seat.number.toIntOrNull() ?: return@mapNotNull null
+                            val price = seat.price ?: return@mapNotNull null
+                            MovieSeatDto(seatId, number, seat.type, seat.seatCategory.orEmpty(), seat.xPosition, seat.yPosition, seat.status, price)
+                        }) })
+                }
+                is ApiResult.Failure -> return@launch fail(result)
+            }
+            state.value = MovieBookingUiState(movie = movie, showtime = show, cinema = cinema, seatLayout = layout,
+                errorMessage = if (layout == null) "Seat layout is unavailable." else null)
         }
-        val show = localShowtimes.firstOrNull { it.id == targetShowtimeId }
-            ?: showtime(targetShowtimeId, cinemaDto.id, LocalDate.now(), 18)
-        val rows = ('A'..'G').mapIndexed { rowIndex, label ->
-            MovieSeatRowDto(label.toString(), (1..8).map { number ->
-                val seatId = rowIndex * 8 + number
-                MovieSeatDto(seatId, number, "regular", "standard", status = if (seatId in setOf(2, 12, 19, 35)) "booked" else "available", pricePaise = 22000)
-            })
-        }
-        state.value = MovieBookingUiState(movie = movieDto(id), showtime = show, cinema = cinemaDto,
-            showtimes = localShowtimes, seatLayout = MovieSeatLayoutDto(show.id, 1, 22000, "INR", rows))
     }
-
-    fun setDesiredSeatCount(count: Int) { state.value = state.value.copy(desiredSeatCount = count.coerceIn(1, 10), selectedSeatIds = emptySet(), totalPaise = 0) }
-    fun selectShowtime(showtimeId: Int) = loadSeatBooking(movieId, showtimeId)
+    fun setDesiredSeatCount(count: Int) {
+        if (state.value.isHolding || state.value.holdKey != null) return
+        state.value = state.value.copy(desiredSeatCount = count.coerceIn(1, 10), selectedSeatIds = emptySet(), totalPaise = 0)
+    }
     fun onSeatClicked(seatId: Int) {
-        val current = state.value; val layout = current.seatLayout ?: return
+        val current = state.value
+        if (current.isHolding || current.holdKey != null) return
+        val layout = current.seatLayout ?: return
         val next = selectMovieSeatBlock(layout.rows.flatMap { row -> row.seats.map { row.rowLabel to it } }, current.selectedSeatIds, current.desiredSeatCount, seatId)
         state.value = current.copy(selectedSeatIds = next, totalPaise = layout.rows.flatMap { it.seats }.filter { it.seatId in next }.sumOf { it.pricePaise }, errorMessage = null)
     }
@@ -71,55 +125,91 @@ class MovieBookingViewModel(private val pendingCheckoutStore: PendingCheckoutSto
         return valid
     }
     fun createHoldAndPrepareCheckout(onSuccess: () -> Unit) {
-        if (!validateSelection()) return
-        val current = state.value; val layout = current.seatLayout ?: return; val show = current.showtime ?: return; val cinema = current.cinema ?: return
-        val labels = layout.rows.flatMap { row -> row.seats.filter { it.seatId in current.selectedSeatIds }.map { "${row.rowLabel}${it.seatNumber}" } }
-        val bill = previewBill("MOVIE", current.selectedSeatIds.size, current.totalPaise)
-        state.value = current.copy(bill = bill, totalPaise = bill.totalPaise)
-        pendingCheckoutStore.save(PendingMovieCheckout(
-            itemId = movieId, movieTitle = current.movie?.title.orEmpty(), showtimeId = show.id,
-            cinemaId = cinema.id, cinemaName = cinema.name, showDatetime = show.showDatetime,
-            seatIds = current.selectedSeatIds.sorted(), seatLabels = labels, language = show.language,
-            format = show.format, screenName = "Screen ${show.screenId}", seatTier = "Standard",
-            venueLocation = listOf(cinema.address, cinema.city).filter(String::isNotBlank).joinToString(", "),
-            holdKey = "local-movie-hold", holdExpiresAt = Instant.now().plusSeconds(300).toString(),
-            totalPaise = bill.totalPaise, currency = "INR", bill = bill
-        ))
-        onSuccess()
+        if (state.value.isHolding || !validateSelection()) return
+        val current = state.value
+        val layout = current.seatLayout ?: return
+        val show = current.showtime ?: return
+        val cinema = current.cinema ?: return
+        state.value = current.copy(isHolding = true, errorMessage = null)
+        viewModelScope.launch {
+            val ids = current.selectedSeatIds.sorted().map(Int::toString)
+            val prices = when (val result = backend.gateway.data { calculatePrices(show.id.toString(), CalculatePricesRequest(ids)) }) {
+                is ApiResult.Success -> result.value.orEmpty()
+                is ApiResult.Failure -> return@launch fail(result)
+            }
+            if (prices.mapNotNull { it.seatId }.toSet() != ids.toSet() || prices.any { it.finalPrice == null })
+                return@launch fail(ApiResult.UnexpectedError("The server did not return prices for every selected seat."))
+            val hold = when (val result = backend.gateway.data { holdSeats(show.id.toString(), HoldSeatsRequest(ids, show.id.toString())) }) {
+                is ApiResult.Success -> result.value
+                is ApiResult.Failure -> return@launch fail(result)
+            }
+            if (hold?.success != true || hold.holdKey.isNullOrBlank() || hold.holdExpiresAt.isNullOrBlank())
+                return@launch fail(ApiResult.UnexpectedError("The selected seats could not be held."))
+            val subtotal = prices.sumOf { it.finalPrice!! }
+            val labels = layout.rows.flatMap { row -> row.seats.filter { it.seatId in current.selectedSeatIds }.map { "${row.rowLabel}${it.seatNumber}" } }
+            val bill = AuthoritativeBillDto("MOVIE", ids.size, subtotal, currency = layout.currency)
+            pendingCheckoutStore.save(PendingMovieCheckout(movieId, current.movie?.title.orEmpty(), show.id, cinema.id, cinema.name, show.showDatetime,
+                current.selectedSeatIds.sorted(), labels, hold.holdKey, hold.holdExpiresAt, subtotal, layout.currency, bill))
+            state.value = state.value.copy(isHolding = false, holdKey = hold.holdKey, holdExpiresAt = hold.holdExpiresAt, totalPaise = subtotal)
+            monitorHold(hold.holdKey, hold.holdExpiresAt)
+            onSuccess()
+        }
     }
-    fun releaseAndGoBack(onReleased: () -> Unit) { pendingCheckoutStore.clear(); onReleased() }
-    fun retry() { if (state.value.showtime == null) loadCinemaOptions(movieId) else loadSeatBooking(movieId, state.value.showtime!!.id) }
-
-    private fun movieDto(id: String): MovieDetailDto? = FakeData.getMovieById(id)?.let { movie -> MovieDetailDto(id.filter(Char::isDigit).toIntOrNull() ?: 1, movie.title, movie.description, listOf(movie.genre), movie.language, rating = movie.rating, releaseDate = movie.releaseDate, status = "NOW_SHOWING") }
-    private fun showtime(id: Int, cinemaId: Int, date: LocalDate, hour: Int) = ShowtimeDto(id, 1, cinemaId, 1, "${date}T${hour.toString().padStart(2, '0')}:00:00Z", "${date}T${(hour + 3).coerceAtMost(23).toString().padStart(2, '0')}:00:00Z", "English", if (hour >= 18) "3D" else "2D", 22000, totalSeats = 56, availableSeats = 42, status = "active")
+    private fun monitorHold(key: String, expiresAt: String) {
+        holdJob?.cancel()
+        holdJob = viewModelScope.launch {
+            val expiry = runCatching { Instant.parse(expiresAt) }.getOrNull() ?: return@launch
+            while (pendingCheckoutStore.payment == null) {
+                val seconds = java.time.Duration.between(Instant.now(), expiry).seconds.coerceAtLeast(0).toInt()
+                state.value = state.value.copy(holdSecondsRemaining = seconds)
+                if (seconds == 0) {
+                    if ((pendingCheckoutStore.current.value as? PendingMovieCheckout)?.holdKey == key) pendingCheckoutStore.clear()
+                    state.value = state.value.copy(holdKey = null, errorMessage = "Seat hold expired. Select your seats again.")
+                    break
+                }
+                delay(1000)
+            }
+        }
+    }
+    fun releaseAndGoBack(onReleased: () -> Unit) {
+        if (state.value.isHolding) return
+        holdJob?.cancel()
+        viewModelScope.launch {
+            val key = state.value.holdKey
+            if (key != null) {
+                val result = backend.gateway.data { releaseSeats(key) }
+                if (result is ApiResult.Failure) return@launch fail(result)
+            }
+            pendingCheckoutStore.clear()
+            state.value = state.value.copy(holdKey = null)
+            onReleased()
+        }
+    }
+    fun retry() { val show = seatShowtimeId; if (show == null) loadCinemaOptions(movieId) else loadSeatBooking(movieId, show) }
+    private fun fail(result: ApiResult.Failure) {
+        state.value = state.value.copy(isLoading = false, isHolding = false, isOffline = result is ApiResult.NoInternet, errorMessage = result.userMessage, httpStatus = (result as? ApiResult.HttpError)?.httpCode)
+    }
 }
 
+private fun com.entrymyslotbe.app.network.model.Cinema.toUiCinema(): CinemaDto? = id?.toIntOrNull()?.let {
+    CinemaDto(it, name.orEmpty(), address.orEmpty(), city.orEmpty(), state.orEmpty(), facilities.orEmpty())
+}
+private fun com.entrymyslotbe.app.network.model.Showtime.toUiShowtime(): ShowtimeDto? {
+    return ShowtimeDto(id?.toIntOrNull() ?: return null, movieId?.toIntOrNull() ?: return null,
+        cinemaId?.toIntOrNull() ?: return null, screenId?.toIntOrNull() ?: return null,
+        startTime ?: return null, endTime.orEmpty(), language.orEmpty(), format.orEmpty(), price ?: return null,
+        currency, totalSeats ?: 0, availableSeats ?: 0, status = status.orEmpty())
+}
 internal fun selectMovieSeatBlock(rows: List<Pair<String, MovieSeatDto>>, current: Set<Int>, desiredCount: Int, clickedSeatId: Int): Set<Int> {
     val clickedPair = rows.firstOrNull { it.second.seatId == clickedSeatId } ?: return current
     val clicked = clickedPair.second
-    if (clickedSeatId in current) return emptySet()
-    if (clicked.status != "available") return current
+    if (clickedSeatId in current) return current - clickedSeatId
+    if (current.size >= desiredCount || clicked.status != "available") return current
+    val selectedTier = rows.firstOrNull { it.second.seatId in current }?.second?.tierKey
+    if (selectedTier != null && selectedTier != clicked.tierKey) return current
     val sameRow = rows.filter { it.first == clickedPair.first }.map { it.second }.sortedBy { it.seatNumber }
-    val clickedIndex = sameRow.indexOfFirst { it.seatId == clickedSeatId }; if (clickedIndex < 0) return current
-    var runStart = clickedIndex
-    var runEnd = clickedIndex
-    while (runStart > 0 && sameRow[runStart - 1].status == "available" && sameRow[runStart].seatNumber - sameRow[runStart - 1].seatNumber == 1) runStart--
-    while (runEnd < sameRow.lastIndex && sameRow[runEnd + 1].status == "available" && sameRow[runEnd + 1].seatNumber - sameRow[runEnd].seatNumber == 1) runEnd++
-    if (runEnd - runStart + 1 < desiredCount) return current
-    val blockStart = clickedIndex.coerceAtMost(runEnd - desiredCount + 1).coerceAtLeast(runStart)
-    return sameRow.subList(blockStart, blockStart + desiredCount).map { it.seatId }.toSet()
-}
-
-internal fun previewBill(domain: String, quantity: Int, subtotal: Int): AuthoritativeBillDto {
-    val fee = when (domain.uppercase()) {
-        "MOVIE" -> 2_000 * quantity
-        "EVENT" -> (subtotal * 10) / 100
-        "TURF" -> 5_000 + (subtotal * 2) / 100
-        else -> 0
-    }
-    val gst = (fee * 18) / 100
-    return AuthoritativeBillDto(domain, quantity, subtotal, taxableAmountPaise = fee,
-        cgstPaise = gst / 2, sgstPaise = gst - (gst / 2), gstTotalPaise = gst,
-        platformFeePaise = fee, totalPaise = subtotal + fee + gst, currency = "INR",
-        calculatedAt = Instant.now().toString())
+    val selectable = sameRow.filter { it.tierKey == clicked.tierKey && (it.status == "available" || it.seatId in current) }
+    val index = selectable.indexOfFirst { it.seatId == clickedSeatId }; if (index < 0) return current
+    val ordered = selectable.drop(index) + selectable.take(index).asReversed()
+    return current + ordered.filter { it.seatId !in current }.take(desiredCount - current.size).map { it.seatId }
 }

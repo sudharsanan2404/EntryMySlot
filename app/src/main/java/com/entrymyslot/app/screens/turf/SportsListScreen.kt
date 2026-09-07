@@ -286,7 +286,7 @@ fun SportListItem(
                 )
                 Spacer(modifier = Modifier.width(3.dp))
                 Text(
-                    text = "4.5",
+                    text = (sport as? com.entrymyslot.app.data.model.Turf)?.rating?.toString() ?: "—",
                     color = SportsPrimaryText,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold

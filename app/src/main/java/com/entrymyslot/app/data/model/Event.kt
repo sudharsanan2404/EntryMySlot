@@ -19,7 +19,7 @@ data class TicketTier(
     val id: String,
     val eventId: String,
     val name: String,
-    val price: Int,
+    val price: java.math.BigDecimal,
     val description: String,
     val available: Int,
     val isSoldOut: Boolean = false

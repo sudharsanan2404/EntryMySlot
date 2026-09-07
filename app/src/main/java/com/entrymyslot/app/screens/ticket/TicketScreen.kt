@@ -1,4 +1,5 @@
 package com.entrymyslot.app.screens.ticket
+import androidx.compose.material3.CircularProgressIndicator
 
 import android.content.Context
 import android.hardware.Sensor
@@ -110,11 +111,17 @@ fun TicketScreen(
                     itemId = itemId,
                     bookingKey = bookingKey,
                     ticketUuid = ticketUuid,
-                    pendingCheckoutStore = app.appContainer.pendingCheckoutStore
+                    backend = app.appContainer.backend, pendingCheckoutStore = app.appContainer.pendingCheckoutStore
                 ) as T
         }
     )
     val uiState by viewModel.uiState.collectAsState()
+    val savePdf = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/pdf")
+    ) { uri -> if (uri != null) viewModel.savePdf(context, uri) }
+    androidx.compose.runtime.LaunchedEffect(uiState.errorMessage) {
+        if (uiState.ticket != null && uiState.errorMessage != null) android.widget.Toast.makeText(context, uiState.errorMessage, android.widget.Toast.LENGTH_LONG).show()
+    }
 
     when {
         uiState.isLoading -> Box(
@@ -148,8 +155,15 @@ fun TicketScreen(
         else -> TicketContent(
             ticket = requireNotNull(uiState.ticket),
             onBackClick = onBackClick,
-            onDownloadClick = onDownloadClick,
-            onShareClick = onShareClick
+            onDownloadClick = { savePdf.launch("EntryMySlot-ticket.pdf") },
+            onShareClick = {
+                val ticket = requireNotNull(uiState.ticket)
+                val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                    this.type = "text/plain"
+                    putExtra(android.content.Intent.EXTRA_TEXT, listOf(ticket.title, ticket.venue, ticket.date, ticket.time, ticket.bookingId, ticket.ticketUuid).joinToString("\n"))
+                }
+                context.startActivity(android.content.Intent.createChooser(intent, "Share ticket"))
+            }
         )
     }
 }
@@ -222,10 +236,18 @@ private fun TicketNavigation(onBack: () -> Unit) {
 private fun TicketBody(ticket: TicketDetails, tilt: TicketTilt) {
     val shape = RoundedCornerShape(24.dp)
     val density = LocalDensity.current.density
-    val hasManySeats = ticket.category == "MOVIE" && (ticket.ticketCount ?: 0) > 5
-    val primaryWeight = if (hasManySeats) .61f else .55f
+    val isMovieTicket = ticket.category.equals("MOVIE", ignoreCase = true)
+    val seatRows = if (isMovieTicket) {
+        ((ticket.admission.split(',').filter(String::isNotBlank).size.coerceAtLeast(1) + 2) / 3)
+    } else {
+        1
+    }
+    val extraSeatHeight = ((seatRows - 1) * 20).coerceAtMost(80)
+    val ticketHeight = if (isMovieTicket) 625 + extraSeatHeight else 600
+    val primaryHeight = if (isMovieTicket) 360 + extraSeatHeight else 335
+    val primaryWeight = primaryHeight.toFloat() / ticketHeight.toFloat()
     Box(
-        Modifier.fillMaxWidth().height(if (hasManySeats) 680.dp else 600.dp)
+        Modifier.fillMaxWidth().height(ticketHeight.dp)
             .graphicsLayer {
                 rotationX = tilt.x
                 rotationY = tilt.y
@@ -329,7 +351,7 @@ private fun TicketPrimary(ticket: TicketDetails, modifier: Modifier) {
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
-        if (ticket.venue.isNotBlank() || ticket.location.isNotBlank()) {
+        if (ticket.venue.isNotBlank()) {
             Spacer(Modifier.height(6.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.LocationOn, null, tint = TicketOrange, modifier = Modifier.size(14.dp))
@@ -338,20 +360,8 @@ private fun TicketPrimary(ticket: TicketDetails, modifier: Modifier) {
                     if (ticket.venue.isNotBlank()) {
                         Text(ticket.venue, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
-                    if (ticket.location.isNotBlank()) {
-                        Text(ticket.location, color = TicketPaleBlue.copy(alpha = .78f), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
                 }
             }
-        }
-        if (!ticket.language.isNullOrBlank() || !ticket.format.isNullOrBlank()) {
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = listOfNotNull(ticket.language, ticket.format).joinToString(" • "),
-                color = TicketOrange,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold
-            )
         }
         Spacer(Modifier.height(14.dp))
         TicketInformation(ticket)
@@ -378,38 +388,42 @@ private fun TicketCategoryBadge(category: String) {
 
 @Composable
 private fun TicketInformation(ticket: TicketDetails) {
-    Row(Modifier.fillMaxWidth().ticketTopRule().padding(top = 16.dp)) {
-        Box(Modifier.weight(1f)) { TicketInfoCell("DATE") { TicketValue(ticket.date) } }
-        Box(Modifier.weight(1f)) { TicketInfoCell("TIME") { TicketValue(ticket.time) } }
-    }
-    Spacer(Modifier.height(16.dp))
-    if (ticket.category == "MOVIE") {
-        TicketInfoCell("SEATS") {
-            TicketValue(ticket.admission, maxLines = 3)
-        }
-        if (ticket.ticketCount != null || !ticket.screenName.isNullOrBlank()) {
-            Spacer(Modifier.height(16.dp))
-            Row(Modifier.fillMaxWidth()) {
-                ticket.ticketCount?.let { count ->
-                    Box(Modifier.weight(1f)) { TicketInfoCell("QUANTITY") { TicketValue("$count") } }
-                }
-                if (!ticket.screenName.isNullOrBlank()) {
-                    Box(Modifier.weight(1f)) { TicketInfoCell("SCREEN") { TicketValue(ticket.screenName) } }
-                }
-            }
-        }
-    } else {
+    Column(Modifier.fillMaxWidth().ticketTopRule().padding(top = 16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(Modifier.fillMaxWidth()) {
+            Box(Modifier.weight(1f)) { TicketInfoCell("DATE") { TicketValue(ticket.date) } }
+            Box(Modifier.weight(1f)) { TicketInfoCell("TIME") { TicketValue(ticket.time, ellipsize = true, maxLines = 2) } }
+        }
+        Row(Modifier.fillMaxWidth()) {
+            Box(Modifier.weight(1f)) { TicketInfoCell("ATTENDEE") { TicketValue(ticket.attendee, ellipsize = true) } }
             Box(Modifier.weight(1f)) {
-                TicketInfoCell(if (ticket.category == "TURF") "SLOT" else "TIER") {
-                    TicketValue(ticket.ticketTier ?: ticket.admission, ellipsize = true)
+                TicketInfoCell(if (ticket.category == "MOVIE") "SEATS" else "ACCESS") {
+                    if (ticket.category == "MOVIE") TicketSeatValue(ticket.admission)
+                    else TicketValue(ticket.admission, ellipsize = true, maxLines = 2)
                 }
-            }
-            ticket.ticketCount?.let { count ->
-                Box(Modifier.weight(1f)) { TicketInfoCell("QUANTITY") { TicketValue("$count") } }
             }
         }
     }
+}
+
+@Composable
+private fun TicketSeatValue(value: String) {
+    val seats = value.split(',').map(String::trim).filter(String::isNotBlank)
+    val formattedSeats = if (seats.size > 1) {
+        seats.chunked(3).joinToString("\n") { row -> row.joinToString(", ") }
+    } else {
+        value.trim()
+    }
+    Text(
+        text = formattedSeats,
+        modifier = Modifier.fillMaxWidth(),
+        color = Color.White,
+        fontSize = 14.sp,
+        lineHeight = 19.sp,
+        fontWeight = FontWeight.Bold,
+        maxLines = 4,
+        softWrap = true,
+        overflow = TextOverflow.Ellipsis
+    )
 }
 
 @Composable

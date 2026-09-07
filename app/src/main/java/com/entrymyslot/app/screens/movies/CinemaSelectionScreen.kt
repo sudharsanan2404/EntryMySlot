@@ -1,5 +1,6 @@
 package com.entrymyslot.app.screens.movies
 
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -77,7 +78,6 @@ import com.entrymyslot.app.EntryMySlotApp
 import com.entrymyslot.app.screens.home.GlowBackground
 import com.entrymyslot.app.core.components.PremiumLoadingState
 import com.entrymyslot.app.data.booking.ShowtimeDto
-import com.entrymyslot.app.data.booking.hasAirConditioning
 import com.entrymyslot.app.data.model.Cinema
 import java.text.SimpleDateFormat
 import java.time.Instant
@@ -109,7 +109,9 @@ fun CinemaSelectionScreen(
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                MovieBookingViewModel(app.appContainer.pendingCheckoutStore) as T
+                MovieBookingViewModel(
+                    selectedCity = app.appContainer.selectedCity, backend = app.appContainer.backend, pendingCheckoutStore = app.appContainer.pendingCheckoutStore
+                ) as T
         }
     )
     val state by movieBookingViewModel.uiState.collectAsStateWithLifecycle()
@@ -237,8 +239,7 @@ fun CinemaSelectionScreen(
                             id = option.cinema.id.toString(),
                             name = option.cinema.name,
                             location = listOf(option.cinema.address, option.cinema.city)
-                                .filter(String::isNotBlank).joinToString(", "),
-                            facilities = option.cinema.facilities
+                                .filter(String::isNotBlank).joinToString(", ")
                         ),
                         showTimes = option.showtimes,
                         onTimeClick = { showtime -> onTimeSelected(showtime.id) }
@@ -521,15 +522,6 @@ private fun CinemaCard(
                             fontWeight = FontWeight.Normal,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                    if (cinema.facilities.hasAirConditioning()) {
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = "AC available",
-                            color = MovieOrange,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 }

@@ -1,11 +1,14 @@
 package com.entrymyslot.app.screens.payment
 
+
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -42,15 +45,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.entrymyslot.app.screens.home.GlowBackground
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.entrymyslot.app.EntryMySlotApp
-import com.entrymyslot.app.data.FakeData
-import com.entrymyslot.app.data.booking.AuthoritativeBillDto
-import com.entrymyslot.app.data.booking.formatPaiseAsRupees
+
 import com.entrymyslot.app.data.model.BookingDetails
 import com.entrymyslot.app.data.model.BookingType
 import com.entrymyslot.app.data.model.PaymentMethod
@@ -84,7 +86,9 @@ fun PaymentScreen(
         factory = object : androidx.lifecycle.ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T =
-                PaymentViewModel(app.appContainer.pendingCheckoutStore) as T
+                PaymentViewModel(
+                    backend = app.appContainer.backend, pendingCheckoutStore = app.appContainer.pendingCheckoutStore
+                ) as T
         }
     )
     val uiState by viewModel.uiState.collectAsState()
@@ -92,28 +96,37 @@ fun PaymentScreen(
     var selectionError by remember { mutableStateOf<String?>(null) }
 
     val ticketPrice = bookingDetails.baseAmount
-    val bookingFee = bookingDetails.bookingFee
-    val serviceCharge = bookingDetails.serviceCharge
+    val convenienceFee = bookingDetails.convenienceFee
     val taxes = bookingDetails.taxes
-    val pendingCheckout = app.appContainer.pendingCheckoutStore.current.value
-    val totalAmount = pendingCheckout?.bill?.totalPaise?.let { it / 100 } ?: bookingDetails.payableAmount
-    val bill = pendingCheckout?.bill
-    val methods = FakeData.paymentMethods
-    val launchTestPayment = {
-        if (selectedMethodId == "upi") {
-            selectionError = null
-            viewModel.completePayment()
-        } else {
-            selectionError = "Select UPI to run the test payment flow."
+    val totalAmount = uiState.amountPaise?.let { java.math.BigDecimal(it).movePointLeft(2).toPlainString() }
+    // These are payment-method labels, not saved instruments or simulated accounts.
+    val methods = listOf(
+        PaymentMethod("upi", PaymentMethodType.UPI, "UPI", "Choose in secure checkout"),
+        PaymentMethod("card", PaymentMethodType.CARD, "Credit / Debit Card", "Choose in secure checkout"),
+        PaymentMethod("netbanking", PaymentMethodType.NET_BANKING, "Netbanking", "Choose in secure checkout")
+    )
+    val launchPayment = { selectionError = null; viewModel.pay() }
+    val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+    androidx.compose.runtime.LaunchedEffect(uiState.checkoutUrl) {
+        uiState.checkoutUrl?.let { url ->
+            runCatching { uriHandler.openUri(url) }.onFailure { selectionError = "Unable to open secure checkout." }
+            viewModel.checkoutOpened()
         }
     }
-
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME && app.appContainer.pendingCheckoutStore.payment != null) viewModel.verifyPayment()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     val confirmedBooking = uiState.confirmedBooking
     if (confirmedBooking != null) {
         PaymentSuccessfulScreen(
             bookingDetails = bookingDetails,
             totalAmount = totalAmount,
-            paymentMethod = methods.firstOrNull { it.id == selectedMethodId }?.name ?: "Online payment",
+            paymentMethod = "Online payment",
             onViewTicket = { onPaySuccess(confirmedBooking) }
         )
         return
@@ -137,7 +150,7 @@ fun PaymentScreen(
                 enabled = !uiState.isProcessing,
                 processing = uiState.isProcessing,
                 error = selectionError ?: uiState.errorMessage,
-                onPayClick = launchTestPayment
+                onPayClick = launchPayment
             )
         },
         containerColor = Color.Transparent
@@ -161,11 +174,9 @@ fun PaymentScreen(
                     OrderSummaryCard(
                         bookingDetails = bookingDetails,
                         ticketPrice = ticketPrice,
-                        bookingFee = bookingFee,
-                        serviceCharge = serviceCharge,
+                        convenienceFee = convenienceFee,
                         taxes = taxes,
-                        totalAmount = totalAmount,
-                        bill = bill
+                        totalAmount = totalAmount
                     )
                 }
                 item {
@@ -317,12 +328,10 @@ private fun SelectionCircle(isSelected: Boolean) {
 @Composable
 private fun OrderSummaryCard(
     bookingDetails: BookingDetails,
-    ticketPrice: Int,
-    bookingFee: Int,
-    serviceCharge: Int,
-    taxes: Int,
-    totalAmount: Int,
-    bill: AuthoritativeBillDto?
+    ticketPrice: java.math.BigDecimal,
+    convenienceFee: java.math.BigDecimal?,
+    taxes: java.math.BigDecimal?,
+    totalAmount: String?
 ) {
     Card(
         shape = RoundedCornerShape(18.dp),
@@ -343,16 +352,9 @@ private fun OrderSummaryCard(
                 lineHeight = 15.sp
             )
             Spacer(modifier = Modifier.height(17.dp))
-            if (bill != null) {
-                SummaryRow(summaryItemLabel(bookingDetails.category), formatPaiseAsRupees(bill.subtotalPaise))
-                if (bill.platformFeePaise > 0) SummaryRow("Booking charge", formatPaiseAsRupees(bill.platformFeePaise))
-                if (bill.gstTotalPaise > 0) SummaryRow("GST", formatPaiseAsRupees(bill.gstTotalPaise))
-            } else {
-                SummaryRow(summaryItemLabel(bookingDetails.category), "₹$ticketPrice")
-                if (bookingFee > 0) SummaryRow("Online booking fee", "₹$bookingFee")
-                if (serviceCharge > 0) SummaryRow("Venue service charge", "₹$serviceCharge")
-                if (taxes > 0) SummaryRow("GST", "₹$taxes")
-            }
+            SummaryRow(summaryItemLabel(bookingDetails.category), "₹$ticketPrice")
+            SummaryRow("Convenience fee", convenienceFee?.let { "₹$it" } ?: "Awaiting server")
+            SummaryRow("Taxes", taxes?.let { "₹$it" } ?: "Awaiting server")
             HorizontalDivider(modifier = Modifier.padding(vertical = 14.dp), color = PaymentDivider)
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -360,7 +362,7 @@ private fun OrderSummaryCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text("Amount payable", color = PaymentWhite, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                Text(if (bill != null) formatPaiseAsRupees(bill.totalPaise) else "₹$totalAmount", color = PaymentOrange, fontSize = 25.sp, fontWeight = FontWeight.ExtraBold)
+                Text(totalAmount?.let { "₹$it" } ?: "—", color = PaymentOrange, fontSize = 25.sp, fontWeight = FontWeight.ExtraBold)
             }
         }
     }
@@ -368,7 +370,7 @@ private fun OrderSummaryCard(
 
 @Composable
 private fun PaymentFloatingBar(
-    amount: Int,
+    amount: String?,
     enabled: Boolean,
     processing: Boolean,
     error: String?,
@@ -390,8 +392,8 @@ private fun PaymentFloatingBar(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(if (processing) "Waiting for UPI" else "Amount payable", color = PaymentGray, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                Text("₹$amount", color = PaymentGreen, fontSize = 19.sp, fontWeight = FontWeight.ExtraBold)
+                Text(if (processing) "Checking payment" else "Amount payable", color = PaymentGray, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                Text(amount?.let { "₹$it" } ?: "—", color = PaymentGreen, fontSize = 19.sp, fontWeight = FontWeight.ExtraBold)
             }
             if (error != null) {
                 Text(error, color = Color(0xFFFF7A7A), fontSize = 10.sp, modifier = Modifier.padding(horizontal = 7.dp, vertical = 5.dp))
@@ -408,7 +410,7 @@ private fun PaymentFloatingBar(
 
 @Composable
 private fun SwipeToPay(
-    amount: Int,
+    amount: String?,
     enabled: Boolean,
     processing: Boolean = false,
     onSwipeComplete: () -> Unit
@@ -487,13 +489,16 @@ private fun SwipeToPay(
             Spacer(Modifier.width(7.dp))
             Text(
                 text = when {
-                    processing -> "Waiting for UPI payment…"
-                    enabled -> "Swipe to pay ₹$amount"
-                    else -> "Select a payment method"
+                    processing -> "Checking payment…"
+                    enabled && amount != null -> "Swipe to pay ₹$amount"
+                    enabled -> "Swipe to retry"
+                    else -> "Awaiting server"
                 },
                 color = if (enabled || processing) PaymentMint else PaymentGray,
                 fontSize = 14.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
 
@@ -528,6 +533,9 @@ private fun SwipeToPay(
                                 if (dragOffsetPx >= maxOffsetPx * .72f) {
                                     dragOffsetPx = maxOffsetPx
                                     onSwipeComplete()
+                                    // A rejected or failed attempt must immediately become usable again.
+                                    // The existing processing state still controls the loading presentation.
+                                    dragOffsetPx = 0f
                                 } else {
                                     dragOffsetPx = 0f
                                 }
@@ -555,7 +563,7 @@ private fun SwipeToPay(
 @Composable
 private fun PaymentSuccessfulScreen(
     bookingDetails: BookingDetails,
-    totalAmount: Int,
+    totalAmount: String?,
     paymentMethod: String,
     onViewTicket: () -> Unit
 ) {
@@ -590,6 +598,7 @@ private fun PaymentSuccessfulScreen(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
@@ -667,7 +676,7 @@ private fun PaymentSuccessfulScreen(
                         }
                     }
                     HorizontalDivider(Modifier.padding(vertical = 14.dp), color = Color.White.copy(alpha = .08f))
-                    SuccessDetailRow("Amount paid", "₹$totalAmount", emphasize = true)
+                    SuccessDetailRow("Amount paid", totalAmount?.let { "₹$it" } ?: "—", emphasize = true)
                     SuccessDetailRow("Paid using", paymentMethod)
                     SuccessDetailRow("Reference", "EMS-$reference")
                 }
@@ -738,14 +747,14 @@ private fun NonRefundableNotice(category: BookingCategory) {
             Spacer(modifier = Modifier.width(10.dp))
             Column {
                 Text(
-                    "${bookingItemName(category)} is non-refundable",
+                    "${bookingItemName(category)} terms",
                     color = PaymentWhite,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp
                 )
                 Spacer(modifier = Modifier.height(3.dp))
                 Text(
-                    "Once payment is completed, this booking cannot be cancelled, exchanged, or refunded.",
+                    "Review the provider's cancellation and refund terms before completing payment.",
                     color = PaymentGray,
                     fontSize = 11.sp,
                     lineHeight = 16.sp
@@ -764,7 +773,7 @@ private fun SecurityNote() {
     ) {
         Icon(Icons.Rounded.Lock, null, tint = PaymentOrange, modifier = Modifier.size(14.dp))
         Spacer(modifier = Modifier.width(7.dp))
-        Text("100% secure and encrypted payment", color = PaymentGray, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+        Text("Continue through secure checkout", color = PaymentGray, fontSize = 11.sp, fontWeight = FontWeight.Medium)
     }
 }
 

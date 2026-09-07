@@ -1,5 +1,6 @@
 package com.entrymyslot.app.screens.events
 
+
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -91,15 +92,7 @@ fun EventDetailsScreen(
     onBackClick: () -> Unit,
     onBookTicketsClick: () -> Unit
 ) {
-    val app = LocalContext.current.applicationContext as EntryMySlotApp
-    val eventViewModel: EventViewModel = viewModel(
-        key = "event_details_$eventId",
-        factory = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                EventViewModel() as T
-        }
-    )
+    val eventViewModel: EventViewModel = viewModel(key = "event_details_$eventId")
     val state by eventViewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(eventId) {
@@ -161,9 +154,6 @@ private fun EventDetailsContent(
                 )
             }
 
-            item(key = "rules") {
-                EventRulesSection()
-            }
         }
 
         EventDetailsBottomBar(
@@ -270,21 +260,7 @@ private fun EventHero(
                     )
                 }
             }
-            if (event.facilities.any { it.equals("AC", true) || it.contains("Air Conditioned", true) }) {
-                Spacer(Modifier.height(10.dp))
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(DetailsAccent.copy(alpha = 0.12f))
-                        .border(1.dp, DetailsAccent.copy(alpha = 0.35f), RoundedCornerShape(6.dp))
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Rounded.Check, null, tint = DetailsAccent, modifier = Modifier.size(12.dp))
-                    Spacer(Modifier.width(5.dp))
-                    Text("Air Conditioned", color = DetailsAccent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                }
-            }
+
         }
 
     }
@@ -459,7 +435,8 @@ private fun EventInformationSection(
             InformationRow(
                 icon = Icons.Rounded.CalendarToday,
                 label = "DATE & TIME",
-                value = event.date
+                value = listOf(event.date, listOf(event.time, event.endTime).filter(String::isNotBlank).joinToString(" – "))
+                    .filter(String::isNotBlank).joinToString(" · ")
             )
             Box(
                 modifier = Modifier
@@ -601,21 +578,7 @@ private fun EventCategoryChip(name: String) {
     }
 }
 
-@Composable
-private fun EventRulesSection() {
-    DetailsSection(title = "Venue Rules") {
-        val rules = listOf("No Smoking", "No Alcohol", "Valid ID Required", "Right of admission reserved")
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            rules.forEach { rule ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(6.dp).clip(CircleShape).background(DetailsAccent))
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(text = rule, color = DetailsSecondaryText, fontSize = 13.sp)
-                }
-            }
-        }
-    }
-}
+
 
 @Composable
 private fun DetailsSection(

@@ -1,4 +1,6 @@
 package com.entrymyslot.app.screens.turf
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyRow
 
 import androidx.activity.compose.BackHandler
 
@@ -33,8 +35,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -81,8 +81,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.entrymyslot.app.EntryMySlotApp
 import com.entrymyslot.app.core.components.TermsAndPolicyBottomSheet
 import com.entrymyslot.app.screens.home.GlowBackground
-import com.entrymyslot.app.data.booking.AuthoritativeBillDto
-import com.entrymyslot.app.data.booking.formatPaiseAsRupees
 import com.entrymyslot.app.data.model.Turf
 import com.entrymyslot.app.data.model.TurfSlot
 import java.text.SimpleDateFormat
@@ -114,7 +112,9 @@ fun TurfBookingScreen(
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                TurfBookingViewModel(app.appContainer.pendingCheckoutStore) as T
+                TurfBookingViewModel(
+                    backend = app.appContainer.backend, pendingCheckoutStore = app.appContainer.pendingCheckoutStore
+                ) as T
         }
     )
     BackHandler { turfBookingViewModel.releaseAndGoBack(onBackClick) }
@@ -131,12 +131,12 @@ fun TurfBookingScreen(
             turfId = turfId,
             date = state.selectedDate.toString(),
             hour = slot.unit_id,
-            time = slot.formatted_time.substringBefore(" - ").trim(),
+            time = slot.formatted_time,
             booked = slot.status != "available" && slot.unit_id != state.selectedUnitId
         )
     }
     val selectedSlots = state.selectedUnitId?.let { setOf(it) }.orEmpty()
-    val totalPrice = state.selectedSlot?.price?.toInt() ?: state.turf?.pricePerHour ?: 0
+    val totalPrice = state.selectedSlot?.price?.let { java.math.BigDecimal.valueOf(it).toPlainString() }
 
     Box(
         modifier = Modifier.fillMaxSize()
@@ -219,12 +219,6 @@ fun TurfBookingScreen(
                     }
                     state.errorMessage?.let { message ->
                         Text(message, color = Color(0xFFFFC4B0), fontSize = 12.sp, modifier = Modifier.padding(horizontal = 20.dp))
-                    }
-                }
-
-                state.bill?.let { bill ->
-                    item(key = "booking_summary") {
-                        BookingSummary(bill = bill)
                     }
                 }
                     }
@@ -334,45 +328,6 @@ private fun PremiumBackButton(onClick: () -> Unit) {
 }
 
 @Composable
-private fun BookingSummary(bill: AuthoritativeBillDto) {
-    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-        Text(
-            text = "Booking Summary",
-            color = TurfBookingPrimaryText,
-            fontSize = 17.sp,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.height(10.dp))
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
-                .background(TurfBookingSurfaceRaised)
-                .border(BorderStroke(1.dp, TurfBookingBorder.copy(alpha = 0.5f)), RoundedCornerShape(14.dp))
-                .padding(15.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            SummaryRow("Subtotal", formatPaiseAsRupees(bill.subtotalPaise))
-            if (bill.platformFeePaise > 0) SummaryRow("Booking charge", formatPaiseAsRupees(bill.platformFeePaise))
-            if (bill.gstTotalPaise > 0) SummaryRow("GST", formatPaiseAsRupees(bill.gstTotalPaise))
-            Box(Modifier.fillMaxWidth().height(1.dp).background(TurfBookingBorder.copy(alpha = 0.4f)).padding(vertical = 4.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Total", color = TurfBookingPrimaryText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Text(formatPaiseAsRupees(bill.totalPaise), color = TurfBookingAccent, fontWeight = FontWeight.Black, fontSize = 16.sp)
-            }
-        }
-    }
-}
-
-@Composable
-private fun SummaryRow(label: String, value: String) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, color = TurfBookingSecondaryText, fontSize = 12.sp)
-        Text(value, color = TurfBookingPrimaryText, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-    }
-}
-
-@Composable
 private fun VenueSummary(turf: Turf) {
     Column(
         modifier = Modifier
@@ -389,13 +344,13 @@ private fun VenueSummary(turf: Turf) {
         Spacer(modifier = Modifier.height(6.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = "★ 4.7",
+                text = "★ ${turf.rating?.toString() ?: "—"}",
                 color = TurfBookingAccent,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "  •  Football  •  5v5",
+                text = "  •  ${turf.venueType}",
                 color = TurfBookingSecondaryText,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium
@@ -482,7 +437,7 @@ private fun DateSelector(
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        items((0 until 54).toList(), key = { it }) { i ->
+        items((0..6).toList(), key = { it }) { i ->
             val date = Calendar.getInstance()
             date.add(Calendar.DAY_OF_YEAR, i)
 
@@ -636,9 +591,7 @@ private fun LegendItem(
                 .background(fillColor)
                 .border(1.dp, borderColor, CircleShape)
         )
-
-        Spacer(Modifier.height(6.dp))
-
+        Spacer(modifier = Modifier.width(6.dp))
         Text(
             text = text,
             color = TurfBookingSecondaryText,
@@ -790,7 +743,7 @@ private fun TurfSlotItem(
                 fontSize = 13.sp,
                 fontWeight = FontWeight.ExtraBold
             )
-
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = status,
                 color = when {
@@ -852,7 +805,7 @@ private fun BookingNote() {
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
-            text = "Every booking comes with 55 minutes of active playtime",
+            text = "Check your selected slot's start and end times before continuing",
             modifier = Modifier.weight(1f),
             color = TurfBookingSecondaryText,
             fontSize = 11.sp,
@@ -865,7 +818,7 @@ private fun BookingNote() {
 @Composable
 private fun TurfBottomBookingBar(
     selectedSlots: Int,
-    totalPrice: Int,
+    totalPrice: String?,
     onContinueClick: () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -901,7 +854,7 @@ private fun TurfBottomBookingBar(
                 fontWeight = FontWeight.Medium
             )
             Text(
-                text = "₹$totalPrice",
+                text = totalPrice?.let { "₹$it" } ?: "—",
                 color = TurfBookingPrimaryText,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.ExtraBold

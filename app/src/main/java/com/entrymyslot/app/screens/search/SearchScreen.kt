@@ -1,4 +1,5 @@
 package com.entrymyslot.app.screens.search
+import androidx.compose.material3.CircularProgressIndicator
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState

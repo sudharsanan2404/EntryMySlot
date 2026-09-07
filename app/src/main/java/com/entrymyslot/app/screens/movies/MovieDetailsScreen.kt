@@ -1,4 +1,7 @@
 package com.entrymyslot.app.screens.movies
+import androidx.compose.material.icons.outlined.Movie
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Star
 
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -77,8 +80,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.entrymyslot.app.EntryMySlotApp
-import com.entrymyslot.app.data.FakeData
-import com.entrymyslot.app.data.booking.hasAirConditioning
 import com.entrymyslot.app.R
 import com.entrymyslot.app.core.components.PremiumLoadingState
 import com.entrymyslot.app.core.components.PremiumErrorState
@@ -101,15 +102,7 @@ fun MovieDetailsScreen(
     onBackClick: () -> Unit,
     onBookClick: () -> Unit
 ) {
-    val app = LocalContext.current.applicationContext as EntryMySlotApp
-    val movieViewModel: MovieViewModel = viewModel(
-        key = "movie_details_$movieId",
-        factory = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                MovieViewModel() as T
-        }
-    )
+    val movieViewModel: MovieViewModel = viewModel(key = "movie_details_$movieId")
     val state by movieViewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(movieId) {
@@ -155,9 +148,6 @@ private fun MovieDetailsContent(
                 AboutMovieSection(movie)
             }
 
-            item(key = "facilities") {
-                MovieFacilitiesSection()
-            }
 
             if (!movie.trailerUrl.isNullOrBlank()) {
                 item(key = "trailer") {
@@ -165,9 +155,6 @@ private fun MovieDetailsContent(
                 }
             }
 
-            item(key = "rules") {
-                MovieRulesSection()
-            }
 
             if (movie.castNames.isNotEmpty() || !movie.director.isNullOrBlank()) {
                 item(key = "cast_heading") {
@@ -330,7 +317,7 @@ private fun MovieMetadata(movie: Movie) {
             )
             Spacer(modifier = Modifier.width(5.dp))
             Text(
-                text = "${movie.rating}/10",
+                text = movie.rating?.let { "$it/10" } ?: "—",
                 color = MovieOrange,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold
@@ -374,7 +361,11 @@ private fun AboutMovieSection(movie: Movie) {
         SectionHeading(text = "About the Movie")
         Spacer(modifier = Modifier.height(9.dp))
         Text(
-            text = movie.description,
+            text = buildList {
+                movie.description.takeIf(String::isNotBlank)?.let(::add)
+                movie.releaseDate.takeIf(String::isNotBlank)?.let { add("Release date: ${it.substringBefore('T')}") }
+                movie.censorRating?.takeIf(String::isNotBlank)?.let { add("Certification: $it") }
+            }.joinToString("\n\n"),
             color = MovieSecondary,
             fontSize = 14.sp,
             lineHeight = 21.sp,
@@ -383,31 +374,7 @@ private fun AboutMovieSection(movie: Movie) {
     }
 }
 
-@Composable
-private fun MovieFacilitiesSection() {
-    val facilities = buildList {
-        add("2D")
-        add("3D")
-        if (FakeData.cinemas.any { it.facilities.hasAirConditioning() }) add("AC")
-    }
-    Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp)) {
-        SectionHeading(text = "Facilities")
-        Spacer(Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            facilities.forEach { facility ->
-                Box(
-                    Modifier.clip(RoundedCornerShape(10.dp))
-                        .background(MovieBlueRaised)
-                        .border(1.dp, MovieBlueEdge.copy(alpha = .35f), RoundedCornerShape(10.dp))
-                        .padding(horizontal = 16.dp, vertical = 9.dp)
-                ) {
-                    Text(facility, color = MovieWhite, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-        }
-        Spacer(Modifier.height(18.dp))
-    }
-}
+
 
 @Composable
 private fun GenreChip(name: String) {
@@ -423,27 +390,7 @@ private fun GenreChip(name: String) {
     }
 }
 
-@Composable
-private fun MovieRulesSection() {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp)
-    ) {
-        SectionHeading(text = "Cinema Rules")
-        Spacer(modifier = Modifier.height(12.dp))
-        val rules = listOf(
-            "Help keep the auditorium smoke-free.",
-            "Alcohol is not permitted inside the cinema.",
-            "Food purchased outside the venue must remain outside."
-        )
-        rules.forEach { rule ->
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
-                Box(Modifier.size(6.dp).clip(CircleShape).background(MovieOrange))
-                Spacer(Modifier.width(10.dp))
-                Text(text = rule, color = MovieSecondary, fontSize = 13.sp)
-            }
-        }
-    }
-}
+
 
 @Composable
 private fun SectionHeading(

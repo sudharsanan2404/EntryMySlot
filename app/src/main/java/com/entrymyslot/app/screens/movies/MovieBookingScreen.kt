@@ -1,4 +1,5 @@
 package com.entrymyslot.app.screens.movies
+import com.entrymyslot.app.core.components.PremiumLoadingState
 
 import androidx.activity.compose.BackHandler
 
@@ -12,7 +13,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -67,13 +67,9 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.entrymyslot.app.EntryMySlotApp
-import com.entrymyslot.app.core.components.PremiumLoadingState
 import com.entrymyslot.app.core.components.TermsAndPolicyBottomSheet
-import com.entrymyslot.app.data.booking.AuthoritativeBillDto
 import com.entrymyslot.app.data.booking.MovieSeatRowDto
 import com.entrymyslot.app.data.booking.ShowtimeDto
-import com.entrymyslot.app.data.booking.formatPaiseAsRupees
-import com.entrymyslot.app.data.booking.hasAirConditioning
 import com.entrymyslot.app.data.model.Cinema
 import com.entrymyslot.app.screens.home.GlowBackground
 import kotlinx.coroutines.Job
@@ -116,7 +112,9 @@ fun MovieBookingScreen(
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                MovieBookingViewModel(app.appContainer.pendingCheckoutStore) as T
+                MovieBookingViewModel(
+                    selectedCity = app.appContainer.selectedCity, backend = app.appContainer.backend, pendingCheckoutStore = app.appContainer.pendingCheckoutStore
+                ) as T
         }
     )
     BackHandler { movieBookingViewModel.releaseAndGoBack(onBackClick) }
@@ -126,14 +124,9 @@ fun MovieBookingScreen(
     }
 
     var showTerms by remember { mutableStateOf(false) }
-    val cinema = state.cinema?.let {
-        Cinema(
-            it.id.toString(),
-            it.name,
-            listOf(it.address, it.city).filter(String::isNotBlank).joinToString(", "),
-            facilities = it.facilities
-        )
-    }
+    val cinema = state.cinema?.let { Cinema(it.id.toString(), it.name, listOf(it.address, it.city).filter(String::isNotBlank).joinToString(", ")) }
+    val currentTime = state.showtime?.displayTime().orEmpty()
+
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -154,9 +147,9 @@ fun MovieBookingScreen(
                 cinema != null && state.seatLayout != null -> {
                     CinemaMetadata(cinema = cinema)
                     ShowTimeSelector(
-                        showTimes = state.showtimes,
-                        selectedShowtimeId = state.showtime?.id,
-                        onTimeSelected = { movieBookingViewModel.selectShowtime(it.id) }
+                        showTimes = listOf(currentTime),
+                        selectedTime = currentTime,
+                        onTimeSelected = {}
                     )
                     SeatCountSelector(
                         selectedCount = state.desiredSeatCount,
@@ -182,12 +175,9 @@ fun MovieBookingScreen(
                         isHolding = state.isHolding,
                         onSeatClick = movieBookingViewModel::onSeatClicked
                     )
-                    state.bill?.let { bill ->
-                        BookingSummary(bill = bill)
-                    }
                     MovieBottomBar(
                         count = state.selectedSeatIds.size,
-                        total = state.totalPaise / 100,
+                        total = java.math.BigDecimal(state.totalPaise).movePointLeft(2),
                         onContinueClick = {
                             if (movieBookingViewModel.validateSelection()) showTerms = true
                         }
@@ -271,18 +261,14 @@ private fun CinemaMetadata(cinema: Cinema) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
-        if (cinema.facilities.hasAirConditioning()) {
-            Spacer(modifier = Modifier.height(5.dp))
-            Text("AC available", color = MovieOrange, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
-        }
     }
 }
 
 @Composable
 private fun ShowTimeSelector(
-    showTimes: List<ShowtimeDto>,
-    selectedShowtimeId: Int?,
-    onTimeSelected: (ShowtimeDto) -> Unit
+    showTimes: List<String>,
+    selectedTime: String,
+    onTimeSelected: (String) -> Unit
 ) {
     Column(modifier = Modifier.padding(top = 12.dp)) {
         SectionLabel(text = "Show times")
@@ -291,9 +277,8 @@ private fun ShowTimeSelector(
             contentPadding = PaddingValues(horizontal = 20.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            items(items = showTimes, key = { it.id }) { showtime ->
-                val time = showtime.displayTime()
-                val isSelected = showtime.id == selectedShowtimeId
+            items(items = showTimes, key = { it }) { time ->
+                val isSelected = time == selectedTime
                 val backgroundColor by animateColorAsState(
                     targetValue = if (isSelected) MovieOrange else MovieBlue.copy(alpha = 0.9f),
                     animationSpec = tween(170),
@@ -331,7 +316,7 @@ private fun ShowTimeSelector(
                         .selectable(
                             selected = isSelected,
                             role = Role.RadioButton,
-                            onClick = { onTimeSelected(showtime) }
+                            onClick = { onTimeSelected(time) }
                         ),
                     contentAlignment = Alignment.Center
                 ) {
@@ -830,7 +815,7 @@ private fun SeatSilhouette(
 }
 
 @Composable
-private fun MovieBottomBar(count: Int, total: Int, onContinueClick: () -> Unit) {
+private fun MovieBottomBar(count: Int, total: java.math.BigDecimal, onContinueClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -877,45 +862,6 @@ private fun MovieBottomBar(count: Int, total: Int, onContinueClick: () -> Unit) 
         ) {
             Text("Continue", fontSize = 14.sp, fontWeight = FontWeight.Bold)
         }
-    }
-}
-
-@Composable
-private fun BookingSummary(bill: AuthoritativeBillDto) {
-    Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)) {
-        Text(
-            text = "Booking Summary",
-            color = MovieWhite,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(MovieBlueRaised)
-                .border(BorderStroke(1.dp, MovieDivider.copy(alpha = 0.5f)), RoundedCornerShape(12.dp))
-                .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            SummaryRow("Subtotal", formatPaiseAsRupees(bill.subtotalPaise))
-            if (bill.platformFeePaise > 0) SummaryRow("Booking charge", formatPaiseAsRupees(bill.platformFeePaise))
-            if (bill.gstTotalPaise > 0) SummaryRow("GST", formatPaiseAsRupees(bill.gstTotalPaise))
-            Box(Modifier.fillMaxWidth().height(1.dp).background(MovieDivider.copy(alpha = 0.4f)).padding(vertical = 4.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Total Payable", color = MovieWhite, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Text(formatPaiseAsRupees(bill.totalPaise), color = MovieOrange, fontWeight = FontWeight.Black, fontSize = 16.sp)
-            }
-        }
-    }
-}
-
-@Composable
-private fun SummaryRow(label: String, value: String) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, color = MovieSecondary, fontSize = 12.sp)
-        Text(value, color = MovieWhite, fontSize = 12.sp, fontWeight = FontWeight.Medium)
     }
 }
 

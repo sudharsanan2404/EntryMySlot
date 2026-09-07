@@ -45,9 +45,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -75,7 +80,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.entrymyslot.app.R
 import com.entrymyslot.app.screens.home.GlowBackground
-import com.entrymyslot.app.data.FakeData
+import com.entrymyslot.app.screens.booking.BookingViewModel
 import com.entrymyslot.app.data.model.BookingStatus
 import com.entrymyslot.app.data.model.UserProfile
 
@@ -99,6 +104,20 @@ fun ProfileScreen(
 ) {
     val viewModel: ProfileViewModel = viewModel()
     val profileState by viewModel.profileState.collectAsStateWithLifecycle()
+    val bookingsViewModel: BookingViewModel = viewModel(key = "profile_bookings")
+    val bookingsState by bookingsViewModel.uiState.collectAsStateWithLifecycle()
+    var editName by remember { mutableStateOf(false) }
+    var nameInput by remember { mutableStateOf("") }
+    val openEdit = { nameInput = profileState.user?.fullName.orEmpty(); editName = true }
+    if (editName) {
+        AlertDialog(
+            onDismissRequest = { editName = false },
+            title = { Text("Personal Information") },
+            text = { OutlinedTextField(value = nameInput, onValueChange = { nameInput = it }, label = { Text("Full Name") }, singleLine = true) },
+            confirmButton = { TextButton(onClick = { viewModel.updateProfile(nameInput) { editName = false } }) { Text("Save") } },
+            dismissButton = { TextButton(onClick = { editName = false }) { Text("Cancel") } }
+        )
+    }
 
     Box(
         modifier = Modifier.fillMaxSize()
@@ -120,7 +139,7 @@ fun ProfileScreen(
                 item {
                     ProfileHeaderSection(
                         user = profileState.user,
-                        onUsernameClick = onUsernameClick
+                        onUsernameClick = openEdit
                     )
                 }
                 profileState.errorMessage?.let { message ->
@@ -136,9 +155,9 @@ fun ProfileScreen(
                         )
                     }
                 }
-                item { StatisticsRow() }
+                item { StatisticsRow(bookingsState.allBookings.takeIf { bookingsState.countsComplete }) }
                 item { QuickActionsSection(onBookingClick = onBookingClick) }
-                item { AccountSettingsSection(profileState.user) }
+                item { AccountSettingsSection(profileState.user, openEdit) }
                 item { PartnerSection(onPartnerClick = onPartnerClick) }
                 item {
                     LogoutButton(
@@ -225,7 +244,7 @@ private fun ProfileHeaderSection(
 }
 
 @Composable
-private fun StatisticsRow() {
+private fun StatisticsRow(bookings: List<com.entrymyslot.app.data.model.Booking>?) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -239,11 +258,11 @@ private fun StatisticsRow() {
             .padding(vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        StatItem("Bookings", FakeData.bookings.size.toString(), Modifier.weight(1f))
+        StatItem("Bookings", bookings?.size?.toString() ?: "—", Modifier.weight(1f))
         StatDivider()
-        StatItem("Upcoming", FakeData.upcomingBookings.size.toString(), Modifier.weight(1f), isHighlight = true)
+        StatItem("Upcoming", bookings?.count { it.status == BookingStatus.UPCOMING }?.toString() ?: "—", Modifier.weight(1f), isHighlight = true)
         StatDivider()
-        StatItem("Completed", FakeData.bookings.count { it.status == BookingStatus.COMPLETED }.toString(), Modifier.weight(1f))
+        StatItem("Completed", bookings?.count { it.status == BookingStatus.COMPLETED }?.toString() ?: "—", Modifier.weight(1f))
     }
 }
 
@@ -384,7 +403,7 @@ private fun QuickActionCard(
 }
 
 @Composable
-private fun AccountSettingsSection(user: UserProfile?) {
+private fun AccountSettingsSection(user: UserProfile?, onEdit: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -411,7 +430,7 @@ private fun AccountSettingsSection(user: UserProfile?) {
             SettingsItem(
                 icon = Icons.Outlined.Person,
                 title = "Personal Information",
-                onClick = {}
+                onClick = onEdit
             )
             SettingsDivider()
             PersonalInformationDetails(user)

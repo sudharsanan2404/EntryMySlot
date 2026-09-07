@@ -19,7 +19,7 @@ data class Movie(
     override val imageUrl: String? = null,
     val bannerUrl: String? = null,
     val description: String,
-    val rating: Double,
+    val rating: Double?,
     val language: String,
     val genre: String,
     val duration: String,
@@ -29,7 +29,7 @@ data class Movie(
     val director: String? = null,
     val trailerUrl: String? = null,
     val censorRating: String? = null,
-    val ticketPrice: Int = 180,
+    val ticketPrice: Int? = null,
 ) : CatalogItem
 
 data class CastMember(

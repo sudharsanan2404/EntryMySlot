@@ -1,4 +1,5 @@
 package com.entrymyslot.app.screens.booking
+import androidx.compose.material3.CircularProgressIndicator
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
@@ -638,6 +639,7 @@ private fun StatusBadge(status: BookingStatus) {
         BookingStatus.UPCOMING -> BookingAccent to "UPCOMING"
         BookingStatus.COMPLETED -> StatusCompletedColor to "COMPLETED"
         BookingStatus.CANCELLED -> StatusCancelledColor to "CANCELLED"
+        BookingStatus.PENDING -> BookingAccent to "PENDING"
     }
 
     Box(

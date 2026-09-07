@@ -10,7 +10,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.entrymyslot.app"
+        applicationId = if (providers.gradleProperty("integrationTest").isPresent) "com.entrymyslot.app.integration" else "com.entrymyslot.app"
         minSdk = 24
         targetSdk = 37
         versionCode = 1
@@ -27,6 +27,7 @@ android {
         }
     }
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
@@ -36,6 +37,13 @@ android {
 }
 
 dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+    implementation("androidx.security:security-crypto:1.1.0")
+    implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    implementation("com.google.code.gson:gson:2.11.0")
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.animation)

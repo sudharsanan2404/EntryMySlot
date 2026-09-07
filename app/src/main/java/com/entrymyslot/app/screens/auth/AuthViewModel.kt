@@ -1,8 +1,12 @@
 package com.entrymyslot.app.screens.auth
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import android.net.Uri
+import androidx.lifecycle.AndroidViewModel
+import com.entrymyslot.app.EntryMySlotApp
+import com.entrymyslotbe.app.auth.AuthScope
+import com.entrymyslotbe.app.core.ApiResult
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,8 +22,8 @@ data class AuthUiState(
     val passwordResetComplete: Boolean = false
 )
 
-/** Local-only authentication state used by the offline app. */
-class AuthScreenViewModel : ViewModel() {
+class AuthScreenViewModel(application: Application) : AndroidViewModel(application) {
+    private val auth = (application as EntryMySlotApp).appContainer.backend.auth
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
     private var registeredEmail = ""
@@ -28,7 +32,9 @@ class AuthScreenViewModel : ViewModel() {
         when {
             email.isBlank() -> setError("Email is required")
             password.isBlank() -> setError("Password is required")
-            else -> complete("Login successful", loggedIn = true)
+            else -> request({ auth.login(email.trim(), password) }) {
+                AuthUiState(isLoggedIn = AuthScope.USER in auth.sessionState.value.authenticatedScopes)
+            }
         }
     }
 
@@ -40,10 +46,8 @@ class AuthScreenViewModel : ViewModel() {
             password != confirmPassword -> setError("Passwords do not match")
             else -> {
                 registeredEmail = email.trim()
-                viewModelScope.launch {
-                    showLoading()
-                    delay(450)
-                    _uiState.value = AuthUiState(isOtpMode = true, successMessage = "Verification code ready")
+                request({ auth.register(registeredEmail, password, fullName.trim()) }) {
+                    AuthUiState(isOtpMode = true, successMessage = it.message)
                 }
             }
         }
@@ -51,18 +55,21 @@ class AuthScreenViewModel : ViewModel() {
 
     fun verifyOtp(email: String, otp: String) {
         if (email.isBlank() || otp.length != 6) setError("Enter the 6-digit OTP")
-        else complete("Account created successfully", loggedIn = true)
+        else request({ auth.verifyRegistrationOtp(email.trim(), otp) }) {
+            AuthUiState(isLoggedIn = AuthScope.USER in auth.sessionState.value.authenticatedScopes)
+        }
     }
 
     fun resendOtp(email: String = registeredEmail) {
-        if (email.isBlank()) setError("Email is required") else complete("Verification code refreshed")
+        if (email.isBlank()) setError("Email is required") else request({ auth.resendRegistrationOtp(email.trim()) }) {
+            _uiState.value.copy(isLoading = false, successMessage = it.message)
+        }
     }
 
     fun forgotPassword(email: String) {
         if (email.isBlank()) return setError("Email is required")
-        viewModelScope.launch {
-            showLoading(); delay(450)
-            _uiState.value = AuthUiState(passwordResetRequested = true, successMessage = "Continue with the reset form")
+        request({ auth.forgotPassword(email.trim()) }) {
+            AuthUiState(passwordResetRequested = true, successMessage = it.message)
         }
     }
 
@@ -71,9 +78,13 @@ class AuthScreenViewModel : ViewModel() {
             tokenOrLink.isBlank() -> setError("Paste the reset link or token")
             newPassword.length < 8 -> setError("Password must be at least 8 characters")
             newPassword != confirmPassword -> setError("Passwords do not match")
-            else -> viewModelScope.launch {
-                showLoading(); delay(450)
-                _uiState.value = AuthUiState(passwordResetComplete = true, successMessage = "Password updated")
+            else -> request({
+                val input = tokenOrLink.trim()
+                val token = if (input.startsWith("http")) Uri.parse(input).getQueryParameter("token").orEmpty() else input
+                if (token.isBlank()) ApiResult.UnexpectedError("The reset link does not contain a token.")
+                else auth.resetPassword(token, newPassword)
+            }) {
+                AuthUiState(passwordResetComplete = true, successMessage = it.message)
             }
         }
     }
@@ -82,10 +93,14 @@ class AuthScreenViewModel : ViewModel() {
     fun clearMessages() { _uiState.value = _uiState.value.copy(errorMessage = null, successMessage = null) }
     fun clearOtpMode() { _uiState.value = AuthUiState() }
 
-    private fun complete(message: String, loggedIn: Boolean = false) {
+    private fun <T> request(call: suspend () -> ApiResult<T>, success: (ApiResult.Success<T>) -> AuthUiState) {
+        if (_uiState.value.isLoading || _uiState.value.isLoggedIn) return
+        showLoading()
         viewModelScope.launch {
-            showLoading(); delay(450)
-            _uiState.value = AuthUiState(successMessage = message, isLoggedIn = loggedIn)
+            when (val result = call()) {
+                is ApiResult.Success -> _uiState.value = success(result)
+                is ApiResult.Failure -> setError(result.userMessage)
+            }
         }
     }
 

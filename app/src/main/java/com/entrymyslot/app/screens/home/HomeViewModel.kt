@@ -1,7 +1,15 @@
 package com.entrymyslot.app.screens.home
 
-import androidx.lifecycle.ViewModel
-import com.entrymyslot.app.data.FakeData
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.entrymyslot.app.EntryMySlotApp
+import com.entrymyslot.app.data.mapper.toUi
+import com.entrymyslot.app.data.mapper.toPromotion
+import com.entrymyslotbe.app.core.ApiResult
+import com.entrymyslotbe.app.data.HomeRequest
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import com.entrymyslot.app.data.model.CatalogItem
 import com.entrymyslot.app.data.model.HomePromotion
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -10,15 +18,31 @@ import kotlinx.coroutines.flow.asStateFlow
 
 data class HomeUiState(
     val isLoading: Boolean = false,
-    val promotions: List<HomePromotion> = FakeData.promotions,
-    val events: List<CatalogItem> = FakeData.events,
-    val movies: List<CatalogItem> = FakeData.movies,
-    val sports: List<CatalogItem> = FakeData.turfs,
+    val promotions: List<HomePromotion> = emptyList(),
+    val events: List<CatalogItem> = emptyList(),
+    val movies: List<CatalogItem> = emptyList(),
+    val sports: List<CatalogItem> = emptyList(),
     val errorMessage: String? = null
 )
 
-class HomeViewModel : ViewModel() {
+class HomeViewModel(application: Application) : AndroidViewModel(application) {
+    private val home = (application as EntryMySlotApp).appContainer.backend.home
+    private var loadJob: Job? = null
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
-    fun loadHome(@Suppress("UNUSED_PARAMETER") city: String) { _uiState.value = HomeUiState() }
+    fun loadHome(city: String) {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
+            _uiState.value = HomeUiState(isLoading = true)
+            when (val result = home.loadHome(HomeRequest(city = city.takeIf(String::isNotBlank)))) {
+                is ApiResult.Success -> _uiState.value = HomeUiState(
+                    promotions = result.value.ads.mapNotNull { it.toPromotion() },
+                    movies = result.value.movies.mapNotNull { it.toUi() },
+                    events = result.value.events.mapNotNull { it.toUi() },
+                    sports = result.value.venues.mapNotNull { it.toUi() },
+                    errorMessage = result.value.partialErrors.takeIf { it.isNotEmpty() }?.joinToString("\n"))
+                is ApiResult.Failure -> _uiState.value = HomeUiState(errorMessage = result.userMessage)
+            }
+        }
+    }
 }

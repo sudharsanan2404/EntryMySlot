@@ -1,4 +1,11 @@
 package com.entrymyslot.app.screens.home
+import android.Manifest
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 
 import android.content.Context
 import android.content.Intent
@@ -119,7 +126,7 @@ import com.entrymyslot.app.EntryMySlotApp
 import com.entrymyslot.app.core.components.GpsDisabledDialog
 import com.entrymyslot.app.core.components.LocationFetchState
 import com.entrymyslot.app.core.components.rememberLocationFetcher
-import com.entrymyslot.app.data.FakeData
+
 import com.entrymyslot.app.data.IndiaCities
 import com.entrymyslot.app.data.model.AppNotification
 import com.entrymyslot.app.data.model.CatalogItem
@@ -189,7 +196,7 @@ fun HomeScreen(
     onDrawerVisibilityChange: (Boolean) -> Unit = {},
     onPartnerClick: () -> Unit = {},
     onTermsClick: () -> Unit = {},
-    selectedCity: String = FakeData.currentUser.city
+    selectedCity: String = ""
 ) {
     val context = LocalContext.current
     val homeViewModel: HomeViewModel = viewModel()
@@ -226,12 +233,16 @@ private enum class HomeContentKind { Event, Movie, Sport }
 private typealias HomeNotification = AppNotification
 
 internal data class PromotionBanner(
+    val itemId: String,
     val category: String,
     val title: String,
     val subtitle: String,
+    val location: String,
+    val price: String,
     val cta: String,
     val destination: String,
     val imageUrl: String? = null,
+    val fallbackImageRes: Int,
     val icon: ImageVector,
     val startColor: Color,
     val endColor: Color
@@ -244,12 +255,20 @@ private fun HomePromotion.toBanner(): PromotionBanner {
         PromotionDestination.EVENTS -> Triple(Icons.Outlined.Event, Color(0xFF263D72), Color(0xFF091B3B))
     }
     return PromotionBanner(
+        itemId = "",
         category = category,
         title = title,
         subtitle = subtitle,
+        location = "",
+        price = "",
         cta = cta,
         destination = destination.name.lowercase().replaceFirstChar(Char::uppercase),
         imageUrl = imageUrl,
+        fallbackImageRes = when (destination) {
+            PromotionDestination.MOVIES -> R.drawable.movie_poster_fallback
+            PromotionDestination.SPORTS -> R.drawable.turf_hero
+            PromotionDestination.EVENTS -> R.drawable.event_fallback
+        },
         icon = visuals.first,
         startColor = visuals.second,
         endColor = visuals.third
@@ -284,8 +303,16 @@ internal fun PremiumHomeScreen(
     var selectedBottomItem by remember { mutableStateOf("Home") }
     var showNotifications by remember { mutableStateOf(false) }
     var showHelpSupport by remember { mutableStateOf(false) }
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { }
     val openNotifications = {
         showNotifications = true
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
     }
     LaunchedEffect(drawerState) {
         snapshotFlow {
@@ -357,9 +384,9 @@ internal fun PremiumHomeScreen(
     }
     if (showNotifications) {
         NotificationPanel(
-            notifications = FakeData.notifications,
-            onClear = { id -> FakeData.notifications.removeAll { it.id == id } },
-            onClearAll = FakeData.notifications::clear,
+            notifications = emptyList(),
+            onClear = {},
+            onClearAll = {},
             onDismiss = { showNotifications = false }
         )
     }
@@ -449,23 +476,13 @@ private fun PremiumHomeContent(
         }
 
         if (hasContent) {
-            item(key = "promotions") {
-                if (promotions.isNotEmpty()) {
-                    PromotionalCarousel(
-                        banners = promotions,
-                        onBannerClick = onPromotionClick
-                    )
-                } else {
-                    HomeSectionEmpty(message = "No featured promotions available.")
-                }
-                Spacer(modifier = Modifier.height(24.dp))
-            }
-
             item(key = "popular_events") {
                 ContentSection(
                     title = "Popular Events",
                     events = featuredEvents,
                     kind = HomeContentKind.Event,
+                    promotions = promotions.filter { it.destination.equals("Events", ignoreCase = true) },
+                    onPromotionClick = onPromotionClick,
                     onSeeAllClick = { onCategoryClick("Popular Events") },
                     onEventClick = onEventClick
                 )
@@ -477,6 +494,8 @@ private fun PremiumHomeContent(
                     title = "Latest Movies",
                     events = featuredMovies,
                     kind = HomeContentKind.Movie,
+                    promotions = promotions.filter { it.destination.equals("Movies", ignoreCase = true) },
+                    onPromotionClick = onPromotionClick,
                     onSeeAllClick = { onCategoryClick("Latest Movies") },
                     onEventClick = onMovieBookClick
                 )
@@ -488,6 +507,8 @@ private fun PremiumHomeContent(
                     title = "Sports Near You",
                     events = nearbySports,
                     kind = HomeContentKind.Sport,
+                    promotions = promotions.filter { it.destination.equals("Sports", ignoreCase = true) },
+                    onPromotionClick = onPromotionClick,
                     onSeeAllClick = { onCategoryClick("Sports Near You") },
                     onEventClick = onSportClick
                 )
@@ -716,6 +737,8 @@ private fun NotificationPanel(
     }
 }
 
+
+
 @Composable
 private fun SearchLocationToolbar(
     selectedCity: String,
@@ -831,51 +854,71 @@ private fun PromotionalCarousel(
     onBannerClick: (PromotionBanner) -> Unit
 ) {
     val pagerState = rememberPagerState(pageCount = { banners.size })
+    val slideDelayMillis = when (banners.firstOrNull()?.destination) {
+        "Movies" -> 4_200L
+        "Events" -> 5_200L
+        "Sports" -> 6_200L
+        else -> 5_000L
+    }
+    val bannerHeight = when (banners.firstOrNull()?.destination) {
+        "Sports" -> 124.dp
+        else -> 138.dp
+    }
 
-    LaunchedEffect(pagerState) {
-        while (true) {
-            delay(5_000)
-            if (!pagerState.isScrollInProgress) {
-                pagerState.animateScrollToPage(
-                    page = (pagerState.currentPage + 1) % banners.size,
-                    animationSpec = tween(520)
-                )
+    LaunchedEffect(pagerState, banners.size, slideDelayMillis) {
+        if (banners.size > 1) {
+            while (true) {
+                delay(slideDelayMillis)
+                if (!pagerState.isScrollInProgress) {
+                    pagerState.animateScrollToPage(
+                        page = (pagerState.currentPage + 1) % banners.size,
+                        animationSpec = tween(520)
+                    )
+                }
             }
         }
     }
 
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(bannerHeight)
+    ) {
         HorizontalPager(
             state = pagerState,
             contentPadding = PaddingValues(horizontal = 16.dp),
             pageSpacing = 12.dp,
             beyondViewportPageCount = 1,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxSize()
         ) { page ->
             PromotionalBannerCard(
                 banner = banners[page],
                 onClick = { onBannerClick(banners[page]) }
             )
         }
-        Spacer(modifier = Modifier.height(10.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            banners.indices.forEach { index ->
-                val selected = pagerState.currentPage == index
-                val width by animateDpAsState(
-                    targetValue = if (selected) 22.dp else 7.dp,
-                    animationSpec = tween(180),
-                    label = "bannerIndicatorWidth"
-                )
-                Box(
-                    modifier = Modifier
-                        .width(width)
-                        .height(7.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (selected) PremiumOrange
-                            else PremiumSecondary.copy(alpha = 0.32f)
-                        )
-                )
+        if (banners.size > 1) {
+            Row(
+                modifier = Modifier.align(Alignment.TopEnd).padding(end = 28.dp, top = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                banners.indices.forEach { index ->
+                    val selected = pagerState.currentPage == index
+                    val width by animateDpAsState(
+                        targetValue = if (selected) 18.dp else 5.dp,
+                        animationSpec = tween(180),
+                        label = "bannerIndicatorWidth"
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(width)
+                            .height(5.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (selected) PremiumOrange
+                                else Color.White.copy(alpha = 0.42f)
+                            )
+                    )
+                }
             }
         }
     }
@@ -886,126 +929,214 @@ private fun PromotionalBannerCard(
     banner: PromotionBanner,
     onClick: () -> Unit
 ) {
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.985f else 1f,
+        animationSpec = tween(100),
+        label = "promotionCardScale"
+    )
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(176.dp)
+            .fillMaxHeight()
+            .graphicsLayer { scaleX = scale; scaleY = scale }
             .shadow(
-                elevation = 7.dp,
-                shape = RoundedCornerShape(22.dp),
+                elevation = if (pressed) 3.dp else 8.dp,
+                shape = RoundedCornerShape(19.dp),
                 ambientColor = Color.Black.copy(alpha = 0.18f),
-                spotColor = Color.Black.copy(alpha = 0.22f)
+                spotColor = Color.Black.copy(alpha = 0.28f)
             )
-            .clip(RoundedCornerShape(22.dp))
+            .clip(RoundedCornerShape(19.dp))
             .background(Brush.horizontalGradient(listOf(banner.startColor, banner.endColor)))
             .border(
                 1.dp,
-                PremiumBlueEdge.copy(alpha = 0.3f),
-                RoundedCornerShape(22.dp)
+                Color.White.copy(alpha = 0.14f),
+                RoundedCornerShape(19.dp)
+            )
+            .clickable(
+                interactionSource = source,
+                indication = null,
+                role = Role.Button,
+                onClickLabel = banner.cta,
+                onClick = onClick
             )
     ) {
-        banner.imageUrl?.let { imageUrl ->
-            coil3.compose.AsyncImage(
-                model = imageUrl,
-                contentDescription = banner.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(
-                                banner.startColor.copy(alpha = .96f),
-                                banner.endColor.copy(alpha = .52f)
-                            )
-                        )
-                    )
-            )
-        }
+        coil3.compose.AsyncImage(
+            model = banner.imageUrl ?: banner.fallbackImageRes,
+            contentDescription = banner.title,
+            placeholder = painterResource(banner.fallbackImageRes),
+            error = painterResource(banner.fallbackImageRes),
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
         Box(
             modifier = Modifier
-                .size(170.dp)
-                .align(Alignment.CenterEnd)
-                .offset(x = 38.dp)
-                .clip(CircleShape)
-                .background(PremiumBlueEdge.copy(alpha = 0.09f))
+                .fillMaxSize()
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            Color(0xFF041329).copy(alpha = .97f),
+                            banner.startColor.copy(alpha = .78f),
+                            Color.Transparent
+                        )
+                    )
+                )
         )
-        Icon(
-            imageVector = banner.icon,
-            contentDescription = null,
-            tint = PremiumWhite.copy(alpha = 0.12f),
+        Box(
             modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = 28.dp)
-                .size(92.dp)
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color.Transparent, Color(0xFF041329).copy(alpha = .58f))
+                    )
+                )
         )
-        Column(
-            modifier = Modifier
-                .fillMaxHeight()
-                .fillMaxWidth(0.74f)
-                .padding(18.dp),
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = banner.category,
-                color = PremiumOrange,
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.2.sp
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = banner.title,
-                color = PremiumWhite,
-                fontSize = 20.sp,
-                lineHeight = 23.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(5.dp))
-            Text(
-                text = banner.subtitle,
-                color = PremiumSecondary,
-                fontSize = 11.sp,
-                lineHeight = 15.sp,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(11.dp))
-            BannerAction(text = banner.cta, onClick = onClick)
+        when (banner.destination) {
+            "Movies" -> MoviePromotionLayout(banner)
+            "Sports" -> SportsPromotionLayout(banner)
+            "Events" -> EventPromotionLayout(banner)
+            else -> MoviePromotionLayout(banner)
         }
     }
 }
 
 @Composable
-private fun BannerAction(text: String, onClick: () -> Unit) {
-    val source = remember { MutableInteractionSource() }
-    val pressed by source.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.95f else 1f,
-        animationSpec = tween(90),
-        label = "bannerActionScale"
-    )
-    Box(
+private fun MoviePromotionLayout(banner: PromotionBanner) {
+    Column(
         modifier = Modifier
-            .graphicsLayer { scaleX = scale; scaleY = scale }
-            .clip(RoundedCornerShape(10.dp))
-            .background(PremiumOrange)
-            .clickable(
-                interactionSource = source,
-                indication = null,
-                role = Role.Button,
-                onClick = onClick
-            )
-            .padding(horizontal = 12.dp, vertical = 7.dp)
+            .fillMaxSize()
+            .padding(horizontal = 14.dp, vertical = 13.dp)
     ) {
         Text(
-            text = text,
+            banner.title,
             color = PremiumWhite,
-            fontSize = 10.sp,
+            fontSize = 19.sp,
+            lineHeight = 22.sp,
+            fontWeight = FontWeight.ExtraBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth(.72f)
+        )
+        PromotionLocation(banner.location)
+        Spacer(Modifier.weight(1f))
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 9.dp)) {
+            Text(
+                banner.price,
+                color = PremiumOrange,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f)
+            )
+            BannerAction(banner.cta)
+        }
+    }
+}
+
+@Composable
+private fun SportsPromotionLayout(banner: PromotionBanner) {
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 13.dp, vertical = 11.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(end = 44.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(PremiumOrange.copy(alpha = .18f))
+                    .border(1.dp, PremiumOrange.copy(alpha = .30f), RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(banner.icon, null, tint = PremiumOrange, modifier = Modifier.size(21.dp))
+            }
+            Column(modifier = Modifier.weight(1f).padding(start = 10.dp)) {
+                Text(
+                    banner.title,
+                    color = PremiumWhite,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                PromotionLocation(banner.location)
+            }
+        }
+        Spacer(Modifier.weight(1f))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                banner.price,
+                color = PremiumOrange,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f)
+            )
+            BannerAction(banner.cta)
+        }
+    }
+}
+
+@Composable
+private fun EventPromotionLayout(banner: PromotionBanner) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 12.dp)
+    ) {
+        Text(
+            banner.subtitle,
+            color = PremiumWhite.copy(alpha = .70f),
+            fontSize = 9.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1
+        )
+        Spacer(Modifier.weight(1f))
+        Text(
+            banner.title,
+            color = PremiumWhite,
+            fontSize = 18.sp,
+            lineHeight = 21.sp,
+            fontWeight = FontWeight.ExtraBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 7.dp)) {
+            Column(modifier = Modifier.weight(1f).padding(end = 10.dp)) {
+                PromotionLocation(banner.location)
+                Text(banner.price, color = PremiumOrange, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 2.dp))
+            }
+            BannerAction(banner.cta)
+        }
+    }
+}
+
+@Composable
+private fun PromotionLocation(location: String) {
+    if (location.isBlank()) return
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 3.dp)) {
+        Icon(Icons.Outlined.LocationOn, null, tint = PremiumWhite.copy(alpha = .64f), modifier = Modifier.size(11.dp))
+        Text(
+            location,
+            color = PremiumWhite.copy(alpha = .72f),
+            fontSize = 8.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(start = 3.dp)
+        )
+    }
+}
+
+@Composable
+private fun BannerAction(text: String) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(Color.White.copy(alpha = .13f))
+            .border(1.dp, Color.White.copy(alpha = .18f), RoundedCornerShape(50))
+            .padding(horizontal = 9.dp, vertical = 5.dp)
+    ) {
+        Text(
+            text = "$text  ›",
+            color = PremiumWhite,
+            fontSize = 8.sp,
             fontWeight = FontWeight.Bold
         )
     }
@@ -1095,17 +1226,33 @@ private fun ContentSection(
     title: String,
     events: List<PopularEvent>,
     kind: HomeContentKind,
+    promotions: List<PromotionBanner>,
+    onPromotionClick: (PromotionBanner) -> Unit,
     onSeeAllClick: () -> Unit,
     onEventClick: (PopularEvent) -> Unit
 ) {
+    val promotedItemIds = promotions.mapTo(linkedSetOf()) { it.itemId }
+    val orderedEvents = events.sortedBy { event -> if (event.id in promotedItemIds) 0 else 1 }
+    if (promotions.isNotEmpty()) {
+        PromotionalCarousel(
+            banners = promotions,
+            onBannerClick = onPromotionClick
+        )
+        Spacer(modifier = Modifier.height(20.dp))
+    }
     PremiumSectionHeader(title = title, onSeeAllClick = onSeeAllClick)
     Spacer(modifier = Modifier.height(12.dp))
     if (events.isEmpty()) {
-        HomeSectionEmpty(message = "No $title available right now.")
+        if (kind == HomeContentKind.Sport) {
+            PremiumEmptyState(title = "No nearby sports yet", message = "Choose another location to explore available venues.")
+        } else {
+            HomeSectionEmpty(message = "No $title available right now.")
+        }
     } else {
         PremiumContentRow(
-            events = events,
+            events = orderedEvents,
             kind = kind,
+            promotedItemIds = promotedItemIds,
             onEventClick = onEventClick
         )
     }
@@ -1166,6 +1313,7 @@ private fun PremiumSectionHeader(title: String, onSeeAllClick: () -> Unit) {
 private fun PremiumContentRow(
     events: List<PopularEvent>,
     kind: HomeContentKind,
+    promotedItemIds: Set<String>,
     onEventClick: (PopularEvent) -> Unit
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
@@ -1174,11 +1322,11 @@ private fun PremiumContentRow(
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            itemsIndexed(items = events, key = { _, event -> event.id }) { index, event ->
+            itemsIndexed(items = events, key = { _, event -> event.id }) { _, event ->
                 PremiumContentCard(
                     event = event,
                     kind = kind,
-                    promoted = index == 0 && kind != HomeContentKind.Movie,
+                    promoted = event.id in promotedItemIds,
                     cardWidth = cardWidth,
                     onClick = { onEventClick(event) }
                 )
@@ -1202,7 +1350,7 @@ private fun PremiumContentCard(
         animationSpec = tween(100),
         label = "contentCardScale"
     )
-    val imageHeight = if (kind == HomeContentKind.Movie) cardWidth * 1.42f else cardWidth * 0.68f
+    val imageHeight = cardWidth * 0.68f
 
     Column(
         modifier = Modifier
@@ -1322,7 +1470,7 @@ private fun PremiumDrawer(
     onPartnerClick: () -> Unit
 ) {
     ModalDrawerSheet(
-        modifier = Modifier.fillMaxHeight().width(318.dp),
+        modifier = Modifier.fillMaxHeight().fillMaxWidth(0.86f).widthIn(max = 318.dp),
         drawerContainerColor = Color.Transparent,
         drawerShape = RoundedCornerShape(0.dp),
         windowInsets = WindowInsets(0, 0, 0, 0)
@@ -1515,7 +1663,7 @@ fun LocationSelectionScreen(
     var searchQuery by remember { mutableStateOf("") }
     val locationFetcher = rememberLocationFetcher(onCityResolved = onCitySelected)
     val cityOptions = remember(selectedCity, availableCities) {
-        (listOf(selectedCity) + availableCities + IndiaCities.all + FakeData.cities)
+        (listOf(selectedCity) + availableCities + IndiaCities.all)
             .filter(String::isNotBlank)
             .distinctBy { it.lowercase() }
             .sorted()

@@ -1,5 +1,6 @@
 package com.entrymyslot.app.screens.auth
 
+
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
@@ -208,7 +209,8 @@ fun AuthScreen(
                         painter = painterResource(id = R.drawable.entrymyslotlogo),
                         contentDescription = null,
                         modifier = Modifier
-                            .width(240.dp)
+                            .fillMaxWidth(0.72f)
+                            .widthIn(max = 240.dp)
                             .height(80.dp)
                             .padding(bottom = 24.dp)
                     )

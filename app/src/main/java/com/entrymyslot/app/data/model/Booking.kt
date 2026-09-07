@@ -1,7 +1,7 @@
 package com.entrymyslot.app.data.model
 
 enum class BookingType { MOVIE, TURF, EVENT }
-enum class BookingStatus { UPCOMING, COMPLETED, CANCELLED }
+enum class BookingStatus { UPCOMING, COMPLETED, CANCELLED, PENDING }
 
 data class Booking(
     val id: String,
@@ -46,12 +46,9 @@ data class BookingDetails(
     val location: String,
     val details: String,
     val imageUrl: String? = null,
-    val baseAmount: Int,
-    val convenienceFee: Int,
-    val taxes: Int,
-    val bookingFee: Int = 0,
-    val serviceCharge: Int = 0,
-    val payableAmount: Int = baseAmount + convenienceFee + taxes
+    val baseAmount: java.math.BigDecimal,
+    val convenienceFee: java.math.BigDecimal?,
+    val taxes: java.math.BigDecimal?
 )
 
 data class TicketDetails(
@@ -60,22 +57,15 @@ data class TicketDetails(
     val title: String,
     val category: String,
     val venue: String,
-    val location: String = "",
     val date: String,
     val time: String,
     val admission: String,
+    val attendee: String,
     val amount: String,
-    val screenType: String? = null,
-    val language: String? = null,
-    val format: String? = null,
-    val screenName: String? = null,
-    val seatTier: String? = null,
-    val ticketCount: Int? = null,
-    val ticketTier: String? = null,
-    val encodedQrPayload: String? = null
+    val serverQrPayload: String? = null
 ) {
     val slots: List<String>
         get() = time.split(" - ", ",").map(String::trim).filter(String::isNotEmpty)
     val qrPayload: String
-        get() = encodedQrPayload ?: ticketUuid
+        get() = serverQrPayload ?: ticketUuid
 }

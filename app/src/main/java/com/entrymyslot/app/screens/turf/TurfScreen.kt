@@ -1,5 +1,6 @@
 package com.entrymyslot.app.screens.turf
 
+
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -104,15 +105,7 @@ fun TurfScreen(
     onBookNowClick: () -> Unit = {},
     sportId: String
 ) {
-    val app = LocalContext.current.applicationContext as EntryMySlotApp
-    val turfViewModel: TurfViewModel = viewModel(
-        key = "turf_details_$sportId",
-        factory = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                TurfViewModel() as T
-        }
-    )
+    val turfViewModel: TurfViewModel = viewModel(key = "turf_details_$sportId")
     val state by turfViewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(sportId) {
@@ -141,7 +134,10 @@ private fun TurfDetailsContent(
     onBackClick: () -> Unit,
     onBookNowClick: () -> Unit
 ) {
-    val price = "₹${turf.pricePerHour} / hour"
+    val sportId = turf.id
+    val title = turf.title
+    val venueType = turf.venueType
+    val price = turf.price.ifBlank { "—" }
     val about = turf.description
     val venueSpecifications = turf.specifications
     val venueRules = turf.rules
@@ -160,6 +156,14 @@ private fun TurfDetailsContent(
                     turf = turf,
                     onBackClick = onBackClick
                 )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            item(key = "directions") {
+                val context = LocalContext.current
+                Box(Modifier.padding(horizontal = 18.dp)) {
+                    DirectionsAction { context.openVenueLocation(turf.location) }
+                }
             }
 
             item(key = "about") {
@@ -263,7 +267,7 @@ private fun TurfHero(
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "★ ${turf.rating}",
+                        text = "★ ${turf.rating?.toString() ?: "—"}",
                         color = TurfAccent,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold
@@ -361,6 +365,8 @@ private fun TurfDetailLoadingState(onBackClick: () -> Unit) {
         )
     }
 }
+
+
 
 @Composable
 private fun TurfDetailErrorState(
@@ -511,12 +517,7 @@ private fun RulesAndGuidelines(rules: List<String>) {
         modifier = Modifier.padding(horizontal = 18.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        val baseRules = listOf(
-            "Keep the playing area smoke-free.",
-            "Alcohol is not permitted anywhere on the premises.",
-            "Use suitable sports shoes to protect the playing surface."
-        )
-        val allRules = (baseRules + rules).distinct()
+        val allRules = rules.ifEmpty { listOf("Venue-specific rules will be available before booking.") }
         allRules.forEach { rule ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(6.dp).clip(CircleShape).background(TurfAccent))
@@ -658,5 +659,50 @@ private fun Context.openVenueLocation(location: String) {
 
     if (!openedGoogleMaps) {
         runCatching { startActivity(browserFallbackIntent) }
+    }
+}
+
+
+@Composable
+private fun DirectionsAction(onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val color by animateColorAsState(
+        targetValue = if (isPressed) TurfAccent.copy(alpha = 0.22f) else TurfAccent.copy(alpha = 0.12f),
+        animationSpec = tween(durationMillis = 110),
+        label = "directionsColor"
+    )
+
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(color)
+            .border(
+                BorderStroke(1.dp, TurfAccent.copy(alpha = 0.34f)),
+                RoundedCornerShape(10.dp)
+            )
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                role = Role.Button,
+                onClickLabel = "Get Directions",
+                onClick = onClick
+            )
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "Directions",
+            color = TurfAccent,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Icon(
+            imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+            contentDescription = null,
+            tint = TurfAccent,
+            modifier = Modifier.size(14.dp)
+        )
     }
 }

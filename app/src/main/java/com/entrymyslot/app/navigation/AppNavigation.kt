@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.background
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import com.entrymyslotbe.app.auth.AuthScope
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -31,7 +33,6 @@ import com.entrymyslot.app.data.booking.PendingCheckout
 import com.entrymyslot.app.data.booking.PendingMovieCheckout
 import com.entrymyslot.app.data.booking.PendingEventCheckout
 import com.entrymyslot.app.data.booking.PendingTurfCheckout
-import com.entrymyslot.app.data.FakeData
 import com.entrymyslot.app.data.model.BookingDetails
 import com.entrymyslot.app.data.model.BookingType
 import com.entrymyslot.app.screens.auth.AuthScreen
@@ -45,8 +46,8 @@ import com.entrymyslot.app.screens.turf.TurfScreen
 import com.entrymyslot.app.screens.turf.TurfBookingScreen
 import com.entrymyslot.app.screens.events.EventDetailsScreen
 import com.entrymyslot.app.screens.events.EventBookingScreen
-import com.entrymyslot.app.screens.profile.ProfileScreen
 import com.entrymyslot.app.screens.profile.TermsPolicyScreen
+import com.entrymyslot.app.screens.profile.ProfileScreen
 import com.entrymyslot.app.screens.booking.BookingScreen
 import com.entrymyslot.app.screens.search.SearchResultType
 import com.entrymyslot.app.screens.search.SearchScreen
@@ -68,9 +69,8 @@ fun AppNavigation() {
     var selectedCity by remember {
         mutableStateOf(locationPreferences.getString("selected_city", "").orEmpty())
     }
-    var isLoggedIn by remember {
-        mutableStateOf(locationPreferences.getBoolean("is_logged_in", false))
-    }
+    val session by app.appContainer.backend.sessions.state.collectAsState()
+    val isLoggedIn = AuthScope.USER in session.authenticatedScopes
     var hasCompletedOnboarding by remember {
         mutableStateOf(
             locationPreferences.getBoolean("onboarding_completed", false) || selectedCity.isNotBlank()
@@ -78,6 +78,12 @@ fun AppNavigation() {
     }
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentBackStackEntry?.destination?.route
+    LaunchedEffect(isLoggedIn) {
+        if (!isLoggedIn && currentRoute != null && currentRoute !in setOf("auth", "splash")) {
+            app.appContainer.pendingCheckoutStore.clear()
+            navController.navigate("auth") { popUpTo(0) { inclusive = true }; launchSingleTop = true }
+        }
+    }
     val navbarRoutes = setOf("home", "search/{type}", "bookings", "profile")
     
     var showForcedLocationDialog by remember { mutableStateOf(false) }
@@ -106,13 +112,17 @@ fun AppNavigation() {
             popExitTransition = { slideOutHorizontally(tween(120)) { it / 14 } }
         ) {
 
+        composable("terms_policy") {
+            TermsPolicyScreen(onBackClick = { navController.popBackStack() })
+        }
+
         composable("splash") {
             SplashScreen(
                 onFinished = {
                     val destination = when {
                         !isLoggedIn -> "auth"
-                        hasCompletedOnboarding && selectedCity.isNotBlank() -> "home"
-                        else -> "permissions"
+                        selectedCity.isNotBlank() -> "home"
+                        else -> "location_selection"
                     }
                     navController.navigate(destination) {
                         popUpTo("splash") { inclusive = true }
@@ -124,12 +134,10 @@ fun AppNavigation() {
         composable("auth") {
             AuthScreen(
                 onAuthSuccess = {
-                    isLoggedIn = true
-                    locationPreferences.edit().putBoolean("is_logged_in", true).apply()
-                    val destination = if (hasCompletedOnboarding && selectedCity.isNotBlank()) {
+                    val destination = if (selectedCity.isNotBlank()) {
                         "home"
                     } else {
-                        "permissions"
+                        "location_selection"
                     }
                     navController.navigate(destination) {
                         popUpTo("auth") {
@@ -146,7 +154,6 @@ fun AppNavigation() {
                     if (!detectedCity.isNullOrBlank()) {
                         selectedCity = detectedCity
                         hasCompletedOnboarding = true
-                        FakeData.currentUser = FakeData.currentUser.copy(city = detectedCity)
                         locationPreferences.edit()
                             .putString("selected_city", detectedCity)
                             .putBoolean("onboarding_completed", true)
@@ -172,6 +179,7 @@ fun AppNavigation() {
 
         composable("home") {
             HomeScreen(
+                onTermsClick = { navController.navigate("terms_policy") },
                 onEventClick = { event ->
                     navController.navigate("event_details/${event.id}")
                 },
@@ -185,7 +193,6 @@ fun AppNavigation() {
                 onLocationClick = { navController.navigate("location_selection") },
                 onDrawerVisibilityChange = { isHomeDrawerOpen = it },
                 onPartnerClick = { navController.navigate("manager_dashboard") },
-                onTermsClick = { navController.navigate("terms_policy") },
                 selectedCity = selectedCity,
                 onCategoryClick = { category ->
                     when (category) {
@@ -225,7 +232,6 @@ fun AppNavigation() {
                 onCitySelected = { city ->
                     selectedCity = city
                     hasCompletedOnboarding = true
-                    FakeData.currentUser = FakeData.currentUser.copy(city = city)
                     locationPreferences.edit()
                         .putString("selected_city", city)
                         .putBoolean("onboarding_completed", true)
@@ -330,8 +336,8 @@ fun AppNavigation() {
                 },
                 onViewTicketClick = { booking ->
                     val bookingKey = when (booking.type) {
-                        BookingType.EVENT -> booking.id.substringAfter(':')
-                        BookingType.MOVIE, BookingType.TURF -> booking.bookingReference
+                        BookingType.EVENT, BookingType.TURF -> booking.id.substringAfter(':')
+                        BookingType.MOVIE -> booking.bookingReference
                     }
                     val ticketRoute = listOf(
                         booking.type.name,
@@ -369,10 +375,9 @@ fun AppNavigation() {
                     navController.navigate("manager_dashboard")
                 },
                 onLogoutClick = {
-                    isLoggedIn = false
-                    locationPreferences.edit().putBoolean("is_logged_in", false).apply()
                     navController.navigate("auth") {
-                        popUpTo("home") { inclusive = true }
+                        popUpTo(0) { inclusive = true }
+                        launchSingleTop = true
                     }
                 }
             )
@@ -380,10 +385,6 @@ fun AppNavigation() {
 
         composable("manager_dashboard") {
             ManagerDashboardScreen(onBackClick = { navController.popBackStack() })
-        }
-
-        composable("terms_policy") {
-            TermsPolicyScreen(onBackClick = { navController.popBackStack() })
         }
 
         composable("turf_details/{sportId}") { backStackEntry ->
@@ -536,21 +537,20 @@ private fun PendingCheckout.toBookingDetails(): BookingDetails = when (this) {
         itemId = itemId, title = movieTitle, category = BookingType.MOVIE,
         date = showDatetime.substringBefore('T'), time = showDatetime.substringAfter('T').take(5),
         location = cinemaName, details = seatLabels.joinToString(", "),
-        baseAmount = bill.subtotalPaise / 100, convenienceFee = bill.platformFeePaise / 100,
-        taxes = bill.gstTotalPaise / 100, payableAmount = bill.totalRupees
+        baseAmount = java.math.BigDecimal(bill.subtotalPaise).movePointLeft(2), convenienceFee = bill.platformFeePaise?.let { java.math.BigDecimal(it).movePointLeft(2) },
+        taxes = bill.gstTotalPaise?.let { java.math.BigDecimal(it).movePointLeft(2) }
     )
     is PendingEventCheckout -> BookingDetails(
         itemId = itemId, title = title, category = BookingType.EVENT,
-        date = eventDate, time = eventTime, location = venueLocation.ifBlank { zoneName },
-        details = "${bill.quantity} ticket${if (bill.quantity == 1) "" else "s"} · $zoneName",
-        baseAmount = bill.subtotalPaise / 100, convenienceFee = bill.platformFeePaise / 100,
-        taxes = bill.gstTotalPaise / 100, payableAmount = bill.totalRupees
+        date = "", time = "", location = zoneName,
+        details = "${bill.quantity} ticket${if (bill.quantity == 1) "" else "s"}",
+        baseAmount = java.math.BigDecimal(bill.subtotalPaise).movePointLeft(2), convenienceFee = bill.platformFeePaise?.let { java.math.BigDecimal(it).movePointLeft(2) },
+        taxes = bill.gstTotalPaise?.let { java.math.BigDecimal(it).movePointLeft(2) }
     )
     is PendingTurfCheckout -> BookingDetails(
         itemId = itemId, title = resourceName, category = BookingType.TURF,
-        date = startsAt.substringBefore('T'), time = formattedTime, location = venueLocation.ifBlank { resourceName },
-        details = formattedTime, baseAmount = bill.subtotalPaise / 100,
-        convenienceFee = bill.platformFeePaise / 100, taxes = bill.gstTotalPaise / 100,
-        payableAmount = bill.totalRupees
+        date = startsAt.substringBefore('T'), time = formattedTime, location = resourceName,
+        details = formattedTime, baseAmount = java.math.BigDecimal(bill.subtotalPaise).movePointLeft(2),
+        convenienceFee = bill.platformFeePaise?.let { java.math.BigDecimal(it).movePointLeft(2) }, taxes = bill.gstTotalPaise?.let { java.math.BigDecimal(it).movePointLeft(2) }
     )
 }

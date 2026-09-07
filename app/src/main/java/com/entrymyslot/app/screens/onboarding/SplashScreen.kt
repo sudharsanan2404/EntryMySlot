@@ -1,4 +1,8 @@
 package com.entrymyslot.app.screens.onboarding
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.draw.scale
 
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
@@ -15,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -122,7 +127,8 @@ fun SplashScreen(
                 contentDescription = "EntryMySlot",
 
                 modifier = Modifier
-                    .width(240.dp)
+                    .fillMaxWidth(0.72f)
+                    .widthIn(max = 240.dp)
                     .alpha(logoAlpha)
                     .graphicsLayer {
 

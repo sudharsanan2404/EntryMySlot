@@ -36,7 +36,7 @@ data class PendingEventCheckout(
     val title: String,
     val holdKey: String,
     val holdExpiresAt: String,
-    val zoneId: Int?,
+    val zoneId: String?,
     val zoneName: String,
     val venueLocation: String,
     val eventDate: String,
@@ -45,7 +45,8 @@ data class PendingEventCheckout(
     val attendees: List<PendingAttendee> = emptyList(),
     val subtotalPaise: Int,
     override val currency: String,
-    override val bill: AuthoritativeBillDto
+    override val bill: AuthoritativeBillDto,
+    val ticketTierId: String? = null
 ) : PendingCheckout
 
 data class PendingAttendee(
@@ -70,14 +71,26 @@ data class PendingTurfCheckout(
 ) : PendingCheckout
 
 class PendingCheckoutStore {
+    var payment: PendingPayment? = null
+        private set
     private val _current = MutableStateFlow<PendingCheckout?>(null)
     val current: StateFlow<PendingCheckout?> = _current.asStateFlow()
 
     fun save(checkout: PendingCheckout) {
+        if (_current.value == checkout) return
+        payment = null
         _current.value = checkout
     }
 
     fun clear() {
+        payment = null
         _current.value = null
     }
+
+    fun savePayment(value: PendingPayment) { payment = value }
 }
+
+data class PendingPayment(
+    val type: String, val itemId: String, val bookingId: String, val bookingReference: String,
+    val orderId: String?, val amountPaise: Int?, val paymentUrl: String?, val paymentSessionId: String?
+)
