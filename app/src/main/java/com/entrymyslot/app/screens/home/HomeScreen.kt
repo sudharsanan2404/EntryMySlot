@@ -1,0 +1,2013 @@
+package com.entrymyslot.app.screens.home
+import android.Manifest
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+
+import android.content.Context
+import android.content.Intent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.ConfirmationNumber
+import androidx.compose.material.icons.outlined.Event
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.HelpOutline
+import androidx.compose.material.icons.outlined.LocalOffer
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Menu
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.Policy
+import androidx.compose.material.icons.outlined.Storefront
+import androidx.compose.material.icons.outlined.SportsSoccer
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.LocationOn
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDrawerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.entrymyslot.app.R
+import com.entrymyslot.app.EntryMySlotApp
+import com.entrymyslot.app.core.components.GpsDisabledDialog
+import com.entrymyslot.app.core.components.LocationFetchState
+import com.entrymyslot.app.core.components.rememberLocationFetcher
+
+import com.entrymyslot.app.data.IndiaCities
+import com.entrymyslot.app.data.model.AppNotification
+import com.entrymyslot.app.data.model.CatalogItem
+import com.entrymyslot.app.data.model.HomePromotion
+import com.entrymyslot.app.data.model.NotificationKind
+import com.entrymyslot.app.core.components.PremiumLoadingState
+import com.entrymyslot.app.core.components.PremiumErrorState
+import com.entrymyslot.app.core.components.PremiumEmptyState
+import com.entrymyslot.app.data.model.PromotionDestination
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
+private val PremiumOrange = Color(0xFFFF5400)
+private val PremiumBackground = Color(0xFF001329)
+private val PremiumSurface = Color(0xFF031D3D)
+private val PremiumSurfaceRaised = Color(0xFF0E315E)
+private val PremiumBlue = Color(0xFF0A2D62)
+private val PremiumBlueEdge = Color(0xFF3976A8)
+private val PremiumWhite = Color(0xFFF8FAFF)
+private val PremiumSecondary = Color(0xFFA8B8CF)
+private val PremiumMuted = Color(0xFF7185A1)
+
+private data class PopularCity(val name: String, val iconRes: Int)
+
+private val popularIndiaCities = listOf(
+    PopularCity("Mysuru", R.drawable.popular_city_1),
+    PopularCity("Chennai", R.drawable.popular_city_2),
+    PopularCity("Bengaluru", R.drawable.popular_city_3),
+    PopularCity("Mumbai", R.drawable.popular_city_4),
+    PopularCity("Hyderabad", R.drawable.popular_city_5),
+    PopularCity("Kochi", R.drawable.popular_city_6),
+    PopularCity("Madurai", R.drawable.popular_city_7),
+    PopularCity("Visakhapatnam", R.drawable.popular_city_8),
+    PopularCity("Pune", R.drawable.popular_city_9),
+    PopularCity("Delhi", R.drawable.popular_city_10)
+)
+
+typealias PopularEvent = CatalogItem
+
+@Composable
+fun GlowBackground(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color(0xFF092E9A),
+                        Color(0xFF082A82),
+                        Color(0xFF061D4E),
+                        PremiumBackground
+                    )
+                )
+            )
+    )
+}
+
+@Composable
+fun HomeScreen(
+    onCategoryClick: (String) -> Unit = {},
+    onEventClick: (PopularEvent) -> Unit = {},
+    onBottomNavigationClick: (String) -> Unit = {},
+    onSportClick: (PopularEvent) -> Unit = {},
+    onMovieBookClick: (PopularEvent) -> Unit = {},
+    onSearchClick: () -> Unit = {},
+    onLocationClick: () -> Unit = {},
+    onDrawerVisibilityChange: (Boolean) -> Unit = {},
+    onPartnerClick: () -> Unit = {},
+    onTermsClick: () -> Unit = {},
+    selectedCity: String = ""
+) {
+    val homeViewModel: HomeViewModel = viewModel()
+    val homeState by homeViewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(selectedCity) {
+        homeViewModel.loadHome(selectedCity)
+    }
+
+    PremiumHomeScreen(
+        featuredEvents = homeState.events,
+        featuredMovies = homeState.movies,
+        nearbySports = homeState.sports,
+        promotions = homeState.promotions.map(HomePromotion::toBanner),
+        isLoading = homeState.isLoading,
+        errorMessage = homeState.errorMessage,
+        selectedCity = selectedCity,
+        onRetry = { homeViewModel.loadHome(selectedCity) },
+        onPromotionClick = { banner -> onCategoryClick(banner.destination) },
+        onCategoryClick = onCategoryClick,
+        onEventClick = onEventClick,
+        onBottomNavigationClick = onBottomNavigationClick,
+        onSportClick = onSportClick,
+        onMovieBookClick = onMovieBookClick,
+        onSearchClick = onSearchClick,
+        onLocationClick = onLocationClick,
+        onDrawerVisibilityChange = onDrawerVisibilityChange,
+        onPartnerClick = onPartnerClick,
+        onTermsClick = onTermsClick
+    )
+}
+
+private enum class HomeContentKind { Event, Movie, Sport }
+private typealias HomeNotification = AppNotification
+
+internal data class PromotionBanner(
+    val itemId: String,
+    val category: String,
+    val title: String,
+    val subtitle: String,
+    val location: String,
+    val price: String,
+    val cta: String,
+    val destination: String,
+    val imageUrl: String? = null,
+    val fallbackImageRes: Int,
+    val icon: ImageVector,
+    val startColor: Color,
+    val endColor: Color
+)
+
+private fun HomePromotion.toBanner(): PromotionBanner {
+    val visuals = when (destination) {
+        PromotionDestination.MOVIES -> Triple(Icons.Outlined.ConfirmationNumber, Color(0xFF123F77), Color(0xFF071C3E))
+        PromotionDestination.SPORTS -> Triple(Icons.Outlined.SportsSoccer, Color(0xFF16446D), Color(0xFF071D3C))
+        PromotionDestination.EVENTS -> Triple(Icons.Outlined.Event, Color(0xFF263D72), Color(0xFF091B3B))
+    }
+    return PromotionBanner(
+        itemId = "",
+        category = category,
+        title = title,
+        subtitle = subtitle,
+        location = "",
+        price = "",
+        cta = cta,
+        destination = destination.name.lowercase().replaceFirstChar(Char::uppercase),
+        imageUrl = imageUrl,
+        fallbackImageRes = when (destination) {
+            PromotionDestination.MOVIES -> R.drawable.movie_poster_fallback
+            PromotionDestination.SPORTS -> R.drawable.turf_hero
+            PromotionDestination.EVENTS -> R.drawable.event_fallback
+        },
+        icon = visuals.first,
+        startColor = visuals.second,
+        endColor = visuals.third
+    )
+}
+
+@Composable
+internal fun PremiumHomeScreen(
+    featuredEvents: List<PopularEvent>,
+    featuredMovies: List<PopularEvent>,
+    nearbySports: List<PopularEvent>,
+    promotions: List<PromotionBanner>,
+    isLoading: Boolean,
+    errorMessage: String?,
+    selectedCity: String,
+    onRetry: () -> Unit,
+    onPromotionClick: (PromotionBanner) -> Unit,
+    onCategoryClick: (String) -> Unit,
+    onEventClick: (PopularEvent) -> Unit,
+    onBottomNavigationClick: (String) -> Unit,
+    onSportClick: (PopularEvent) -> Unit,
+    onMovieBookClick: (PopularEvent) -> Unit,
+    onSearchClick: () -> Unit,
+    onLocationClick: () -> Unit,
+    onDrawerVisibilityChange: (Boolean) -> Unit,
+    onPartnerClick: () -> Unit,
+    onTermsClick: () -> Unit
+) {
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    var showNotifications by remember { mutableStateOf(false) }
+    var showHelpSupport by remember { mutableStateOf(false) }
+    val currentOnDrawerVisibilityChange by rememberUpdatedState(onDrawerVisibilityChange)
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { }
+    val openNotifications = {
+        showNotifications = true
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+    LaunchedEffect(drawerState) {
+        snapshotFlow {
+            drawerState.currentValue != DrawerValue.Closed ||
+                drawerState.targetValue != DrawerValue.Closed ||
+                showNotifications ||
+                showHelpSupport
+        }.collect { currentOnDrawerVisibilityChange(it) }
+    }
+    DisposableEffect(Unit) {
+        onDispose { currentOnDrawerVisibilityChange(false) }
+    }
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            PremiumDrawer(
+                onProfileClick = {
+                    scope.launch { drawerState.close() }
+                    onBottomNavigationClick("Profile")
+                },
+                onBookingsClick = {
+                    scope.launch { drawerState.close() }
+                    onBottomNavigationClick("My Bookings")
+                },
+                onHelpClick = {
+                    scope.launch {
+                        drawerState.close()
+                        showHelpSupport = true
+                    }
+                },
+                onTermsClick = {
+                    scope.launch { drawerState.close() }
+                    onTermsClick()
+                },
+                onPartnerClick = {
+                    scope.launch { drawerState.close() }
+                    onPartnerClick()
+                }
+            )
+        }
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Box(Modifier.fillMaxSize().background(PremiumBackground))
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+            ) {
+                PremiumHomeContent(
+                    featuredEvents = featuredEvents,
+                    featuredMovies = featuredMovies,
+                    nearbySports = nearbySports,
+                    promotions = promotions,
+                    isLoading = isLoading,
+                    errorMessage = errorMessage,
+                    selectedCity = selectedCity,
+                    onRetry = onRetry,
+                    onPromotionClick = onPromotionClick,
+                    onCategoryClick = onCategoryClick,
+                    onEventClick = onEventClick,
+                    onSportClick = onSportClick,
+                    onMovieBookClick = onMovieBookClick,
+                    onSearchClick = onSearchClick,
+                    onLocationClick = onLocationClick,
+                    onMenuClick = { scope.launch { drawerState.open() } },
+                    onNotificationClick = openNotifications,
+                    modifier = Modifier.weight(1f)
+                )
+
+            }
+        }
+    }
+    if (showNotifications) {
+        NotificationPanel(
+            notifications = emptyList(),
+            onClear = {},
+            onClearAll = {},
+            onDismiss = { showNotifications = false }
+        )
+    }
+    if (showHelpSupport) {
+        HelpSupportDialog(
+            onDismiss = { showHelpSupport = false },
+            onSend = { message ->
+                val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_SUBJECT, "EntryMySlot Help & Support")
+                    putExtra(Intent.EXTRA_TEXT, message)
+                }
+                context.startActivity(Intent.createChooser(sendIntent, "Send support message"))
+                showHelpSupport = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun PremiumHomeContent(
+    featuredEvents: List<PopularEvent>,
+    featuredMovies: List<PopularEvent>,
+    nearbySports: List<PopularEvent>,
+    promotions: List<PromotionBanner>,
+    isLoading: Boolean,
+    errorMessage: String?,
+    selectedCity: String,
+    onRetry: () -> Unit,
+    onPromotionClick: (PromotionBanner) -> Unit,
+    onCategoryClick: (String) -> Unit,
+    onEventClick: (PopularEvent) -> Unit,
+    onSportClick: (PopularEvent) -> Unit,
+    onMovieBookClick: (PopularEvent) -> Unit,
+    onSearchClick: () -> Unit,
+    onLocationClick: () -> Unit,
+    onMenuClick: () -> Unit,
+    onNotificationClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val hasContent = promotions.isNotEmpty() || featuredEvents.isNotEmpty() ||
+        featuredMovies.isNotEmpty() || nearbySports.isNotEmpty()
+
+    LazyColumn(
+        modifier = modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(bottom = 92.dp)
+    ) {
+        item(key = "header") {
+            PremiumHomeHeader(
+                onMenuClick = onMenuClick,
+                onNotificationClick = onNotificationClick
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+        }
+
+        item(key = "search_location") {
+            SearchLocationToolbar(
+                selectedCity = selectedCity,
+                onSearchClick = onSearchClick,
+                onLocationClick = onLocationClick
+            )
+            Spacer(modifier = Modifier.height(18.dp))
+        }
+
+        item(key = "discovery_hero") {
+            if (promotions.isNotEmpty()) {
+                PromotionalCarousel(banners = promotions, onBannerClick = onPromotionClick)
+            } else {
+                ReferenceHomeHero(onClick = { onCategoryClick("Popular Events") })
+            }
+            Spacer(Modifier.height(12.dp))
+        }
+        if (isLoading && !hasContent) {
+            item(key = "home_loading") {
+                HomeLoadingState()
+            }
+        }
+
+        if (isLoading && hasContent) {
+            item(key = "home_refreshing") {
+                HomeRefreshingState()
+            }
+        }
+
+        if (errorMessage != null) {
+            item(key = "home_error") {
+                HomeErrorState(message = errorMessage, onRetry = onRetry)
+            }
+        }
+
+        if (!isLoading && errorMessage == null && !hasContent) {
+            item(key = "home_empty") {
+                HomeEmptyState(onRetry = onRetry)
+            }
+        }
+
+        if (hasContent) {
+            item(key = "popular_events") {
+                ContentSection(
+                    title = "Popular Events",
+                    events = featuredEvents,
+                    kind = HomeContentKind.Event,
+                    promotions = promotions.filter { it.destination.equals("Events", ignoreCase = true) },
+                    onPromotionClick = onPromotionClick,
+                    onSeeAllClick = { onCategoryClick("Popular Events") },
+                    onEventClick = onEventClick
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            item(key = "latest_movies") {
+                ContentSection(
+                    title = "Latest Movies",
+                    events = featuredMovies,
+                    kind = HomeContentKind.Movie,
+                    promotions = promotions.filter { it.destination.equals("Movies", ignoreCase = true) },
+                    onPromotionClick = onPromotionClick,
+                    onSeeAllClick = { onCategoryClick("Latest Movies") },
+                    onEventClick = onMovieBookClick
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            item(key = "sports_near_you") {
+                ContentSection(
+                    title = "Sports Near You",
+                    events = nearbySports,
+                    kind = HomeContentKind.Sport,
+                    promotions = promotions.filter { it.destination.equals("Sports", ignoreCase = true) },
+                    onPromotionClick = onPromotionClick,
+                    onSeeAllClick = { onCategoryClick("Sports Near You") },
+                    onEventClick = onSportClick
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeLoadingState() {
+    PremiumLoadingState(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 54.dp),
+        message = "Loading latest Home content..."
+    )
+}
+
+@Composable
+private fun HomeRefreshingState() {
+    PremiumLoadingState(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        message = "Refreshing latest content..."
+    )
+}
+
+@Composable
+private fun HomeErrorState(message: String, onRetry: () -> Unit) {
+    PremiumErrorState(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+        title = "Home content unavailable",
+        message = message,
+        onRetry = onRetry
+    )
+}
+
+@Composable
+private fun HomeEmptyState(onRetry: () -> Unit) {
+    PremiumEmptyState(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+        title = "Nothing to show yet",
+        message = "No active events, movies, sports or promotions are available.",
+        actionText = "Refresh",
+        onAction = onRetry
+    )
+}
+
+@Composable
+private fun PremiumHomeHeader(
+    onMenuClick: () -> Unit,
+    onNotificationClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(58.dp)
+            .padding(horizontal = 14.dp)
+    ) {
+        PremiumIconButton(
+            icon = Icons.Outlined.Menu,
+            contentDescription = "Menu",
+            onClick = onMenuClick,
+            modifier = Modifier.align(Alignment.CenterStart)
+        )
+        androidx.compose.foundation.Image(
+            painter = painterResource(id = R.drawable.entrymyslotlogopcg),
+            contentDescription = "EntryMySlot",
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .align(Alignment.Center)
+                .width(174.dp)
+                .height(45.dp)
+        )
+        PremiumIconButton(
+            icon = Icons.Outlined.Notifications,
+            contentDescription = "Notifications",
+            onClick = onNotificationClick,
+            modifier = Modifier.align(Alignment.CenterEnd)
+        )
+    }
+}
+
+@Composable
+private fun PremiumIconButton(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.92f else 1f,
+        animationSpec = tween(100),
+        label = "headerIconScale"
+    )
+    Box(
+        modifier = modifier
+            .size(40.dp)
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                role = Role.Button,
+                onClickLabel = contentDescription,
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = PremiumWhite,
+            modifier = Modifier.size(20.dp)
+        )
+    }
+}
+
+@Composable
+private fun NotificationPanel(
+    notifications: List<HomeNotification>,
+    onClear: (Int) -> Unit,
+    onClearAll: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    var selectedFilter by remember { mutableStateOf("All") }
+    val filters = listOf("All", "Reminders", "Bookings", "Offers")
+    val visibleNotifications = notifications.filter { notification ->
+        when (selectedFilter) {
+            "Reminders" -> notification.kind == NotificationKind.REMINDER
+            "Bookings" -> notification.kind == NotificationKind.BOOKING
+            "Offers" -> notification.kind == NotificationKind.OFFER
+            else -> true
+        }
+    }
+    AnimatedVisibility(
+        visible = true,
+        enter = slideInHorizontally(tween(260)) { it },
+        exit = slideOutHorizontally(tween(220)) { it }
+    ) {
+        Box(
+            Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.42f)).clickable(onClick = onDismiss),
+            contentAlignment = Alignment.CenterEnd
+        ) {
+            Column(
+                Modifier.widthIn(max = 330.dp).fillMaxHeight()
+                    .background(PremiumBackground)
+                    .statusBarsPadding().navigationBarsPadding()
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {}
+                    )
+                    .padding(horizontal = 18.dp, vertical = 20.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.AutoMirrored.Rounded.ArrowBack,
+                        contentDescription = "Back",
+                        tint = PremiumWhite,
+                        modifier = Modifier.size(22.dp).clickable(onClick = onDismiss)
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Text("Notifications", color = PremiumWhite, fontSize = 21.sp, fontWeight = FontWeight.Bold)
+                }
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 15.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Reminders and offers for you", color = PremiumSecondary, fontSize = 11.sp, modifier = Modifier.weight(1f))
+                    if (notifications.isNotEmpty()) {
+                        Text("Clear all", color = PremiumOrange, fontSize = 11.sp, modifier = Modifier.clickable(onClick = onClearAll))
+                    }
+                }
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(7.dp),
+                    contentPadding = PaddingValues(bottom = 15.dp)
+                ) {
+                    items(filters, key = { it }) { filter ->
+                        val selected = selectedFilter == filter
+                        Text(
+                            filter,
+                            color = if (selected) Color.White else PremiumSecondary,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.clip(RoundedCornerShape(50))
+                                .background(if (selected) PremiumOrange else PremiumSurfaceRaised)
+                                .border(1.dp, if (selected) PremiumOrange else PremiumBlueEdge.copy(alpha = 0.35f), RoundedCornerShape(50))
+                                .clickable { selectedFilter = filter }
+                                .padding(horizontal = 11.dp, vertical = 7.dp)
+                        )
+                    }
+                }
+                if (visibleNotifications.isEmpty()) {
+                    Column(
+                        Modifier.fillMaxWidth().padding(top = 90.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(Icons.Outlined.Notifications, null, tint = PremiumMuted, modifier = Modifier.size(34.dp))
+                        Text(if (notifications.isEmpty()) "You're all caught up" else "Nothing in $selectedFilter", color = PremiumWhite, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 12.dp))
+                        Text("New reminders and venue offers will appear here.", color = PremiumSecondary, fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
+                    }
+                } else {
+                    visibleNotifications.forEach { notification ->
+                        Row(
+                            Modifier.fillMaxWidth().padding(bottom = 10.dp)
+                                .clip(RoundedCornerShape(15.dp))
+                                .background(PremiumSurface)
+                                .border(1.dp, PremiumBlueEdge.copy(alpha = 0.28f), RoundedCornerShape(15.dp))
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Column(Modifier.weight(1f).padding(end = 10.dp)) {
+                                Text(notification.title, color = PremiumWhite, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                                Text(notification.message, color = PremiumSecondary, fontSize = 10.sp, lineHeight = 15.sp, modifier = Modifier.padding(top = 3.dp))
+                            }
+                            Icon(
+                                Icons.Rounded.Close,
+                                contentDescription = "Clear notification",
+                                tint = PremiumMuted,
+                                modifier = Modifier.size(19.dp).clickable { onClear(notification.id) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+
+@Composable
+private fun SearchLocationToolbar(
+    selectedCity: String,
+    onSearchClick: () -> Unit,
+    onLocationClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        val searchInteraction = remember { MutableInteractionSource() }
+        val searchPressed by searchInteraction.collectIsPressedAsState()
+        val searchScale by animateFloatAsState(
+            targetValue = if (searchPressed) 0.99f else 1f,
+            animationSpec = tween(100),
+            label = "searchScale"
+        )
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .height(48.dp)
+                .graphicsLayer { scaleX = searchScale; scaleY = searchScale }
+                .clip(RoundedCornerShape(15.dp))
+                .background(PremiumSurface.copy(alpha = 0.96f))
+                .border(
+                    1.dp,
+                    PremiumBlueEdge.copy(alpha = 0.28f),
+                    RoundedCornerShape(15.dp)
+                )
+                .clickable(
+                    interactionSource = searchInteraction,
+                    indication = null,
+                    role = Role.Button,
+                    onClickLabel = "Search events, movies, and sports",
+                    onClick = onSearchClick
+                )
+                .padding(horizontal = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Search,
+                contentDescription = null,
+                tint = PremiumSecondary,
+                modifier = Modifier.size(19.dp)
+            )
+            Spacer(modifier = Modifier.width(9.dp))
+            Text(
+                text = "Search movies, sports, events",
+                color = PremiumSecondary,
+                fontSize = 12.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        LocationChip(
+            city = selectedCity,
+            onClick = onLocationClick
+        )
+    }
+}
+
+@Composable
+private fun LocationChip(city: String, onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.94f else 1f,
+        animationSpec = tween(100),
+        label = "locationScale"
+    )
+    Row(
+        modifier = Modifier
+            .height(48.dp)
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .clip(RoundedCornerShape(15.dp))
+            .background(PremiumOrange)
+            .border(1.dp, Color.White.copy(alpha = 0.13f), RoundedCornerShape(15.dp))
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                role = Role.Button,
+                onClickLabel = "Select location",
+                onClick = onClick
+            )
+            .padding(horizontal = 11.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(Icons.Outlined.LocationOn, null, tint = PremiumWhite, modifier = Modifier.size(17.dp))
+        Spacer(Modifier.width(3.dp))
+        Text(
+            text = premiumShortCityName(city),
+            color = PremiumWhite,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1
+        )
+        Spacer(modifier = Modifier.width(3.dp))
+        Icon(
+            imageVector = Icons.Default.KeyboardArrowDown,
+            contentDescription = "Select location",
+            tint = PremiumWhite,
+            modifier = Modifier.size(16.dp)
+        )
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun PromotionalCarousel(
+    banners: List<PromotionBanner>,
+    onBannerClick: (PromotionBanner) -> Unit
+) {
+    val pagerState = rememberPagerState(pageCount = { banners.size })
+    val slideDelayMillis = when (banners.firstOrNull()?.destination) {
+        "Movies" -> 4_200L
+        "Events" -> 5_200L
+        "Sports" -> 6_200L
+        else -> 5_000L
+    }
+    val bannerHeight = when (banners.firstOrNull()?.destination) {
+        "Sports" -> 124.dp
+        else -> 138.dp
+    }
+
+    LaunchedEffect(pagerState, banners.size, slideDelayMillis) {
+        if (banners.size > 1) {
+            while (true) {
+                delay(slideDelayMillis)
+                if (!pagerState.isScrollInProgress) {
+                    pagerState.animateScrollToPage(
+                        page = (pagerState.currentPage + 1) % banners.size,
+                        animationSpec = tween(520)
+                    )
+                }
+            }
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(bannerHeight)
+    ) {
+        HorizontalPager(
+            state = pagerState,
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            pageSpacing = 12.dp,
+            beyondViewportPageCount = 1,
+            modifier = Modifier.fillMaxSize()
+        ) { page ->
+            PromotionalBannerCard(
+                banner = banners[page],
+                onClick = { onBannerClick(banners[page]) }
+            )
+        }
+        if (banners.size > 1) {
+            Row(
+                modifier = Modifier.align(Alignment.TopEnd).padding(end = 28.dp, top = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                banners.indices.forEach { index ->
+                    val selected = pagerState.currentPage == index
+                    val width by animateDpAsState(
+                        targetValue = if (selected) 18.dp else 5.dp,
+                        animationSpec = tween(180),
+                        label = "bannerIndicatorWidth"
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(width)
+                            .height(5.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (selected) PremiumOrange
+                                else Color.White.copy(alpha = 0.42f)
+                            )
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PromotionalBannerCard(
+    banner: PromotionBanner,
+    onClick: () -> Unit
+) {
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.985f else 1f,
+        animationSpec = tween(100),
+        label = "promotionCardScale"
+    )
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight()
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .shadow(
+                elevation = if (pressed) 3.dp else 8.dp,
+                shape = RoundedCornerShape(19.dp),
+                ambientColor = Color.Black.copy(alpha = 0.18f),
+                spotColor = Color.Black.copy(alpha = 0.28f)
+            )
+            .clip(RoundedCornerShape(19.dp))
+            .background(Brush.horizontalGradient(listOf(banner.startColor, banner.endColor)))
+            .border(
+                1.dp,
+                Color.White.copy(alpha = 0.14f),
+                RoundedCornerShape(19.dp)
+            )
+            .clickable(
+                interactionSource = source,
+                indication = null,
+                role = Role.Button,
+                onClickLabel = banner.cta,
+                onClick = onClick
+            )
+    ) {
+        coil3.compose.AsyncImage(
+            model = banner.imageUrl ?: banner.fallbackImageRes,
+            contentDescription = banner.title,
+            placeholder = painterResource(banner.fallbackImageRes),
+            error = painterResource(banner.fallbackImageRes),
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            Color(0xFF041329).copy(alpha = .97f),
+                            banner.startColor.copy(alpha = .78f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color.Transparent, Color(0xFF041329).copy(alpha = .58f))
+                    )
+                )
+        )
+        Column(Modifier.padding(14.dp).fillMaxWidth(.72f)) {
+            Text(banner.category.uppercase(), color = PremiumOrange, fontSize = 10.sp, maxLines = 1)
+            Spacer(Modifier.height(7.dp))
+            Text(banner.title, color = PremiumWhite, fontSize = 22.sp, lineHeight = 25.sp,
+                fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
+        Box(Modifier.align(Alignment.BottomEnd).padding(12.dp).clip(RoundedCornerShape(7.dp))
+            .background(PremiumOrange).padding(horizontal = 14.dp, vertical = 9.dp)) {
+            Text(banner.cta, color = PremiumWhite, fontSize = 12.sp)
+        }
+    }
+}
+
+@Composable
+private fun MoviePromotionLayout(banner: PromotionBanner) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 14.dp, vertical = 13.dp)
+    ) {
+        Text(
+            banner.title,
+            color = PremiumWhite,
+            fontSize = 19.sp,
+            lineHeight = 22.sp,
+            fontWeight = FontWeight.ExtraBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth(.72f)
+        )
+        PromotionLocation(banner.location)
+        Spacer(Modifier.weight(1f))
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 9.dp)) {
+            Text(
+                banner.price,
+                color = PremiumOrange,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f)
+            )
+            BannerAction(banner.cta)
+        }
+    }
+}
+
+@Composable
+private fun SportsPromotionLayout(banner: PromotionBanner) {
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 13.dp, vertical = 11.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(end = 44.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(PremiumOrange.copy(alpha = .18f))
+                    .border(1.dp, PremiumOrange.copy(alpha = .30f), RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(banner.icon, null, tint = PremiumOrange, modifier = Modifier.size(21.dp))
+            }
+            Column(modifier = Modifier.weight(1f).padding(start = 10.dp)) {
+                Text(
+                    banner.title,
+                    color = PremiumWhite,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                PromotionLocation(banner.location)
+            }
+        }
+        Spacer(Modifier.weight(1f))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                banner.price,
+                color = PremiumOrange,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f)
+            )
+            BannerAction(banner.cta)
+        }
+    }
+}
+
+@Composable
+private fun EventPromotionLayout(banner: PromotionBanner) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 12.dp)
+    ) {
+        Text(
+            banner.subtitle,
+            color = PremiumWhite.copy(alpha = .70f),
+            fontSize = 9.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1
+        )
+        Spacer(Modifier.weight(1f))
+        Text(
+            banner.title,
+            color = PremiumWhite,
+            fontSize = 18.sp,
+            lineHeight = 21.sp,
+            fontWeight = FontWeight.ExtraBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 7.dp)) {
+            Column(modifier = Modifier.weight(1f).padding(end = 10.dp)) {
+                PromotionLocation(banner.location)
+                Text(banner.price, color = PremiumOrange, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 2.dp))
+            }
+            BannerAction(banner.cta)
+        }
+    }
+}
+
+@Composable
+private fun PromotionLocation(location: String) {
+    if (location.isBlank()) return
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 3.dp)) {
+        Icon(Icons.Outlined.LocationOn, null, tint = PremiumWhite.copy(alpha = .64f), modifier = Modifier.size(11.dp))
+        Text(
+            location,
+            color = PremiumWhite.copy(alpha = .72f),
+            fontSize = 8.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(start = 3.dp)
+        )
+    }
+}
+
+@Composable
+private fun BannerAction(text: String) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(Color.White.copy(alpha = .13f))
+            .border(1.dp, Color.White.copy(alpha = .18f), RoundedCornerShape(50))
+            .padding(horizontal = 9.dp, vertical = 5.dp)
+    ) {
+        Text(
+            text = "$text  ›",
+            color = PremiumWhite,
+            fontSize = 8.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
+private fun CategoryTile(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.96f else 1f,
+        animationSpec = tween(100),
+        label = "categoryScale"
+    )
+    val elevation by animateDpAsState(
+        targetValue = if (pressed) 1.dp else 4.dp,
+        animationSpec = tween(110),
+        label = "categoryElevation"
+    )
+    Column(
+        modifier = modifier
+            .height(112.dp)
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .shadow(elevation, RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(18.dp))
+            .background(PremiumSurface.copy(alpha = 0.96f))
+            .border(
+                1.dp,
+                PremiumBlueEdge.copy(alpha = 0.27f),
+                RoundedCornerShape(18.dp)
+            )
+            .clickable(
+                interactionSource = source,
+                indication = null,
+                role = Role.Button,
+                onClickLabel = title,
+                onClick = onClick
+            )
+            .padding(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(PremiumOrange.copy(alpha = 0.12f))
+                .border(
+                    1.dp,
+                    PremiumOrange.copy(alpha = 0.22f),
+                    RoundedCornerShape(14.dp)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                tint = PremiumOrange,
+                modifier = Modifier.size(22.dp)
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = title,
+            color = PremiumWhite,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1
+        )
+        Text(
+            text = subtitle,
+            color = PremiumMuted,
+            fontSize = 9.sp,
+            maxLines = 1
+        )
+    }
+}
+
+@Composable
+private fun ContentSection(
+    title: String,
+    events: List<PopularEvent>,
+    kind: HomeContentKind,
+    promotions: List<PromotionBanner>,
+    onPromotionClick: (PromotionBanner) -> Unit,
+    onSeeAllClick: () -> Unit,
+    onEventClick: (PopularEvent) -> Unit
+) {
+    val promotedItemIds = promotions.mapTo(linkedSetOf()) { it.itemId }
+    val orderedEvents = events.sortedBy { event -> if (event.id in promotedItemIds) 0 else 1 }
+    PremiumSectionHeader(title = title, onSeeAllClick = onSeeAllClick)
+    Spacer(modifier = Modifier.height(12.dp))
+    if (events.isEmpty()) {
+        if (kind == HomeContentKind.Sport) {
+            PremiumEmptyState(title = "No nearby sports yet", message = "Choose another location to explore available venues.")
+        } else {
+            HomeSectionEmpty(message = "No $title available right now.")
+        }
+    } else {
+        PremiumContentRow(
+            events = orderedEvents,
+            kind = kind,
+            promotedItemIds = promotedItemIds,
+            onEventClick = onEventClick
+        )
+    }
+}
+
+@Composable
+private fun HomeSectionEmpty(message: String) {
+    Text(
+        text = message,
+        color = PremiumMuted,
+        fontSize = 13.sp,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+    )
+}
+
+@Composable
+private fun PremiumSectionHeader(title: String, onSeeAllClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            color = PremiumWhite,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.semantics { heading() }
+        )
+        Spacer(modifier = Modifier.weight(1f))
+        val source = remember { MutableInteractionSource() }
+        val pressed by source.collectIsPressedAsState()
+        val color by animateColorAsState(
+            targetValue = if (pressed) PremiumWhite else PremiumOrange,
+            animationSpec = tween(100),
+            label = "seeAllColor"
+        )
+        Text(
+            text = "See All  ›",
+            color = color,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier
+                .clip(RoundedCornerShape(9.dp))
+                .clickable(
+                    interactionSource = source,
+                    indication = null,
+                    role = Role.Button,
+                    onClick = onSeeAllClick
+                )
+                .padding(horizontal = 9.dp, vertical = 6.dp)
+        )
+    }
+}
+
+@Composable
+private fun PremiumContentRow(
+    events: List<PopularEvent>,
+    kind: HomeContentKind,
+    promotedItemIds: Set<String>,
+    onEventClick: (PopularEvent) -> Unit
+) {
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val cardWidth = (maxWidth * if (kind == HomeContentKind.Movie) 0.35f else 0.38f).coerceIn(140.dp, 220.dp)
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            itemsIndexed(items = events, key = { _, event -> event.id }) { _, event ->
+                PremiumContentCard(
+                    event = event,
+                    kind = kind,
+                    promoted = event.id in promotedItemIds,
+                    cardWidth = cardWidth,
+                    onClick = { onEventClick(event) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PremiumContentCard(
+    event: PopularEvent,
+    kind: HomeContentKind,
+    promoted: Boolean,
+    cardWidth: Dp,
+    onClick: () -> Unit
+) {
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.985f else 1f,
+        animationSpec = tween(100),
+        label = "contentCardScale"
+    )
+    val imageHeight = cardWidth * when (kind) { HomeContentKind.Movie -> 1.02f; HomeContentKind.Event -> 0.52f; HomeContentKind.Sport -> 0.44f }
+
+    Column(
+        modifier = Modifier
+            .width(cardWidth)
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .shadow(
+                elevation = if (pressed) 2.dp else 6.dp,
+                shape = RoundedCornerShape(17.dp),
+                ambientColor = Color.Black.copy(alpha = 0.18f),
+                spotColor = Color.Black.copy(alpha = 0.22f)
+            )
+            .clip(RoundedCornerShape(17.dp))
+            .background(PremiumSurface.copy(alpha = 0.98f))
+            .border(
+                1.dp,
+                PremiumBlueEdge.copy(alpha = if (pressed) 0.4f else 0.24f),
+                RoundedCornerShape(17.dp)
+            )
+            .clickable(
+                interactionSource = source,
+                indication = null,
+                role = Role.Button,
+                onClickLabel = "Open ${event.title}",
+                onClick = onClick
+            )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(imageHeight)
+                .background(PremiumBlue)
+        ) {
+            val fallbackImage = when (kind) {
+                HomeContentKind.Event -> R.drawable.event_fallback
+                HomeContentKind.Movie -> R.drawable.movie_poster_fallback
+                HomeContentKind.Sport -> R.drawable.turf_hero
+            }
+            coil3.compose.AsyncImage(
+                model = event.imageUrl ?: fallbackImage,
+                contentDescription = event.title,
+                placeholder = painterResource(fallbackImage),
+                error = painterResource(fallbackImage),
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+            if (promoted) {
+                Text(
+                    "PROMOTED",
+                    color = Color.White,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = .65.sp,
+                    modifier = Modifier.align(Alignment.TopEnd)
+                        .clip(RoundedCornerShape(bottomStart = 9.dp)).background(PremiumOrange)
+                        .padding(horizontal = 5.dp, vertical = 2.dp)
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(46.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color.Transparent, PremiumBackground.copy(alpha = 0.34f))
+                        )
+                    )
+            )
+        }
+
+        Column(modifier = Modifier.padding(8.dp)) {
+            Text(event.title, color = PremiumWhite, fontSize = 13.sp, fontWeight = FontWeight.Medium,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Spacer(Modifier.height(4.dp))
+            val movie = event as? com.entrymyslot.app.data.model.Movie
+            if (movie != null) {
+                Text(listOf(movie.language, movie.genre).filter(String::isNotBlank).joinToString(" • "),
+                    color = PremiumSecondary, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            } else {
+                HomeCardMeta(Icons.Outlined.LocationOn, event.location)
+                if (kind == HomeContentKind.Event && event.date.isNotBlank()) {
+                    Spacer(Modifier.height(5.dp))
+                    HomeCardMeta(Icons.Outlined.Event, event.date)
+                }
+            }
+            if (event.price.isNotBlank()) {
+                Spacer(Modifier.height(6.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(event.price, color = PremiumOrange, fontSize = 14.sp, maxLines = 1)
+                    Text(if (kind == HomeContentKind.Sport) " / hour" else " onwards",
+                        color = PremiumMuted, fontSize = 10.sp, maxLines = 1)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeCardMeta(icon: ImageVector, label: String) {
+    if (label.isBlank()) return
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, null, tint = PremiumSecondary, modifier = Modifier.size(13.dp))
+        Spacer(Modifier.width(4.dp))
+        Text(label, color = PremiumSecondary, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+private fun ReferenceHomeHero(onClick: () -> Unit) {
+    Box(Modifier.padding(horizontal = 16.dp).fillMaxWidth().height(138.dp)
+        .clip(RoundedCornerShape(10.dp)).border(1.dp, PremiumBlueEdge.copy(alpha = .45f), RoundedCornerShape(10.dp))) {
+        Image(painterResource(R.drawable.event_fallback), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(PremiumBackground.copy(alpha = .92f), Color.Transparent))))
+        Column(Modifier.padding(14.dp)) {
+            Text("LIVE EXPERIENCES", color = PremiumOrange, fontSize = 10.sp)
+            Spacer(Modifier.height(7.dp))
+            Text("Make tonight\nmemorable", color = PremiumWhite, fontSize = 22.sp, lineHeight = 25.sp, fontWeight = FontWeight.SemiBold)
+        }
+        Button(onClick, modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp),
+            shape = RoundedCornerShape(7.dp), colors = ButtonDefaults.buttonColors(containerColor = PremiumOrange),
+            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)) {
+            Text("Explore Events", fontSize = 12.sp, color = PremiumWhite)
+        }
+    }
+}
+
+@Composable
+private fun PremiumDrawer(
+    onProfileClick: () -> Unit,
+    onBookingsClick: () -> Unit,
+    onHelpClick: () -> Unit,
+    onTermsClick: () -> Unit,
+    onPartnerClick: () -> Unit
+) {
+    ModalDrawerSheet(
+        modifier = Modifier.fillMaxHeight().fillMaxWidth(0.86f).widthIn(max = 318.dp),
+        drawerContainerColor = Color.Transparent,
+        drawerShape = RoundedCornerShape(0.dp),
+        windowInsets = WindowInsets(0, 0, 0, 0)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color(0xFF0B3268), PremiumBackground, Color(0xFF041329))
+                    )
+                )
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(horizontal = 18.dp, vertical = 18.dp)
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Text(
+                    text = "Menu",
+                    color = PremiumWhite,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(start = 8.dp, top = 8.dp, bottom = 4.dp)
+                )
+                Text(
+                    "Everything you need, in one place",
+                    color = PremiumSecondary,
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(start = 8.dp, bottom = 20.dp)
+                )
+                Text("YOUR ACCOUNT", color = PremiumMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, modifier = Modifier.padding(start = 13.dp, bottom = 4.dp))
+                DrawerItem("Profile", Icons.Outlined.AccountCircle, onProfileClick)
+                DrawerItem("Offers", Icons.Outlined.LocalOffer, onClick = {})
+                DrawerItem("My Bookings", Icons.Outlined.ConfirmationNumber, onBookingsClick)
+
+                Spacer(modifier = Modifier.height(26.dp))
+
+                Text("MORE", color = PremiumMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, modifier = Modifier.padding(start = 13.dp, bottom = 4.dp))
+                DrawerItem("Share", Icons.Outlined.Share, onClick = {})
+                DrawerItem("Rate Us", Icons.Outlined.Star, onClick = {})
+                DrawerItem("Terms & Policy", Icons.Outlined.Policy, onTermsClick)
+                DrawerItem("Help & Support", Icons.Outlined.HelpOutline, onHelpClick)
+
+                Spacer(modifier = Modifier.weight(1f))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(PremiumSurface.copy(alpha = 0.72f))
+                        .border(
+                            1.dp,
+                            PremiumBlueEdge.copy(alpha = 0.22f),
+                            RoundedCornerShape(18.dp)
+                        )
+                        .padding(15.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Outlined.Storefront, null, tint = PremiumOrange, modifier = Modifier.size(20.dp))
+                        Text(
+                            "List Your Venue",
+                            color = PremiumWhite,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(start = 9.dp)
+                        )
+                    }
+                    Text(
+                        "Partner with EntryMySlot and reach more customers.",
+                        color = PremiumSecondary,
+                        fontSize = 10.sp,
+                        lineHeight = 15.sp,
+                        modifier = Modifier.padding(top = 7.dp)
+                    )
+                    Button(
+                        onClick = onPartnerClick,
+                        modifier = Modifier.fillMaxWidth().padding(top = 9.dp).height(38.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = PremiumOrange),
+                        shape = RoundedCornerShape(11.dp)
+                    ) {
+                        Text("Partner With Us", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HelpSupportDialog(
+    onDismiss: () -> Unit,
+    onSend: (String) -> Unit
+) {
+    var message by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = PremiumSurface,
+        titleContentColor = PremiumWhite,
+        textContentColor = PremiumSecondary,
+        title = {
+            Text("Help & Support", fontWeight = FontWeight.Bold)
+        },
+        text = {
+            Column {
+                Text(
+                    "Tell us what you need help with. You can choose an app to send your message.",
+                    color = PremiumSecondary,
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp
+                )
+                Spacer(modifier = Modifier.height(14.dp))
+                OutlinedTextField(
+                    value = message,
+                    onValueChange = { if (it.length <= 1000) message = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 4,
+                    maxLines = 7,
+                    placeholder = { Text("Type your message here...") },
+                    shape = RoundedCornerShape(14.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = PremiumWhite,
+                        unfocusedTextColor = PremiumWhite,
+                        focusedBorderColor = PremiumOrange,
+                        unfocusedBorderColor = PremiumBlueEdge.copy(alpha = 0.5f),
+                        focusedPlaceholderColor = PremiumMuted,
+                        unfocusedPlaceholderColor = PremiumMuted,
+                        cursorColor = PremiumOrange
+                    )
+                )
+                Text(
+                    "${message.length}/1000",
+                    modifier = Modifier.fillMaxWidth().padding(top = 5.dp),
+                    color = PremiumMuted,
+                    fontSize = 10.sp,
+                    textAlign = TextAlign.End
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = PremiumSecondary)
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onSend(message.trim()) },
+                enabled = message.isNotBlank(),
+                colors = ButtonDefaults.buttonColors(containerColor = PremiumOrange),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Send Message")
+            }
+        }
+    )
+}
+
+@Composable
+private fun DrawerItem(text: String, icon: ImageVector, onClick: () -> Unit) {
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 3.dp)
+            .clip(RoundedCornerShape(15.dp))
+            .background(if (pressed) PremiumOrange.copy(alpha = 0.1f) else Color.Transparent)
+            .clickable(
+                interactionSource = source,
+                indication = null,
+                role = Role.Button,
+                onClick = onClick
+            )
+            .padding(horizontal = 13.dp, vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, contentDescription = null, tint = PremiumOrange, modifier = Modifier.size(20.dp))
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(text, color = PremiumWhite, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+    }
+}
+
+@Composable
+fun LocationSelectionScreen(
+    selectedCity: String,
+    availableCities: List<String> = emptyList(),
+    onBackClick: () -> Unit,
+    onCitySelected: (String) -> Unit
+) {
+    var searchQuery by remember { mutableStateOf("") }
+    val locationFetcher = rememberLocationFetcher(onCityResolved = onCitySelected)
+    val cityOptions = remember(selectedCity, availableCities) {
+        (listOf(selectedCity) + availableCities + IndiaCities.all)
+            .filter(String::isNotBlank)
+            .distinctBy { it.lowercase() }
+            .sorted()
+    }
+    val filteredCities = remember(searchQuery, cityOptions) {
+        cityOptions.filter { it.contains(searchQuery.trim(), ignoreCase = true) }
+    }
+
+    if (locationFetcher.showGpsDialog) {
+        GpsDisabledDialog(
+            onConfirm = locationFetcher.onOpenLocationSettings,
+            onDismiss = locationFetcher.onDismissGpsDialog
+        )
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(PremiumBackground)
+    ) {
+        GlowBackground()
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+        ) {
+            LocationTopBar(onBackClick = onBackClick)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+            ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(15.dp),
+                    placeholder = {
+                        Text("Search cities across India", color = PremiumMuted, fontSize = 13.sp)
+                    },
+                    leadingIcon = {
+                        Icon(Icons.Outlined.Search, contentDescription = null, tint = PremiumSecondary)
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = PremiumWhite,
+                        unfocusedTextColor = PremiumWhite,
+                        cursorColor = PremiumOrange,
+                        focusedBorderColor = PremiumOrange,
+                        unfocusedBorderColor = PremiumBlueEdge.copy(alpha = 0.34f),
+                        focusedContainerColor = PremiumSurface,
+                        unfocusedContainerColor = PremiumSurface
+                    )
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                CurrentLocationCard(
+                    state = locationFetcher.state,
+                    onClick = locationFetcher.onStart
+                )
+                Spacer(modifier = Modifier.height(14.dp))
+                Text(
+                    text = "POPULAR CITIES",
+                    color = PremiumMuted,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    popularIndiaCities.chunked(5).forEach { cityRow ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(7.dp)
+                        ) {
+                            cityRow.forEach { city ->
+                                PopularCityCard(
+                                    city = city,
+                                    isSelected = city.name.equals(selectedCity, ignoreCase = true),
+                                    onClick = { onCitySelected(city.name) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(13.dp))
+                Text(
+                    text = if (searchQuery.isBlank()) {
+                        "ALL INDIA CITIES  •  ${cityOptions.size}"
+                    } else {
+                        "${filteredCities.size} MATCHING CITIES"
+                    },
+                    color = PremiumMuted,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp)
+            ) {
+                items(items = filteredCities, key = { city -> city }) { city ->
+                    CityRow(
+                        city = city,
+                        isSelected = city.equals(selectedCity, ignoreCase = true),
+                        onClick = { onCitySelected(city) }
+                    )
+                }
+                if (filteredCities.isEmpty()) {
+                    item {
+                        Text(
+                            text = "No Indian city matches your search.",
+                            color = PremiumSecondary,
+                            fontSize = 13.sp,
+                            modifier = Modifier.padding(vertical = 24.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PopularCityCard(
+    city: PopularCity,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .height(82.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                if (isSelected) PremiumOrange.copy(alpha = 0.14f)
+                else PremiumSurface.copy(alpha = 0.9f)
+            )
+            .border(
+                width = 1.dp,
+                color = if (isSelected) PremiumOrange else PremiumBlueEdge.copy(alpha = 0.24f),
+                shape = RoundedCornerShape(16.dp)
+            )
+            .clickable(
+                role = Role.RadioButton,
+                onClickLabel = "Select ${city.name}",
+                onClick = onClick
+            )
+            .semantics { selected = isSelected }
+            .padding(horizontal = 3.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Image(
+            painter = painterResource(city.iconRes),
+            contentDescription = "${city.name} landmark",
+            contentScale = ContentScale.Fit,
+            modifier = Modifier.size(42.dp)
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = city.name,
+            color = if (isSelected) PremiumOrange else PremiumWhite,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2,
+            textAlign = TextAlign.Center,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun LocationTopBar(onBackClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(52.dp)
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        PremiumIconButton(
+            icon = Icons.AutoMirrored.Rounded.ArrowBack,
+            contentDescription = "Back",
+            onClick = onBackClick
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text = "Select Location",
+            color = PremiumWhite,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+    }
+}
+
+@Composable
+private fun CurrentLocationCard(
+    state: LocationFetchState,
+    onClick: () -> Unit
+) {
+    val loading = state is LocationFetchState.Loading
+    Row(
+        modifier = Modifier
+            .widthIn(max = 250.dp)
+            .height(32.dp)
+            .clickable(enabled = !loading, role = Role.Button, onClick = onClick)
+            .padding(horizontal = 2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (loading) {
+            PremiumLoadingState(
+                modifier = Modifier.size(15.dp),
+                message = ""
+            )
+            Spacer(modifier = Modifier.width(7.dp))
+            Text("Detecting your location...", color = PremiumOrange, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        } else {
+            Icon(
+                Icons.Rounded.LocationOn,
+                contentDescription = null,
+                tint = PremiumOrange,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(7.dp))
+            Text(
+                text = if (state is LocationFetchState.Success) {
+                    "Current location: ${state.cityName}"
+                } else {
+                    "Use my current location"
+                },
+                color = PremiumOrange,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+    if (state is LocationFetchState.PermissionDenied) {
+        Text(
+            text = "Location permission was not granted. Choose a city below.",
+            color = PremiumSecondary,
+            fontSize = 10.sp,
+            modifier = Modifier.padding(top = 7.dp)
+        )
+    } else if (state is LocationFetchState.Error) {
+        Text(
+            text = state.message,
+            color = PremiumSecondary,
+            fontSize = 10.sp,
+            modifier = Modifier.padding(top = 7.dp)
+        )
+    }
+}
+
+@Composable
+private fun CityRow(city: String, isSelected: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clip(RoundedCornerShape(15.dp))
+            .background(
+                if (isSelected) PremiumOrange.copy(alpha = 0.11f)
+                else PremiumSurface.copy(alpha = 0.82f)
+            )
+            .border(
+                1.dp,
+                if (isSelected) PremiumOrange.copy(alpha = 0.28f)
+                else PremiumBlueEdge.copy(alpha = 0.2f),
+                RoundedCornerShape(15.dp)
+            )
+            .clickable(
+                role = Role.RadioButton,
+                onClickLabel = "Select $city",
+                onClick = onClick
+            )
+            .semantics { selected = isSelected }
+            .padding(horizontal = 15.dp, vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.LocationOn,
+            contentDescription = null,
+            tint = if (isSelected) PremiumOrange else PremiumMuted,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(modifier = Modifier.width(10.dp))
+        Text(
+            text = city,
+            color = PremiumWhite,
+            fontSize = 13.sp,
+            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = premiumShortCityName(city),
+            color = if (isSelected) PremiumOrange else PremiumMuted,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+private fun premiumShortCityName(city: String): String = when (city) {
+    "Chennai" -> "CHN"
+    "Coimbatore" -> "CBE"
+    "Madurai" -> "MDU"
+    "Tiruchirappalli", "Trichy" -> "TRY"
+    "Salem" -> "SLM"
+    "Erode" -> "ERD"
+    "Vellore" -> "VEL"
+    "Tirunelveli" -> "TNV"
+    "Thoothukudi" -> "TUT"
+    else -> if (city.length > 3) city.take(3).uppercase() else city.uppercase()
+}

@@ -1,0 +1,624 @@
+package com.entrymyslot.app.screens.profile
+
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ConfirmationNumber
+import androidx.compose.material.icons.outlined.Logout
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.entrymyslot.app.R
+import com.entrymyslot.app.screens.home.GlowBackground
+import com.entrymyslot.app.screens.booking.BookingViewModel
+import com.entrymyslot.app.data.model.BookingStatus
+import com.entrymyslot.app.data.model.UserProfile
+
+private val ProfileSurface = Color(0xFF0B274F)
+private val ProfileSurfaceRaised = Color(0xFF0D2D5A)
+private val ProfileBorder = Color(0xFF24527D)
+private val ProfileAccent = Color(0xFFFA580B)
+private val ProfilePrimaryText = Color(0xFFF8FAFF)
+private val ProfileSecondaryText = Color(0xFFA8B8CF)
+private val ProfileMutedText = Color(0xFF7185A1)
+private val ProfileDestructive = Color(0xFFFF3B30)
+
+@Composable
+fun ProfileScreen(
+    onBookingClick: () -> Unit = {},
+    onLogoutClick: () -> Unit = {},
+    onPartnerClick: () -> Unit = {}
+) {
+    val viewModel: ProfileViewModel = viewModel()
+    val profileState by viewModel.profileState.collectAsStateWithLifecycle()
+    val bookingsViewModel: BookingViewModel = viewModel(key = "profile_bookings")
+    val bookingsState by bookingsViewModel.uiState.collectAsStateWithLifecycle()
+    var editName by rememberSaveable { mutableStateOf(false) }
+    var nameInput by rememberSaveable { mutableStateOf("") }
+    val openEdit = {
+        if (profileState.user != null && !profileState.isLoggingOut) {
+            viewModel.clearError()
+            nameInput = profileState.user?.fullName.orEmpty()
+            editName = true
+        }
+    }
+    if (editName) {
+        AlertDialog(
+            onDismissRequest = { if (!profileState.isSaving) editName = false },
+            title = { Text("Personal Information") },
+            text = {
+                OutlinedTextField(
+                    value = nameInput,
+                    onValueChange = { nameInput = it; viewModel.clearError() },
+                    label = { Text("Full Name") },
+                    singleLine = true,
+                    enabled = !profileState.isSaving,
+                    isError = profileState.errorMessage != null,
+                    supportingText = { profileState.errorMessage?.let { Text(it) } }
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !profileState.isSaving,
+                    onClick = { viewModel.updateProfile(nameInput) { editName = false } }
+                ) { Text(if (profileState.isSaving) "Saving..." else "Save") }
+            },
+            dismissButton = {
+                TextButton(enabled = !profileState.isSaving, onClick = { editName = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        GlowBackground()
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+        ) {
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentPadding = PaddingValues(top = 4.dp, bottom = 116.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                item {
+                    ProfileHeaderSection(
+                        user = profileState.user,
+                        isLoading = profileState.isLoading,
+                        onUsernameClick = openEdit
+                    )
+                }
+                profileState.errorMessage?.let { message ->
+                    item {
+                        Text(
+                            text = message,
+                            color = ProfileDestructive,
+                            fontSize = 12.sp,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { viewModel.loadProfile() }
+                                .padding(horizontal = 20.dp)
+                        )
+                    }
+                }
+                item { StatisticsRow(bookingsState.allBookings.takeIf { bookingsState.countsComplete }) }
+                item { QuickActionsSection(onBookingClick = onBookingClick) }
+                item { AccountSettingsSection(profileState.user, openEdit) }
+                item { PartnerSection(onPartnerClick = onPartnerClick) }
+                item {
+                    LogoutButton(
+                        isLoading = profileState.isLoggingOut,
+                        onClick = {
+                            if (!profileState.isLoggingOut) {
+                                viewModel.logout(onLogoutClick)
+                            }
+                        }
+                    )
+                }
+            }
+
+        }
+    }
+}
+
+@Composable
+private fun ProfileHeaderSection(
+    user: UserProfile?,
+    isLoading: Boolean,
+    onUsernameClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(76.dp)
+                .clip(CircleShape)
+                .background(ProfileAccent.copy(alpha = 0.14f))
+                .border(
+                    BorderStroke(1.5.dp, ProfileAccent.copy(alpha = 0.86f)),
+                    CircleShape
+                )
+                .padding(5.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(CircleShape)
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(ProfileSurfaceRaised, ProfileSurface)
+                        )
+                    )
+                    .border(
+                        BorderStroke(1.dp, ProfileBorder.copy(alpha = 0.75f)),
+                        CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.profile_avatar_fallback),
+                    contentDescription = "Profile",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+        Text(
+            text = user?.fullName ?: if (isLoading) "Loading profile..." else "Profile unavailable",
+            color = ProfilePrimaryText,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.ExtraBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.clickable(onClick = onUsernameClick)
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = user?.email.orEmpty(),
+            color = ProfileSecondaryText,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun StatisticsRow(bookings: List<com.entrymyslot.app.data.model.Booking>?) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(15.dp))
+            .background(ProfileSurface.copy(alpha = 0.86f))
+            .border(
+                BorderStroke(1.dp, ProfileBorder.copy(alpha = 0.78f)),
+                RoundedCornerShape(15.dp)
+            )
+            .padding(vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        StatItem("Bookings", bookings?.size?.toString() ?: "—", Modifier.weight(1f))
+        StatDivider()
+        StatItem("Upcoming", bookings?.count { it.status == BookingStatus.UPCOMING }?.toString() ?: "—", Modifier.weight(1f), isHighlight = true)
+        StatDivider()
+        StatItem("Completed", bookings?.count { it.status == BookingStatus.COMPLETED }?.toString() ?: "—", Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun StatItem(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    isHighlight: Boolean = false
+) {
+    Column(
+        modifier = modifier.semantics {
+            contentDescription = "$value $label"
+        },
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = value,
+            color = if (isHighlight) ProfileAccent else ProfilePrimaryText,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.ExtraBold
+        )
+        Spacer(modifier = Modifier.height(1.dp))
+        Text(
+            text = label,
+            color = ProfileSecondaryText,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1
+        )
+    }
+}
+
+@Composable
+private fun StatDivider() {
+    Box(
+        modifier = Modifier
+            .width(1.dp)
+            .height(30.dp)
+            .background(ProfileBorder.copy(alpha = 0.62f))
+    )
+}
+
+@Composable
+private fun QuickActionsSection(onBookingClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+    ) {
+        Text(
+            text = "Quick access",
+            color = ProfileMutedText,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 0.8.sp,
+            modifier = Modifier.padding(start = 2.dp, bottom = 7.dp)
+        )
+        QuickActionCard(
+            title = "My Bookings",
+            icon = Icons.Outlined.ConfirmationNumber,
+            onClick = onBookingClick
+        )
+    }
+}
+
+@Composable
+private fun QuickActionCard(
+    title: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.988f else 1f,
+        animationSpec = tween(durationMillis = 110),
+        label = "quickActionScale"
+    )
+    val color by animateColorAsState(
+        targetValue = if (isPressed) ProfileSurfaceRaised else ProfileSurface,
+        animationSpec = tween(durationMillis = 110),
+        label = "quickActionColor"
+    )
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(54.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .shadow(
+                elevation = 4.dp,
+                shape = RoundedCornerShape(14.dp),
+                ambientColor = Color.Black.copy(alpha = 0.16f),
+                spotColor = Color.Black.copy(alpha = 0.22f)
+            )
+            .clip(RoundedCornerShape(14.dp))
+            .background(color)
+            .border(
+                BorderStroke(1.dp, ProfileBorder.copy(alpha = 0.78f)),
+                RoundedCornerShape(14.dp)
+            )
+            .semantics {
+                contentDescription = title
+                role = Role.Button
+            }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                role = Role.Button,
+                onClickLabel = title,
+                onClick = onClick
+            )
+            .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = ProfileAccent,
+            modifier = Modifier.size(22.dp)
+        )
+        Spacer(modifier = Modifier.width(11.dp))
+        Text(
+            text = title,
+            modifier = Modifier.weight(1f),
+            color = ProfilePrimaryText,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun AccountSettingsSection(user: UserProfile?, onEdit: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+    ) {
+        Text(
+            text = "Account",
+            color = ProfilePrimaryText,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.ExtraBold,
+            modifier = Modifier.padding(start = 2.dp, bottom = 8.dp)
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(15.dp))
+                .background(ProfileSurface.copy(alpha = 0.88f))
+                .border(
+                    BorderStroke(1.dp, ProfileBorder.copy(alpha = 0.76f)),
+                    RoundedCornerShape(15.dp)
+                )
+        ) {
+            SettingsItem(
+                icon = Icons.Outlined.Person,
+                title = "Personal Information",
+                onClick = onEdit
+            )
+            SettingsDivider()
+            PersonalInformationDetails(user)
+        }
+    }
+}
+
+@Composable
+private fun PersonalInformationDetails(user: UserProfile?) {
+    val details = listOf(
+        "Full Name" to (user?.fullName ?: "—"),
+        "Email" to (user?.email ?: "—"),
+        "Member Since" to (user?.memberSince ?: "—")
+    )
+    Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
+        details.forEach { (label, value) ->
+            Row(Modifier.fillMaxWidth().padding(vertical = 7.dp)) {
+                Text(label, color = ProfileMutedText, fontSize = 12.sp, modifier = Modifier.weight(0.4f))
+                Text(
+                    value, color = ProfilePrimaryText, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                    modifier = Modifier.weight(0.6f), textAlign = TextAlign.End, maxLines = 2, overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PartnerSection(onPartnerClick: () -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(18.dp)).background(ProfileSurface)
+            .border(1.dp, ProfileBorder, RoundedCornerShape(18.dp)).padding(16.dp)
+    ) {
+        Text("List Your Turf or Venue", color = ProfilePrimaryText, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+        Text(
+            "Reach more customers by partnering with EntryMySlot.",
+            color = ProfileSecondaryText,
+            fontSize = 12.sp,
+            modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
+        )
+        Button(
+            onClick = onPartnerClick,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = ProfileAccent)
+        ) { Text("Partner With Us", color = Color.White, fontWeight = FontWeight.Bold) }
+    }
+}
+
+@Composable
+private fun SettingsItem(
+    icon: ImageVector,
+    title: String,
+    onClick: () -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val backgroundColor by animateColorAsState(
+        targetValue = if (isPressed) {
+            ProfileSurfaceRaised.copy(alpha = 0.92f)
+        } else {
+            Color.Transparent
+        },
+        animationSpec = tween(durationMillis = 100),
+        label = "settingsRowColor"
+    )
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(50.dp)
+            .background(backgroundColor)
+            .semantics {
+                contentDescription = title
+                role = Role.Button
+            }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                role = Role.Button,
+                onClickLabel = title,
+                onClick = onClick
+            )
+            .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = ProfileAccent,
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(modifier = Modifier.width(11.dp))
+        Text(
+            text = title,
+            modifier = Modifier.weight(1f),
+            color = ProfilePrimaryText,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun SettingsDivider() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 55.dp, end = 14.dp)
+            .height(1.dp)
+            .background(ProfileBorder.copy(alpha = 0.34f))
+    )
+}
+
+@Composable
+private fun LogoutButton(isLoading: Boolean, onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.985f else 1f,
+        animationSpec = tween(durationMillis = 110),
+        label = "logoutScale"
+    )
+    val backgroundColor by animateColorAsState(
+        targetValue = if (isPressed) {
+            ProfileDestructive.copy(alpha = 0.22f)
+        } else {
+            ProfileDestructive.copy(alpha = 0.12f)
+        },
+        animationSpec = tween(durationMillis = 110),
+        label = "logoutColor"
+    )
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .height(48.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(RoundedCornerShape(12.dp))
+            .background(backgroundColor)
+            .border(
+                BorderStroke(1.dp, ProfileDestructive.copy(alpha = 0.42f)),
+                RoundedCornerShape(12.dp)
+            )
+            .semantics {
+                contentDescription = "Log Out"
+                role = Role.Button
+            }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                role = Role.Button,
+                onClickLabel = "Log Out",
+                enabled = !isLoading,
+                onClick = onClick
+            ),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.Logout,
+            contentDescription = null,
+            tint = ProfileDestructive,
+            modifier = Modifier.size(17.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = if (isLoading) "Logging out..." else "Log Out",
+            color = ProfileDestructive,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}

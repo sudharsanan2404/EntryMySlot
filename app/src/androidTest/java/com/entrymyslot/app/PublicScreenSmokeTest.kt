@@ -80,7 +80,8 @@ class PublicScreenSmokeTest {
         }
         val found = withTimeout(60000) { movieSearch.uiState.first { !it.isLoading } }
         assertNull(found.errorMessage)
-        assertTrue(found.results.any { it.item.title == title })
+        assertTrue("Expected movie '$title' for query '${found.query}'; returned ${found.results.map { it.item.title }}; loading=${found.isLoading}; error=${found.errorMessage}",
+            found.results.any { it.item.title == title })
 
         val venues = backend.gateway.execute { listVenues() } as ApiResult.Success
         val venueName = venues.value.data!!.first().name!!
@@ -91,6 +92,7 @@ class PublicScreenSmokeTest {
         }
         val grounds = withTimeout(60000) { venueSearch.uiState.first { !it.isLoading } }
         assertNull(grounds.errorMessage)
-        assertTrue(grounds.results.any { it.item.title == venueName })
+        assertTrue("Expected venue '$venueName' for query '${grounds.query}'; returned ${grounds.results.map { it.item.title }}; loading=${grounds.isLoading}; error=${grounds.errorMessage}",
+            grounds.results.any { it.item.title == venueName })
     }
 }
